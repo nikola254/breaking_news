@@ -1,0 +1,3 @@
+requests
+beatifulsoup4
+selenium
