@@ -1,3 +1,7 @@
 requests
-beatifulsoup4
+beautifulsoup4
 selenium
+clickhouse-driver
+pandas
+telethon
+python-dotenv
