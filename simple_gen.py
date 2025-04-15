@@ -28,11 +28,11 @@ def generate_prompt(headlines, policy="the current political situation"):
     # Приводим заголовки к текстовому виду
     headlines_text = "\n".join([f"- {h}" for h in headlines])
     
-    prompt = f"""Based on the following recent news headlines:
+    prompt = f"""Основываясь на следующих заголовках последних новостей:
 
 {headlines_text}
 
-Analyze the current situation and provide a forecast on how {policy} will develop in the near future. Your analysis should highlight key factors and potential outcomes.
+Проанализируйте текущую ситуацию и дайте прогноз о том, как будут развиваться {policy} в ближайшем будущем. В вашем анализе должны быть выделены ключевые факторы и потенциальные результаты.
 """
     return prompt.strip()
 
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     headlines = get_headlines_from_clickhouse(limit=10)
     
     # Замените "politics in [Country/World]" на желаемый контекст, например, "politics in Ukraine" или "global political trends"
-    prompt = generate_prompt(headlines, policy="global political trends")
+    prompt = generate_prompt(headlines, policy="глобальные политические тенденции")
     
     print("Generated prompt for the neural network:\n")
     print(prompt)

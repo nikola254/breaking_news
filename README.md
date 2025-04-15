@@ -21,3 +21,22 @@ SELECT title, source, parsed_date
 FROM news.ria_headlines  
 ORDER BY parsed_date DESC 
 LIMIT 10;
+
+
+SELECT 
+    title AS "Заголовок",
+    content AS "Содержание статьи",
+    parsed_date AS "Дата публикации",
+    link AS "Ссылка"
+FROM news.ria_headlines  
+ORDER BY parsed_date DESC 
+LIMIT 50;
+
+
+SELECT 
+    title AS "Заголовок",
+    content AS "Содержание статьи",
+    parsed_date AS "Дата публикации",
+    link AS "Ссылка"
+FROM news.israil_headlines  
+ORDER BY parsed_date DESC;
