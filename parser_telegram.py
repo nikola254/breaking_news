@@ -18,9 +18,11 @@ PHONE = os.getenv('TELEGRAM_PHONE')  # Your phone number with country code
 
 # List of Telegram channels to parse (use channel usernames without @)
 TELEGRAM_CHANNELS = [
-    'channel1',
-    'channel2',
-    'channel3'
+    'infantmilitario',
+    'genshtab24',
+    'new_militarycolumnist',
+    'inosmichannel',
+    'operline_ru'
     # Add more channels as needed
 ]
 

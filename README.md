@@ -40,3 +40,11 @@ SELECT
     link AS "Ссылка"
 FROM news.israil_headlines  
 ORDER BY parsed_date DESC;
+
+
+SELECT
+    title AS "Заголовок",
+    content AS "Содержание новости",
+    channel AS "Канал",
+    parsed_date AS "Дата и время парсинга"
+FROM news.telegram_headlines;
