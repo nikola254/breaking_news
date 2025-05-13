@@ -5,3 +5,13 @@ clickhouse-driver
 pandas
 telethon
 python-dotenv
+# Для LSTM модели и визуализации
+tensorflow>=2.5.0
+numpy>=1.19.5
+matplotlib>=3.4.3
+seaborn>=0.11.2
+scikit-learn>=0.24.2
+# Для системы мониторинга
+schedule>=1.1.0
+pandas
+scikit-learn

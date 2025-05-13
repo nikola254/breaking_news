@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsAnalytics - Отчеты по новостным сводкам</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0a1f3d;
+            color: #e0e0e0;
+        }
+        .header {
+            background-color: #0d2b50;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4fc3f7;
+            display: flex;
+            align-items: center;
+        }
+        .logo-icon {
+            margin-right: 10px;
+            font-size: 28px;
+        }
+        .main-nav {
+            display: flex;
+        }
+        .main-nav a {
+            color: #bbdefb;
+            text-decoration: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .main-nav a:hover {
+            background-color: #1e3a6a;
+            color: #ffffff;
+        }
+        .user-actions {
+            display: flex;
+            align-items: center;
+        }
+        .user-actions a {
+            color: #bbdefb;
+            text-decoration: none;
+            margin-left: 15px;
+            font-size: 14px;
+        }
+        .news-types {
+            background-color: #0d2b50;
+            padding: 15px 20px;
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .news-type-btn {
+            background-color: #4fc3f7;
+            color: #0a1f3d;
+            border: none;
+            padding: 8px 15px;
+            margin-right: 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 100px;
+            text-align: center;
+        }
+        .news-type-btn:hover {
+            background-color: #81d4fa;
+            transform: translateY(-2px);
+        }
+        .news-type-btn.active {
+            background-color: #0288d1;
+            color: white;
+        }
+        .content {
+            padding: 20px;
+        }
+        .news-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #1e3a6a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .news-table th {
+            background-color: #0288d1;
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        .news-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #2d4a7a;
+        }
+        .news-table tr:last-child td {
+            border-bottom: none;
+        }
+        .news-table tr:hover {
+            background-color: #2d4a7a;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination-btn {
+            background-color: #1e3a6a;
+            color: #bbdefb;
+            border: none;
+            padding: 8px 15px;
+            margin: 0 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .pagination-btn:hover {
+            background-color: #0288d1;
+            color: white;
+        }
+        .pagination-btn.active {
+            background-color: #0288d1;
+            color: white;
+            font-weight: bold;
+        }
+        .date-col {
+            width: 120px;
+        }
+        .source-col {
+            width: 150px;
+        }
+        .title-col {
+            width: 250px;
+        }
+        .footer {
+            background-color: #0d2b50;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #bbdefb;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .main-nav {
+                margin-top: 15px;
+                flex-wrap: wrap;
+            }
+            .user-actions {
+                margin-top: 15px;
+            }
+            .news-types {
+                flex-wrap: wrap;
+            }
+            .news-type-btn {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <span class="logo-icon"></span>
+            <span>NewsAnalytics Pro</span>
+        </div>
+        <div class="main-nav">
+            <a href="/" class="active">Главная</a>
+            <a href="/analytics">Аналитика</a>
+            <a href="/clickhouse">База данных</a>
+            <a href="/reports">Отчеты</a>
+            <a href="/trends">Тренды</a>
+            <a href="/archive">Архив</a>
+            <a href="/about">О проекте</a>
+        </div>
+        <div class="user-actions">
+            <a href="#">Войти</a>
+            <a href="#">Регистрация</a>
+        </div>
+    </div>
+    <div class="news-types">
+        <button class="news-type-btn active" data-category="Украина">Украина</button>
+        <button class="news-type-btn" data-category="Ближний восток">Ближний восток</button>
+        <button class="news-type-btn" data-category="Фейки">Фейки</button>
+        <button class="news-type-btn" data-category="Инфовойна">Инфовойна</button>
+        <button class="news-type-btn" data-category="Европа">Европа</button>
+        <button class="news-type-btn" data-category="США">США</button>
+    </div>
+    <div class="content">
+        <table class="news-table">
+            <thead>
+                <tr>
+                    <th class="date-col">Дата</th>
+                    <th class="source-col">Ресурс</th>
+                    <th class="title-col">Заголовок</th>
+                    <th>Содержание</th>
+                </tr>
+            </thead>
+            <tbody id="news-table-body"></tbody>
+        </table>
+        <div class="pagination" id="pagination"></div>
+    </div>
+    <div class="footer">
+        © 2025 NewsAnalytics Pro. Все права защищены. | Leck | Smuzi
+    </div>
+    <script>
+        let currentCategory = 'Украина';
+        let currentPage = 1;
+    
+        // Функция для загрузки новостей
+        function loadNews(category, page) {
+            fetch(`/api/news?category=${encodeURIComponent(category)}&page=${page}&days=7`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Обновляем таблицу
+                        const tableBody = document.getElementById('news-table-body');
+                        tableBody.innerHTML = '';
+                        
+                        // Проверяем, есть ли данные
+                        if (data.data.length === 0) {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `<td colspan="4" style="text-align: center;">Нет данных для отображения</td>`;
+                            tableBody.appendChild(row);
+                        } else {
+                            data.data.forEach(news => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${news.parsed_date ? news.parsed_date.split(' ')[0] : '-'}</td>
+                                    <td>${news.source || '-'}</td>
+                                    <td>${news.title || '-'}</td>
+                                    <td>${news.content || '-'}</td>
+                                `;
+                                tableBody.appendChild(row);
+                            });
+                        }
+    
+                        // Обновляем пагинацию
+                        const pagination = document.getElementById('pagination');
+                        pagination.innerHTML = '';
+                        if (data.total_pages > 1) {
+                            // Кнопка "Предыдущая"
+                            if (data.current_page > 1) {
+                                const prevBtn = document.createElement('button');
+                                prevBtn.className = 'pagination-btn';
+                                prevBtn.textContent = '«';
+                                prevBtn.addEventListener('click', () => {
+                                    currentPage = data.current_page - 1;
+                                    loadNews(currentCategory, currentPage);
+                                });
+                                pagination.appendChild(prevBtn);
+                            }
+    
+                            // Номера страниц
+                            for (let i = 1; i <= data.total_pages; i++) {
+                                const btn = document.createElement('button');
+                                btn.className = `pagination-btn ${i === data.current_page ? 'active' : ''}`;
+                                btn.textContent = i;
+                                btn.addEventListener('click', () => {
+                                    currentPage = i;
+                                    loadNews(currentCategory, i);
+                                });
+                                pagination.appendChild(btn);
+                            }
+    
+                            // Кнопка "Следующая"
+                            if (data.current_page < data.total_pages) {
+                                const nextBtn = document.createElement('button');
+                                nextBtn.className = 'pagination-btn';
+                                nextBtn.textContent = '»';
+                                nextBtn.addEventListener('click', () => {
+                                    currentPage = data.current_page + 1;
+                                    loadNews(currentCategory, currentPage);
+                                });
+                                pagination.appendChild(nextBtn);
+                            }
+                        }
+                    } else {
+                        console.error('Error:', data.message);
+                    }
+                })
+                .catch(error => console.error('Fetch error:', error));
+        }
+    
+        // Обработчики для кнопок категорий
+        document.querySelectorAll('.news-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelector('.news-type-btn.active').classList.remove('active');
+                this.classList.add('active');
+                currentCategory = this.dataset.category;
+                currentPage = 1;
+                loadNews(currentCategory, currentPage);
+            });
+        });
+    
+        // Загружаем новости при загрузке страницы
+        loadNews(currentCategory, currentPage);
+    
+        // Периодическое обновление новостей каждые 5 минут
+        setInterval(() => {
+            loadNews(currentCategory, currentPage);
+        }, 300000); // 300000 мс = 5 минут
+    </script>
+</body>
+</html>

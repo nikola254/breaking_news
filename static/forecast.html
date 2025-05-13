@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsAnalytics - Прогнозирование</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0a1f3d;
+            color: #e0e0e0;
+        }
+        .header {
+            background-color: #0d2b50;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4fc3f7;
+            display: flex;
+            align-items: center;
+        }
+        .logo-icon {
+            margin-right: 10px;
+            font-size: 28px;
+        }
+        .main-nav {
+            display: flex;
+        }
+        .main-nav a {
+            color: #bbdefb;
+            text-decoration: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .main-nav a:hover {
+            background-color: #1e3a6a;
+            color: #ffffff;
+        }
+        .main-nav a.active {
+            background-color: #1976d2;
+            color: white;
+        }
+        .user-actions {
+            display: flex;
+            align-items: center;
+        }
+        .user-actions button {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.3s;
+        }
+        .user-actions button:hover {
+            background-color: #1565c0;
+        }
+        .content {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .forecast-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .forecast-card {
+            background-color: #0d2b50;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            flex: 1;
+            min-width: 300px;
+        }
+        .forecast-card h2 {
+            color: #4fc3f7;
+            margin-top: 0;
+            border-bottom: 1px solid #1e3a6a;
+            padding-bottom: 10px;
+        }
+        .forecast-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .forecast-select {
+            background-color: #0d2b50;
+            color: #e0e0e0;
+            border: 1px solid #1976d2;
+            padding: 8px;
+            border-radius: 4px;
+            min-width: 150px;
+        }
+        .forecast-btn {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .forecast-btn:hover {
+            background-color: #1565c0;
+        }
+        .forecast-result {
+            margin-top: 20px;
+        }
+        .forecast-chart {
+            width: 100%;
+            height: 300px;
+            background-color: #1e3a6a;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        .forecast-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .forecast-table th, .forecast-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #1e3a6a;
+        }
+        .forecast-table th {
+            background-color: #1e3a6a;
+            color: #4fc3f7;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #4fc3f7;
+        }
+        .error-message {
+            background-color: #c62828;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .footer {
+            background-color: #0d2b50;
+            padding: 15px 20px;
+            text-align: center;
+            margin-top: 30px;
+            color: #bbdefb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <span class="logo-icon">📊</span> NewsAnalytics Pro
+        </div>
+        <div class="main-nav">
+            <a href="/">Главная</a>
+            <a href="/analytics">Аналитика</a>
+            <a href="/clickhouse">База данных</a>
+            <a href="/reports">Отчеты</a>
+            <a href="/trends">Тренды</a>
+            <a href="/forecast" class="active">Прогнозирование</a>
+            <a href="/archive">Архив</a>
+            <a href="/about">О проекте</a>
+        </div>
+        <div class="user-actions">
+            <button id="refresh-btn">Обновить данные</button>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h1>Прогнозирование новостных тенденций</h1>
+        <div id="error-container"></div>
+        
+        <div class="forecast-controls">
+            <div>
+                <label for="model-select">Модель прогнозирования:</label>
+                <select id="model-select" class="forecast-select">
+                    <option value="lstm" selected>LSTM (Долгая краткосрочная память)</option>
+                    <option value="arima">ARIMA (Авторегрессионное интегрированное скользящее среднее)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="source-select">Источник данных:</label>
+                <select id="source-select" class="forecast-select">
+                    <option value="all" selected>Все источники</option>
+                    <option value="telegram">Telegram</option>
+                    <option value="israil">Израиль</option>
+                    <option value="ria">РИА</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="period-select">Период прогноза:</label>
+                <select id="period-select" class="forecast-select">
+                    <option value="1">1 день</option>
+                    <option value="3">3 дня</option>
+                    <option value="7" selected>7 дней</option>
+                    <option value="14">14 дней</option>
+                    <option value="30">30 дней</option>
+                </select>
+            </div>
+            
+            <button id="generate-btn" class="forecast-btn">Сгенерировать прогноз</button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">Генерация прогноза...</div>
+        
+        <div class="forecast-container">
+            <div class="forecast-card">
+                <h2>Прогноз напряженности</h2>
+                <p>Прогноз уровня напряженности в новостных сводках на основе анализа ключевых слов и тональности текста.</p>
+                <div id="tension-chart" class="forecast-chart">
+                    <span>Выберите параметры и нажмите "Сгенерировать прогноз"</span>
+                </div>
+                <div class="forecast-result">
+                    <h3>Результаты прогноза:</h3>
+                    <table class="forecast-table" id="tension-table">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Прогнозируемый уровень</th>
+                                <th>Доверительный интервал</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Данные будут добавлены динамически -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="forecast-card">
+                <h2>Прогноз тематик</h2>
+                <p>Прогноз популярности основных тематик в новостных сводках на основе исторических данных.</p>
+                <div id="topics-chart" class="forecast-chart">
+                    <span>Выберите параметры и нажмите "Сгенерировать прогноз"</span>
+                </div>
+                <div class="forecast-result">
+                    <h3>Топ тематики:</h3>
+                    <table class="forecast-table" id="topics-table">
+                        <thead>
+                            <tr>
+                                <th>Тематика</th>
+                                <th>Прогнозируемая доля</th>
+                                <th>Изменение</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Данные будут добавлены динамически -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        © 2025 NewsAnalytics Pro. Все права защищены. | Leck | Smuzi
+    </div>
+    
+    <script>
+        // DOM-элементы
+        const modelSelect = document.getElementById('model-select');
+        const sourceSelect = document.getElementById('source-select');
+        const periodSelect = document.getElementById('period-select');
+        const generateBtn = document.getElementById('generate-btn');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const loading = document.getElementById('loading');
+        const errorContainer = document.getElementById('error-container');
+        const tensionChart = document.getElementById('tension-chart');
+        const topicsChart = document.getElementById('topics-chart');
+        const tensionTable = document.getElementById('tension-table').querySelector('tbody');
+        const topicsTable = document.getElementById('topics-table').querySelector('tbody');
+        
+        // Обработчик кнопки генерации прогноза
+        generateBtn.addEventListener('click', function() {
+            // Показываем индикатор загрузки
+            showLoading(true);
+            clearError();
+            
+            // Получаем выбранные параметры
+            const model = modelSelect.value;
+            const source = sourceSelect.value;
+            const period = periodSelect.value;
+            
+            // Отправляем запрос на генерацию прогноза
+            fetch('/api/generate_forecast', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: model,
+                    source: source,
+                    period: parseInt(period)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Обновляем графики и таблицы с результатами
+                    updateTensionChart(data.tension_forecast);
+                    updateTopicsChart(data.topics_forecast);
+                    updateTensionTable(data.tension_forecast);
+                    updateTopicsTable(data.topics_forecast);
+                } else {
+                    showError(data.message || 'Ошибка при генерации прогноза');
+                }
+            })
+            .catch(error => {
+                showError(`Ошибка при генерации прогноза: ${error.message}`);
+            })
+            .finally(() => {
+                showLoading(false);
+            });
+        });
+        
+        // Обработчик кнопки обновления данных
+        refreshBtn.addEventListener('click', function() {
+            // Здесь можно добавить логику обновления данных, если необходимо
+            alert('Данные обновлены!');
+        });
+        
+        // Функция обновления графика напряженности
+        function updateTensionChart(data) {
+            // В реальном приложении здесь будет код для отрисовки графика
+            // Например, с использованием библиотеки Chart.js или D3.js
+            tensionChart.innerHTML = '<img src="' + data.chart_url + '" alt="График прогноза напряженности" style="max-width:100%; max-height:300px;">';
+        }
+        
+        // Функция обновления графика тематик
+        function updateTopicsChart(data) {
+            // В реальном приложении здесь будет код для отрисовки графика
+            topicsChart.innerHTML = '<img src="' + data.chart_url + '" alt="График прогноза тематик" style="max-width:100%; max-height:300px;">';
+        }
+        
+        // Функция обновления таблицы напряженности
+        function updateTensionTable(data) {
+            tensionTable.innerHTML = '';
+            
+            if (!data.values || data.values.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="3" style="text-align: center;">Нет данных для отображения</td>';
+                tensionTable.appendChild(row);
+                return;
+            }
+            
+            data.values.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.date}</td>
+                    <td>${item.value.toFixed(2)}</td>
+                    <td>${item.lower_bound.toFixed(2)} - ${item.upper_bound.toFixed(2)}</td>
+                `;
+                tensionTable.appendChild(row);
+            });
+        }
+        
+        // Функция обновления таблицы тематик
+        function updateTopicsTable(data) {
+            topicsTable.innerHTML = '';
+            
+            if (!data.topics || data.topics.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="3" style="text-align: center;">Нет данных для отображения</td>';
+                topicsTable.appendChild(row);
+                return;
+            }
+            
+            data.topics.forEach(item => {
+                const row = document.createElement('tr');
+                const changeClass = item.change > 0 ? 'positive-change' : (item.change < 0 ? 'negative-change' : '');
+                const changeSign = item.change > 0 ? '+' : '';
+                
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${(item.value * 100).toFixed(1)}%</td>
+                    <td class="${changeClass}">${changeSign}${(item.change * 100).toFixed(1)}%</td>
+                `;
+                topicsTable.appendChild(row);
+            });
+        }
+        
+        // Функция отображения/скрытия индикатора загрузки
+        function showLoading(show) {
+            loading.style.display = show ? 'block' : 'none';
+        }
+        
+        // Функция отображения ошибки
+        function showError(message) {
+            errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+        
+        // Функция очистки ошибки
+        function clearError() {
+            errorContainer.innerHTML = '';
+        }
+    </script>
+</body>
+</html>

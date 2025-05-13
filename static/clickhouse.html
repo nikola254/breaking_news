@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsAnalytics - База данных ClickHouse</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0a1f3d;
+            color: #e0e0e0;
+        }
+        .header {
+            background-color: #0d2b50;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4fc3f7;
+            display: flex;
+            align-items: center;
+        }
+        .logo-icon {
+            margin-right: 10px;
+            font-size: 28px;
+        }
+        .main-nav {
+            display: flex;
+        }
+        .main-nav a {
+            color: #bbdefb;
+            text-decoration: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .main-nav a:hover {
+            background-color: #1e3a6a;
+            color: #ffffff;
+        }
+        .user-actions {
+            display: flex;
+            align-items: center;
+        }
+        .user-actions button {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.3s;
+        }
+        .user-actions button:hover {
+            background-color: #1565c0;
+        }
+        .content {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .db-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .db-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .db-btn {
+            background-color: #1e3a6a;
+            color: #bbdefb;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .db-btn.active {
+            background-color: #1976d2;
+            color: white;
+        }
+        .db-btn:hover {
+            background-color: #1565c0;
+            color: white;
+        }
+        .filter-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-select, .days-select {
+            background-color: #0d2b50;
+            color: #e0e0e0;
+            border: 1px solid #1976d2;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .news-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #0d2b50;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .news-table th, .news-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #1e3a6a;
+        }
+        .news-table th {
+            background-color: #1e3a6a;
+            color: #4fc3f7;
+            position: sticky;
+            top: 0;
+        }
+        .news-table tr:hover {
+            background-color: #1e3a6a;
+        }
+        .date-col {
+            width: 120px;
+        }
+        .source-col {
+            width: 120px;
+        }
+        .title-col {
+            width: 250px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 5px;
+        }
+        .page-btn {
+            background-color: #1e3a6a;
+            color: #bbdefb;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .page-btn.active {
+            background-color: #1976d2;
+            color: white;
+        }
+        .page-btn:hover {
+            background-color: #1565c0;
+            color: white;
+        }
+        .footer {
+            background-color: #0d2b50;
+            padding: 15px 20px;
+            text-align: center;
+            margin-top: 30px;
+            color: #bbdefb;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #4fc3f7;
+        }
+        .error-message {
+            background-color: #c62828;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .link-cell a {
+            color: #4fc3f7;
+            text-decoration: none;
+        }
+        .link-cell a:hover {
+            text-decoration: underline;
+        }
+        .content-cell {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .content-cell.expanded {
+            white-space: normal;
+        }
+        .expand-btn {
+            background-color: transparent;
+            color: #4fc3f7;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 5px;
+            font-size: 12px;
+        }
+        
+        /* Стили для модального окна */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .modal-content {
+            background-color: #0d2b50;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #1976d2;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 900px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            color: #e0e0e0;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e3a6a;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .modal-title {
+            font-size: 22px;
+            color: #4fc3f7;
+            margin: 0;
+        }
+        
+        .close-modal {
+            color: #bbdefb;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        
+        .close-modal:hover {
+            color: #4fc3f7;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .modal-footer {
+            border-top: 1px solid #1e3a6a;
+            padding-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .article-meta {
+            color: #bbdefb;
+            font-size: 14px;
+        }
+        
+        .article-link {
+            color: #4fc3f7;
+            text-decoration: none;
+        }
+        
+        .article-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <span class="logo-icon">📊</span> NewsAnalytics Pro
+        </div>
+        <div class="main-nav">
+            <a href="/">Главная</a>
+            <a href="/analytics">Аналитика</a>
+            <a href="/clickhouse" class="active">База данных</a>
+            <a href="/reports">Отчеты</a>
+            <a href="/trends">Тренды</a>
+            <a href="/forecast">Прогнозирование</a>
+            <a href="/archive">Архив</a>
+            <a href="/about">О проекте</a>
+        </div>
+        <div class="user-actions">
+            <button id="parse-btn">Запустить парсинг</button>
+            <button id="refresh-btn">Обновить данные</button>
+        </div>
+    </div>
+    
+    <div class="content">
+        <h1>База данных ClickHouse</h1>
+        <div id="error-container"></div>
+        
+        <div class="db-controls">
+            <div class="db-selector">
+                <button class="db-btn active" data-source="telegram">Telegram</button>
+                <button class="db-btn" data-source="israil">Израиль</button>
+                <button class="db-btn" data-source="ria">РИА</button>
+            </div>
+            
+            <div class="filter-controls">
+                <div id="filter-container">
+                    <!-- Динамически заполняется в зависимости от выбранной таблицы -->
+                </div>
+                
+                <label for="days-select">Период:</label>
+                <select id="days-select" class="days-select">
+                    <option value="1">1 день</option>
+                    <option value="3">3 дня</option>
+                    <option value="7" selected>7 дней</option>
+                    <option value="14">14 дней</option>
+                    <option value="30">30 дней</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="loading" class="loading">Загрузка данных...</div>
+        
+        <table class="news-table" id="data-table">
+            <thead>
+                <tr id="table-header">
+                    <!-- Динамически заполняется в зависимости от выбранной таблицы -->
+                </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+        
+        <div class="pagination" id="pagination"></div>
+    </div>
+    
+    <div class="footer">
+        © 2025 NewsAnalytics Pro. Все права защищены. | Leck | Smuzi
+    </div>
+    
+    <!-- Модальное окно для просмотра статьи -->
+    <div id="article-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">Заголовок статьи</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-content">
+                Содержание статьи...
+            </div>
+            <div class="modal-footer">
+                <div class="article-meta">
+                    <span id="modal-source">Источник</span> | 
+                    <span id="modal-date">Дата публикации</span>
+                </div>
+                <a href="#" target="_blank" id="modal-link" class="article-link">Открыть оригинал</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Глобальные переменные
+        let currentSource = 'telegram';
+        let currentPage = 1;
+        let currentFilter = null;
+        let currentFilterValue = null;
+        let currentDays = 7;
+        let totalPages = 1;
+        
+        // DOM-элементы
+        const dataTable = document.getElementById('data-table');
+        const tableHeader = document.getElementById('table-header');
+        const tableBody = document.getElementById('table-body');
+        const pagination = document.getElementById('pagination');
+        const loading = document.getElementById('loading');
+        const errorContainer = document.getElementById('error-container');
+        const filterContainer = document.getElementById('filter-container');
+        const daysSelect = document.getElementById('days-select');
+        const refreshBtn = document.getElementById('refresh-btn');
+        
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            // Обработчики событий для кнопок выбора источника данных
+            document.querySelectorAll('.db-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.db-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentSource = btn.dataset.source;
+                    currentPage = 1;
+                    currentFilter = null;
+                    currentFilterValue = null;
+                    loadData();
+                });
+            });
+            
+            // Обработчик изменения периода
+            daysSelect.addEventListener('change', () => {
+                currentDays = parseInt(daysSelect.value);
+                currentPage = 1;
+                loadData();
+            });
+            
+            // Обработчик кнопки обновления
+            refreshBtn.addEventListener('click', () => {
+                loadData();
+            });
+            
+            // Загрузка данных при первом открытии страницы
+            loadData();
+        });
+        
+        // Функция загрузки данных из API
+        function loadData() {
+            showLoading(true);
+            clearError();
+            
+            // Формирование URL запроса с параметрами
+            let url = `/api/${currentSource}?page=${currentPage}&days=${currentDays}`;
+            if (currentFilter && currentFilterValue) {
+                url += `&${currentFilter}=${encodeURIComponent(currentFilterValue)}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Обновляем данные на странице
+                        updateTable(data.data);
+                        updatePagination(data.total_pages, data.current_page);
+                        updateFilters(data);
+                        totalPages = data.total_pages;
+                    } else {
+                        showError(data.message || 'Ошибка при загрузке данных');
+                    }
+                })
+                .catch(error => {
+                    showError(`Ошибка при загрузке данных: ${error.message}`);
+                })
+                .finally(() => {
+                    showLoading(false);
+                });
+        }
+        
+        // Функция обновления таблицы с данными
+        function updateTable(data) {
+            // Очистка таблицы
+            tableHeader.innerHTML = '';
+            tableBody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Нет данных для отображения</td></tr>';
+                return;
+            }
+            
+            // Создание заголовков таблицы в зависимости от источника
+            const headers = getHeadersForSource(currentSource);
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header.label;
+                if (header.class) th.className = header.class;
+                tableHeader.appendChild(th);
+            });
+            
+            // Заполнение таблицы данными
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                
+                headers.forEach(header => {
+                    const cell = document.createElement('td');
+                    
+                    if (header.key === 'link' || header.key === 'message_link') {
+                        // Для ссылок создаем элемент <a>
+                        cell.className = 'link-cell';
+                        if (item[header.key]) {
+                            const link = document.createElement('a');
+                            link.href = item[header.key];
+                            link.target = '_blank';
+                            link.textContent = 'Открыть';
+                            cell.appendChild(link);
+                        } else {
+                            cell.textContent = '-';
+                        }
+                    } else if (header.key === 'content') {
+                        // Для контента добавляем возможность разворачивания
+                        cell.className = 'content-cell';
+                        cell.textContent = item[header.key] || '-';
+                        
+                        if (item[header.key] && item[header.key].length > 100) {
+                            const expandBtn = document.createElement('button');
+                            expandBtn.className = 'expand-btn';
+                            expandBtn.textContent = '[Развернуть]';
+                            expandBtn.addEventListener('click', () => {
+                                cell.classList.toggle('expanded');
+                                expandBtn.textContent = cell.classList.contains('expanded') ? '[Свернуть]' : '[Развернуть]';
+                            });
+                            cell.appendChild(expandBtn);
+                        }
+                    } else if (header.key === 'title') {
+                        // Для заголовка добавляем возможность открытия модального окна
+                        cell.className = 'title-col';
+                        cell.textContent = item[header.key] || '-';
+                        cell.style.cursor = 'pointer';
+                        cell.title = 'Нажмите, чтобы открыть полную статью';
+                        
+                        // Добавляем обработчик клика для открытия модального окна
+                        cell.addEventListener('click', () => {
+                            openArticleModal(item);
+                        });
+                    } else {
+                        // Для остальных полей просто выводим значение
+                        cell.textContent = item[header.key] || '-';
+                    }
+                    
+                    row.appendChild(cell);
+                });
+                
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Функция получения заголовков таблицы в зависимости от источника
+        function getHeadersForSource(source) {
+            switch (source) {
+                case 'telegram':
+                    return [
+                        { key: 'parsed_date', label: 'Дата', class: 'date-col' },
+                        { key: 'channel', label: 'Канал', class: 'source-col' },
+                        { key: 'title', label: 'Заголовок', class: 'title-col' },
+                        { key: 'content', label: 'Содержание' },
+                        { key: 'message_link', label: 'Ссылка' }
+                    ];
+                case 'israil':
+                    return [
+                        { key: 'parsed_date', label: 'Дата', class: 'date-col' },
+                        { key: 'source', label: 'Источник', class: 'source-col' },
+                        { key: 'category', label: 'Категория' },
+                        { key: 'title', label: 'Заголовок', class: 'title-col' },
+                        { key: 'content', label: 'Содержание' },
+                        { key: 'link', label: 'Ссылка' }
+                    ];
+                case 'ria':
+                    return [
+                        { key: 'parsed_date', label: 'Дата', class: 'date-col' },
+                        { key: 'source', label: 'Источник', class: 'source-col' },
+                        { key: 'category', label: 'Категория' },
+                        { key: 'title', label: 'Заголовок', class: 'title-col' },
+                        { key: 'content', label: 'Содержание' },
+                        { key: 'link', label: 'Ссылка' }
+                    ];
+                default:
+                    return [];
+            }
+        }
+        
+        // Функция обновления пагинации
+        function updatePagination(totalPages, currentPage) {
+            pagination.innerHTML = '';
+            
+            if (totalPages <= 1) return;
+            
+            // Кнопка "Предыдущая"
+            if (currentPage > 1) {
+                addPageButton('«', currentPage - 1);
+            }
+            
+            // Номера страниц
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, startPage + 4);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                addPageButton(i, i, i === currentPage);
+            }
+            
+            // Кнопка "Следующая"
+            if (currentPage < totalPages) {
+                addPageButton('»', currentPage + 1);
+            }
+        }
+        
+        // Функция добавления кнопки пагинации
+        function addPageButton(text, page, isActive = false) {
+            const button = document.createElement('button');
+            button.className = `page-btn${isActive ? ' active' : ''}`;
+            button.textContent = text;
+            button.addEventListener('click', () => {
+                if (page !== currentPage) {
+                    currentPage = page;
+                    loadData();
+                }
+            });
+            pagination.appendChild(button);
+        }
+        
+        // Функция обновления фильтров
+        function updateFilters(data) {
+            filterContainer.innerHTML = '';
+            
+            let filterOptions = [];
+            let filterName = '';
+            
+            // Определяем доступные фильтры в зависимости от источника
+            if (currentSource === 'telegram' && data.available_channels) {
+                filterOptions = data.available_channels;
+                filterName = 'channel';
+                createFilterSelect('Канал:', filterName, filterOptions);
+            } else if ((currentSource === 'israil' || currentSource === 'ria') && data.available_categories) {
+                filterOptions = data.available_categories;
+                filterName = 'category';
+                createFilterSelect('Категория:', filterName, filterOptions);
+            }
+        }
+        
+        // Функция создания выпадающего списка для фильтрации
+        function createFilterSelect(label, filterName, options) {
+            const container = document.createElement('div');
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.gap = '10px';
+            
+            const labelElement = document.createElement('label');
+            labelElement.textContent = label;
+            container.appendChild(labelElement);
+            
+            const select = document.createElement('select');
+            select.className = 'filter-select';
+            
+            // Добавляем опцию "Все"
+            const allOption = document.createElement('option');
+            allOption.value = '';
+            allOption.textContent = 'Все';
+            select.appendChild(allOption);
+            
+            // Добавляем остальные опции
+            options.forEach(option => {
+                const optionElement = document.createElement('option');
+                optionElement.value = option;
+                optionElement.textContent = option;
+                if (currentFilter === filterName && currentFilterValue === option) {
+                    optionElement.selected = true;
+                }
+                select.appendChild(optionElement);
+            });
+            
+            // Обработчик изменения фильтра
+            select.addEventListener('change', () => {
+                currentFilter = select.value ? filterName : null;
+                currentFilterValue = select.value;
+                currentPage = 1;
+                loadData();
+            });
+            
+            container.appendChild(select);
+            filterContainer.appendChild(container);
+        }
+        
+        // Функция отображения/скрытия индикатора загрузки
+        function showLoading(show) {
+            loading.style.display = show ? 'block' : 'none';
+            dataTable.style.display = show ? 'none' : 'table';
+        }
+        
+        // Функция отображения ошибки
+        function showError(message) {
+            errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+        
+        // Функция очистки ошибки
+        function clearError() {
+            errorContainer.innerHTML = '';
+        }
+        
+        // Функция открытия модального окна со статьей
+        function openArticleModal(article) {
+            const modal = document.getElementById('article-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalContent = document.getElementById('modal-content');
+            const modalSource = document.getElementById('modal-source');
+            const modalDate = document.getElementById('modal-date');
+            const modalLink = document.getElementById('modal-link');
+            
+            // Заполняем данными модальное окно
+            modalTitle.textContent = article.title || 'Без заголовка';
+            modalContent.textContent = article.content || 'Содержание отсутствует';
+            
+            // Устанавливаем метаданные
+            if (currentSource === 'telegram') {
+                modalSource.textContent = article.channel || 'Неизвестный канал';
+            } else {
+                modalSource.textContent = article.source || 'Неизвестный источник';
+            }
+            
+            modalDate.textContent = article.parsed_date || 'Дата неизвестна';
+            
+            // Устанавливаем ссылку на оригинал
+            if (article.link) {
+                modalLink.href = article.link;
+                modalLink.style.display = 'inline';
+            } else if (article.message_link) {
+                modalLink.href = article.message_link;
+                modalLink.style.display = 'inline';
+            } else {
+                modalLink.style.display = 'none';
+            }
+            
+            // Отображаем модальное окно
+            modal.style.display = 'block';
+            
+            // Обработчик закрытия модального окна
+            const closeBtn = modal.querySelector('.close-modal');
+            closeBtn.onclick = function() {
+                modal.style.display = 'none';
+            }
+            
+            // Закрытие при клике вне модального окна
+            window.onclick = function(event) {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            }
+        }
+        
+        // Обработчик кнопки запуска парсинга
+        document.getElementById('parse-btn').addEventListener('click', function() {
+            if (confirm('Вы уверены, что хотите запустить процесс парсинга? Это может занять некоторое время.')) {
+                // Показываем индикатор загрузки
+                // Открываем модальное окно для выбора источников
+                openParserSelectionModal();
+            }
+        });
+        
+        // Функция для открытия модального окна выбора источников
+        function openParserSelectionModal() {
+            // Создаем модальное окно, если его еще нет
+            if (!document.getElementById('parserSelectionModal')) {
+                const modal = document.createElement('div');
+                modal.id = 'parserSelectionModal';
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h2>Выберите источники для парсинга</h2>
+                        <div class="parser-options">
+                            <label><input type="checkbox" name="parser" value="telegram" checked> Telegram</label>
+                            <label><input type="checkbox" name="parser" value="israil" checked> Израиль</label>
+                            <label><input type="checkbox" name="parser" value="ria" checked> РИА</label>
+                        </div>
+                        <button id="startParsingBtn" class="btn btn-primary">Запустить парсинг</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                // Добавляем стили для модального окна
+                const style = document.createElement('style');
+                style.textContent = `
+                    .modal {
+                        display: none;
+                        position: fixed;
+                        z-index: 1000;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        height: 100%;
+                        background-color: rgba(0,0,0,0.4);
+                    }
+                    .modal-content {
+                        background-color: #fefefe;
+                        margin: 15% auto;
+                        padding: 20px;
+                        border: 1px solid #888;
+                        width: 400px;
+                        border-radius: 5px;
+                    }
+                    .close {
+                        color: #aaa;
+                        float: right;
+                        font-size: 28px;
+                        font-weight: bold;
+                        cursor: pointer;
+                    }
+                    .close:hover {
+                        color: black;
+                    }
+                    .parser-options {
+                        margin: 20px 0;
+                    }
+                    .parser-options label {
+                        display: block;
+                        margin: 10px 0;
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                // Обработчик закрытия модального окна
+                document.querySelector('#parserSelectionModal .close').addEventListener('click', function() {
+                    document.getElementById('parserSelectionModal').style.display = 'none';
+                });
+                
+                // Обработчик кнопки запуска парсинга
+                document.getElementById('startParsingBtn').addEventListener('click', function() {
+                    const selectedParsers = [];
+                    document.querySelectorAll('#parserSelectionModal input[name="parser"]:checked').forEach(checkbox => {
+                        selectedParsers.push(checkbox.value);
+                    });
+                    
+                    if (selectedParsers.length === 0) {
+                        alert('Пожалуйста, выберите хотя бы один источник для парсинга');
+                        return;
+                    }
+                    
+                    // Закрываем модальное окно
+                    document.getElementById('parserSelectionModal').style.display = 'none';
+                    
+                    // Запускаем парсинг выбранных источников
+                    runParsers(selectedParsers);
+                });
+            }
+            
+            // Показываем модальное окно
+            document.getElementById('parserSelectionModal').style.display = 'block';
+        }
+        
+        // Функция для запуска парсеров
+        function runParsers(sources) {
+            showLoading(true);
+            
+            // Отправляем запрос на запуск парсинга
+            fetch('/api/run_parser', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ source: sources.length === 3 ? 'all' : sources.join(',') })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Парсинг успешно запущен! Обновите данные через несколько минут.');
+                } else {
+                    showError(data.message || 'Ошибка при запуске парсинга');
+                }
+            })
+            .catch(error => {
+                showError(`Ошибка при запуске парсинга: ${error.message}`);
+            })
+            .finally(() => {
+                showLoading(false);
+            });
+            }
+    </script>
+</body>
+</html>
