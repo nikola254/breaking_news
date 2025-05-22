@@ -22,83 +22,192 @@ def get_clickhouse_client():
 # API-эндпоинт для получения новостей
 @app.route('/api/news', methods=['GET'])
 def get_news():
+    source = request.args.get('source', 'all')
+    category = request.args.get('category', 'all')
+    limit = request.args.get('limit', 100, type=int)
+    offset = request.args.get('offset', 0, type=int)
+    
+    # Проверка валидности категории
+    valid_categories = ['ukraine', 'middle_east', 'fake_news', 'info_war', 'europe', 'usa', 'other']
+    if category not in valid_categories and category != 'all':
+        return jsonify({'status': 'error', 'message': f'Недопустимая категория. Допустимые категории: {valid_categories}'}), 400
+    
     try:
-        # Параметры запроса: категория и страница
-        category = request.args.get('category', 'Украина')
-        page = int(request.args.get('page', 1))
-        page_size = 5  # Количество записей на странице
-        days = int(request.args.get('days', 7))
-
         client = get_clickhouse_client()
         
-        # Определяем, из какой таблицы брать данные в зависимости от категории
-        if category in ['Украина', 'Фейки', 'Ближний восток']:
-            # Используем таблицу ria_headlines для основных категорий
-            table_name = 'news.ria_headlines'
-            
-            # Базовый запрос
-            query = '''
-                SELECT id, title, link, content, source, category, parsed_date
-                FROM news.ria_headlines
-                WHERE category = %(category)s
-                AND parsed_date >= %(start_date)s
+        # Формируем запрос в зависимости от источника и категории
+        if source == 'all' and category == 'all':
+            # Все источники, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date,
+                    if(source = 'ria.ru', link, '') as link,
+                    if(source = '7kanal.co.il', link, '') as israil_link,
+                    if(source = '7kanal.co.il', source_links, '') as source_links,
+                    if(source = 'telegram', message_link, '') as telegram_link,
+                    if(source = 'telegram', channel, '') as telegram_channel
+                FROM (
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ria_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, source_links, '' as message_link, '' as channel
+                    FROM news.israil_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, '' as link, content, source, category, parsed_date, '' as source_links, message_link, channel
+                    FROM news.telegram_headlines
+                )
                 ORDER BY parsed_date DESC
-                LIMIT %(limit)s OFFSET %(offset)s
+                LIMIT {limit} OFFSET {offset}
             '''
-            
-            # Параметры запроса
-            start_date = datetime.datetime.now() - datetime.timedelta(days=days)
-            params = {
-                'category': category,
-                'start_date': start_date,
-                'limit': page_size,
-                'offset': (page - 1) * page_size
-            }
-            
-            result = client.query(query, parameters=params)
-            
-            # Форматируем данные
-            news = [
-                {
-                    'id': str(row[0]),
-                    'title': row[1],
-                    'link': row[2],
-                    'content': row[3],
-                    'source': row[4],
-                    'category': row[5],
-                    'parsed_date': row[6].strftime('%Y-%m-%d %H:%M:%S')
-                }
-                for row in result.result_rows
-            ]
-            
-            # Подсчет общего количества записей для пагинации
-            count_query = '''
-                SELECT COUNT(*)
+        elif source == 'all' and category != 'all':
+            # Все источники, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date,
+                    if(source = 'ria.ru', link, '') as link,
+                    if(source = '7kanal.co.il', link, '') as israil_link,
+                    if(source = '7kanal.co.il', source_links, '') as source_links,
+                    if(source = 'telegram', message_link, '') as telegram_link,
+                    if(source = 'telegram', channel, '') as telegram_channel
+                FROM (
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ria_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, source_links, '' as message_link, '' as channel
+                    FROM news.israil_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, '' as link, content, source, category, parsed_date, '' as source_links, message_link, channel
+                    FROM news.telegram_headlines
+                    WHERE category = '{category}'
+                )
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'ria' and category == 'all':
+            # Только РИА, все категории
+            query = f'''
+                SELECT 
+                    id, title, link as link, content, source, category, parsed_date,
+                    '' as israil_link, '' as source_links, '' as telegram_link, '' as telegram_channel
                 FROM news.ria_headlines
-                WHERE category = %(category)s
-                AND parsed_date >= %(start_date)s
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'ria' and category != 'all':
+            # Только РИА, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, link as link, content, source, category, parsed_date,
+                    '' as israil_link, '' as source_links, '' as telegram_link, '' as telegram_channel
+                FROM news.ria_headlines
+                WHERE category = '{category}'
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'israil' and category == 'all':
+            # Только Израиль, все категории
+            query = f'''
+                SELECT 
+                    id, title, '' as link, content, source, category, parsed_date,
+                    link as israil_link, source_links, '' as telegram_link, '' as telegram_channel
+                FROM news.israil_headlines
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'israil' and category != 'all':
+            # Только Израиль, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, '' as link, content, source, category, parsed_date,
+                    link as israil_link, source_links, '' as telegram_link, '' as telegram_channel
+                FROM news.israil_headlines
+                WHERE category = '{category}'
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'telegram' and category == 'all':
+            # Только Telegram, все категории
+            query = f'''
+                SELECT 
+                    id, title, '' as link, content, source, category, parsed_date,
+                    '' as israil_link, '' as source_links, message_link as telegram_link, channel as telegram_channel
+                FROM news.telegram_headlines
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'telegram' and category != 'all':
+            # Только Telegram, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, '' as link, content, source, category, parsed_date,
+                    '' as israil_link, '' as source_links, message_link as telegram_link, channel as telegram_channel
+                FROM news.telegram_headlines
+                WHERE category = '{category}'
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
             '''
         else:
-            # Для неизвестных категорий возвращаем пустой список
-            news = []
-            total_count = 0
-            total_pages = 0
-            return jsonify({
-                'status': 'success',
-                'data': news,
-                'total_pages': total_pages,
-                'current_page': page,
-                'message': f'Категория {category} не найдена'
-            })
+            return jsonify({'status': 'error', 'message': 'Недопустимый источник'}), 400
+            
+        result = client.query(query)
         
-        total_count = client.query(count_query, parameters=params).result_rows[0][0]
+        # Форматируем данные
+        news = []
+        for row in result.result_rows:
+            news_item = {
+                'id': str(row[0]),
+                'title': row[1],
+                'content': row[2],
+                'source': row[3],
+                'category': row[4],
+                'parsed_date': row[5].strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            # Добавляем специфичные поля в зависимости от источника
+            if row[6]:  # link для РИА
+                news_item['link'] = row[6]
+            if row[7]:  # israil_link
+                news_item['israil_link'] = row[7]
+            if row[8]:  # source_links
+                news_item['source_links'] = row[8]
+            if row[9]:  # telegram_link
+                news_item['telegram_link'] = row[9]
+            if row[10]:  # telegram_channel
+                news_item['telegram_channel'] = row[10]
+                
+            news.append(news_item)
+        
+        # Подсчет общего количества записей
+        count_query = f'''
+            SELECT COUNT(*) as count
+            FROM (
+                {query.split('ORDER BY')[0]}
+            ) as subquery
+        '''
+        total_count = client.query(count_query).result_rows[0][0]
+        
+        # Расчет общего количества страниц
+        page_size = limit
         total_pages = (total_count + page_size - 1) // page_size
+        current_page = (offset // page_size) + 1
 
         return jsonify({
             'status': 'success',
             'data': news,
+            'total_count': total_count,
             'total_pages': total_pages,
-            'current_page': page
+            'current_page': current_page,
+            'page_size': page_size
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
@@ -420,6 +529,7 @@ def get_ria_headlines():
         result = client.query(query, parameters=params)
         
         # Форматируем данные
+
         headlines = [
             {
                 'id': str(row[0]),
@@ -456,6 +566,134 @@ def get_ria_headlines():
             'total_pages': total_pages,
             'current_page': page,
             'available_categories': categories
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    finally:
+        client.close()
+
+
+@app.route('/api/categorized', methods=['GET'])
+def get_categorized_news():
+    """Получение новостей по определенной категории из специализированных таблиц"""
+    try:
+        page = int(request.args.get('page', 1))
+        page_size = 10  # Количество записей на странице
+        category = request.args.get('category', 'ukraine')  # Категория по умолчанию - Украина
+        source = request.args.get('source', 'all')  # Источник (ria, israil или all)
+        days = int(request.args.get('days', 7))
+        
+        client = get_clickhouse_client()
+        
+        # Проверяем, что категория допустима
+        valid_categories = ['ukraine', 'middle_east', 'fake_news', 'info_war', 'europe', 'usa', 'other']
+        if category not in valid_categories:
+            return jsonify({'status': 'error', 'message': f'Недопустимая категория. Допустимые категории: {valid_categories}'}), 400
+        
+        # Формируем запрос в зависимости от источника
+        if source == 'ria':
+            query = f'''
+                SELECT id, title, link, content, source, category, parsed_date
+                FROM news.ria_{category}
+                WHERE parsed_date >= %(start_date)s
+                ORDER BY parsed_date DESC
+                LIMIT %(limit)s OFFSET %(offset)s
+            '''
+            count_query = f'''
+                SELECT COUNT(*)
+                FROM news.ria_{category}
+                WHERE parsed_date >= %(start_date)s
+            '''
+        elif source == 'israil':
+            query = f'''
+                SELECT id, title, link, content, source, category, parsed_date
+                FROM news.israil_{category}
+                WHERE parsed_date >= %(start_date)s
+                ORDER BY parsed_date DESC
+                LIMIT %(limit)s OFFSET %(offset)s
+            '''
+            count_query = f'''
+                SELECT COUNT(*)
+                FROM news.israil_{category}
+                WHERE parsed_date >= %(start_date)s
+            '''
+        else:  # all sources
+            query = f'''
+                SELECT id, title, link, content, source, category, parsed_date
+                FROM
+                (
+                    SELECT id, title, link, content, source, category, parsed_date
+                    FROM news.ria_{category}
+                    UNION ALL
+                    SELECT id, title, link, content, source, category, parsed_date
+                    FROM news.israil_{category}
+                )
+                WHERE parsed_date >= %(start_date)s
+                ORDER BY parsed_date DESC
+                LIMIT %(limit)s OFFSET %(offset)s
+            '''
+            count_query = f'''
+                SELECT COUNT(*)
+                FROM
+                (
+                    SELECT id, title, link, content, source, category, parsed_date
+                    FROM news.ria_{category}
+                    UNION ALL
+                    SELECT id, title, link, content, source, category, parsed_date
+                    FROM news.israil_{category}
+                )
+                WHERE parsed_date >= %(start_date)s
+            '''
+        
+        # Параметры запроса
+        start_date = datetime.datetime.now() - datetime.timedelta(days=days)
+        params = {
+            'start_date': start_date,
+            'limit': page_size,
+            'offset': (page - 1) * page_size
+        }
+        
+        result = client.query(query, parameters=params)
+        
+        # Форматируем данные
+        headlines = [
+            {
+                'id': str(row[0]),
+                'title': row[1],
+                'link': row[2],
+                'content': row[3],
+                'source': row[4],
+                'category': row[5],
+                'parsed_date': row[6].strftime('%Y-%m-%d %H:%M:%S')
+            }
+            for row in result.result_rows
+        ]
+        
+        # Подсчет общего количества записей для пагинации
+        total_count = client.query(count_query, parameters=params).result_rows[0][0]
+        total_pages = (total_count + page_size - 1) // page_size
+        
+        # Получаем статистику по категориям
+        stats = []
+        for cat in valid_categories:
+            ria_count = client.query(f"SELECT COUNT(*) FROM news.ria_{cat}").result_rows[0][0]
+            israil_count = client.query(f"SELECT COUNT(*) FROM news.israil_{cat}").result_rows[0][0]
+            stats.append({
+                'category': cat,
+                'ria_count': ria_count,
+                'israil_count': israil_count,
+                'total': ria_count + israil_count
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'data': headlines,
+            'total_pages': total_pages,
+            'current_page': page,
+            'category': category,
+            'source': source,
+            'stats': stats
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

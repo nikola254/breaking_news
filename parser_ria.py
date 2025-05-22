@@ -4,6 +4,7 @@ from clickhouse_driver import Client
 from datetime import datetime
 import time
 import random
+from news_categories import classify_news, create_category_tables
 
 
 def create_table_if_not_exists():
@@ -25,6 +26,9 @@ def create_table_if_not_exists():
         ) ENGINE = MergeTree()
         ORDER BY (parsed_date, id)
     ''')
+    
+    # Создаем таблицы для каждой категории
+    create_category_tables(client)
 
 
 def get_article_content(url, headers):
@@ -106,11 +110,16 @@ def parse_politics_headlines():
             print(f"Получено {len(content)} символов содержимого")
             print("-" * 40)
             
+            # Классифицируем новость по категориям
+            category = classify_news(title, content)
+            print(f"Категория: {category}")
+            
             # Add to data for insertion
             headlines_data.append({
                 'title': title,
                 'link': link,
                 'content': content,
+                'category': category,
                 'parsed_date': datetime.now()
             })
             
@@ -123,10 +132,28 @@ def parse_politics_headlines():
     
     # Insert data into ClickHouse if we have any
     if headlines_data:
+        # Вставляем в общую таблицу
         client.execute(
-            'INSERT INTO news.ria_headlines (title, link, content, parsed_date) VALUES',
+            'INSERT INTO news.ria_headlines (title, link, content, category, parsed_date) VALUES',
             headlines_data
         )
+        
+        # Группируем данные по категориям
+        categorized_data = {}
+        for item in headlines_data:
+            category = item['category']
+            if category not in categorized_data:
+                categorized_data[category] = []
+            categorized_data[category].append(item)
+        
+        # Вставляем данные в соответствующие таблицы категорий
+        for category, data in categorized_data.items():
+            if data:
+                client.execute(
+                    f'INSERT INTO news.ria_{category} (title, link, content, category, parsed_date) VALUES',
+                    data
+                )
+        
         print(f"Добавлено {len(headlines_data)} записей в базу данных")
     
     if skipped_count > 0:

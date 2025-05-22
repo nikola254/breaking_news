@@ -35,16 +35,18 @@ def create_table_if_not_exists():
     
     # Create table if not exists
     client.execute('''
-        CREATE TABLE IF NOT EXISTS news.telegram_headlines (
-            id UUID DEFAULT generateUUIDv4(),
-            title String,
-            content String,
-            channel String,
-            message_id Int64,
-            message_link String,
-            parsed_date DateTime DEFAULT now()
-        ) ENGINE = MergeTree()
-        ORDER BY (parsed_date, id)
+    CREATE TABLE IF NOT EXISTS news.telegram_headlines (
+        id UUID DEFAULT generateUUIDv4(),
+        title String,
+        content String,
+        channel String,
+        message_id Int64,
+        message_link String,
+        source String DEFAULT 'telegram',
+        category String DEFAULT 'other',
+        parsed_date DateTime DEFAULT now()
+    ) ENGINE = MergeTree()
+    ORDER BY (parsed_date, id)
     ''')
 
 async def get_telegram_messages(client, channel, limit=100):
@@ -139,13 +141,15 @@ async def parse_telegram_channels():
                         'channel': channel,
                         'message_id': message.id,
                         'message_link': message_link,
+                        'category': category,
+                        'source': 'telegram',
                         'parsed_date': datetime.now()
                     })
                 
                 # Insert data into ClickHouse if we have any
                 if headlines_data:
                     clickhouse_client.execute(
-                        'INSERT INTO news.telegram_headlines (title, content, channel, message_id, message_link, parsed_date) VALUES',
+                        'INSERT INTO news.telegram_headlines (title, content, channel, message_id, message_link, category, parsed_date) VALUES',
                         headlines_data
                     )
                     print(f"Added {len(headlines_data)} records to database from channel {channel}")

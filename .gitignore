@@ -9,3 +9,4 @@ clickhouse_data/
 telegram_parser_session.session
 israil_parser.log
 parsers.log
+migration.log
