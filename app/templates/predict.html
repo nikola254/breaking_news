@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}NewsAnalytics - Прогнозирование{% endblock %}
+
+{% block head %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/predict.css') }}">
+{% endblock %}
+
+{% block content %}
+<h1>Прогнозирование</h1>
+<!-- Форма для DeepSeek -->
+<div class="ai-form">
+    <h3>DeepSeek</h3>
+    <textarea id="deepseek-prompt" class="ai-prompt-input" placeholder="Введите ваш промт..."></textarea>
+    <button onclick="sendToDeepSeek()" class="ai-submit-btn">Отправить</button>
+    <div id="deepseek-response" class="ai-response-box"></div>
+</div>
+
+<div class="ai-form">
+    <h3>Llama 3.3 через OpenRouter</h3>
+    
+    <select id="openrouter-model" class="model-select">
+        <option value="meta-llama/llama-3.3-8b-instruct:free">Llama 3.3 (бесплатная)</option>
+        <option value="meta-llama/llama-3-3-70b-instruct">Llama 3.3 70B (платная)</option>
+    </select>
+
+    <textarea id="openrouter-prompt" class="ai-prompt-input" placeholder="Введите ваш промт..."></textarea>
+    
+    <div class="controls">
+        <label>Температура:
+            <input type="number" id="temperature" value="0.7" step="0.1" min="0" max="2">
+        </label>
+        <label>Макс. токены:
+            <input type="number" id="max_tokens" value="2048" min="1" max="8192">
+        </label>
+    </div>
+
+    <button onclick="sendToOpenRouter()" class="ai-submit-btn">Отправить</button>
+    <div id="openrouter-response" class="ai-response-box"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+    {{ super() }}
+    <script src="{{ url_for('static', filename='js/predict.js') }}"></script>
+{% endblock %}

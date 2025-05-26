@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}NewsAnalytics - База данных{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/database.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="database-container">
+    <h1>База данных ClickHouse</h1>
+    <div id="error-container"></div>
+    
+    <div class="db-controls">
+        <div class="db-selector">
+            <button class="db-btn active" data-source="telegram">Telegram</button>
+            <button class="db-btn" data-source="israil">Израиль</button>
+            <button class="db-btn" data-source="ria">РИА</button>
+        </div>
+        
+        <div class="filter-controls">
+            <div id="filter-container">
+                <!-- Динамически заполняется в зависимости от выбранной таблицы -->
+            </div>
+            
+            <label for="days-select">Период:</label>
+            <select id="days-select" class="days-select">
+                <option value="1">1 день</option>
+                <option value="3">3 дня</option>
+                <option value="7" selected>7 дней</option>
+                <option value="14">14 дней</option>
+                <option value="30">30 дней</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="loading" class="loading">Загрузка данных...</div>
+    
+    <table class="news-table" id="data-table">
+        <thead>
+            <tr id="table-header">
+                <!-- Динамически заполняется в зависимости от выбранной таблицы -->
+            </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+    </table>
+    
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- Модальное окно для просмотра статьи -->
+<div id="article-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modal-title">Заголовок статьи</h2>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body" id="modal-content">
+            Содержание статьи...
+        </div>
+        <div class="modal-footer">
+            <div class="article-meta">
+                <span id="modal-source">Источник</span> | 
+                <span id="modal-date">Дата публикации</span>
+            </div>
+            <a href="#" target="_blank" id="modal-link" class="article-link">Открыть оригинал</a>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для выбора источников парсинга -->
+<div id="parser-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Выберите источники для парсинга</h2>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="parser-options">
+                <label><input type="checkbox" name="parser" value="telegram" checked> Telegram</label>
+                <label><input type="checkbox" name="parser" value="israil" checked> Израиль</label>
+                <label><input type="checkbox" name="parser" value="ria" checked> РИА</label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="start-parsing-btn" class="btn btn-primary">Запустить парсинг</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/database.js') }}"></script>
+{% endblock %}

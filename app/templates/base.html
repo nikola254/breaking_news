@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NewsAnalytics Pro{% endblock %}</title>
+    {% block head %}{% endblock %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <span class="logo-icon"></span>
+            <span>NewsAnalytics Pro</span>
+        </div>
+        <div class="main-nav">
+            <a href="/" {% if request.path == '/' %}class="active"{% endif %}>Главная</a>
+            <a href="/analytics" {% if request.path == '/analytics' %}class="active"{% endif %}>Аналитика</a>
+            <a href="/clickhouse" {% if request.path == '/clickhouse' %}class="active"{% endif %}>База данных</a>
+            <a href="/predict" {% if request.path == '/predict' %}class="active"{% endif %}>Прогнозирование</a>
+            <a href="/reports" {% if request.path == '/reports' %}class="active"{% endif %}>Отчеты</a>
+            <a href="/trends" {% if request.path == '/trends' %}class="active"{% endif %}>Тренды</a>
+            <a href="/archive" {% if request.path == '/archive' %}class="active"{% endif %}>Архив</a>
+            <a href="/about" {% if request.path == '/about' %}class="active"{% endif %}>О проекте</a>
+        </div>
+        <div class="user-actions">
+            {% if request.path == '/clickhouse' %}
+            <button id="refresh-btn" class="action-btn">Обновить данные</button>
+            {% else %}
+            <a href="#">Войти</a>
+            <a href="#">Регистрация</a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <div class="footer">
+        © 2025 NewsAnalytics Pro. Все права защищены. | Leck | Smuzi
+    </div>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

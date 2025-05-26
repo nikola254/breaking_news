@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}NewsAnalytics - Отчеты по новостным сводкам{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="news-types">
+    <button class="news-type-btn active" data-category="ukraine">Украина</button>
+    <button class="news-type-btn" data-category="middle_east">Ближний восток</button>
+    <button class="news-type-btn" data-category="fake_news">Фейки</button>
+    <button class="news-type-btn" data-category="info_war">Инфовойна</button>
+    <button class="news-type-btn" data-category="europe">Европа</button>
+    <button class="news-type-btn" data-category="usa">США</button>
+</div>
+
+<table class="news-table">
+    <thead>
+        <tr>
+            <th class="date-col">Дата</th>
+            <th class="source-col">Ресурс</th>
+            <th class="title-col">Заголовок</th>
+            <th>Содержание</th>
+        </tr>
+    </thead>
+    <tbody id="news-table-body"></tbody>
+</table>
+<div class="pagination" id="pagination"></div>
+
+<!-- Модальное окно -->
+<div id="news-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2 id="modal-title"></h2>
+        <p id="modal-source"></p>
+        <p id="modal-date"></p>
+        <p id="modal-content"></p>
+        <a id="modal-link" href="#" target="_blank" style="display: none;">Перейти по ссылке</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
