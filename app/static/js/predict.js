@@ -40,10 +40,10 @@ function sendToOpenRouter() {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-            prompt: 'Привет',
-            model: 'meta-llama/llama-3.3-8b-instruct:free',
-            temperature: 0.7,
-            max_tokens: 2048
+            prompt: prompt,
+            model: model,
+            temperature: temperature,
+            max_tokens: maxTokens
         })
     })
     .then(res => res.json())

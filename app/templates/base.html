@@ -15,14 +15,14 @@
             <span>NewsAnalytics Pro</span>
         </div>
         <div class="main-nav">
-            <a href="/" {% if request.path == '/' %}class="active"{% endif %}>Главная</a>
-            <a href="/analytics" {% if request.path == '/analytics' %}class="active"{% endif %}>Аналитика</a>
-            <a href="/clickhouse" {% if request.path == '/clickhouse' %}class="active"{% endif %}>База данных</a>
-            <a href="/predict" {% if request.path == '/predict' %}class="active"{% endif %}>Прогнозирование</a>
-            <a href="/reports" {% if request.path == '/reports' %}class="active"{% endif %}>Отчеты</a>
-            <a href="/trends" {% if request.path == '/trends' %}class="active"{% endif %}>Тренды</a>
-            <a href="/archive" {% if request.path == '/archive' %}class="active"{% endif %}>Архив</a>
-            <a href="/about" {% if request.path == '/about' %}class="active"{% endif %}>О проекте</a>
+            <a href="{{ url_for('main.index') }}" {% if request.path == url_for('main.index') %}class="active"{% endif %}>Главная</a>
+            <a href="{{ url_for('main.analytics') }}" {% if request.path == url_for('main.analytics') %}class="active"{% endif %}>Аналитика</a>
+            <a href="{{ url_for('main.clickhouse') }}" {% if request.path == url_for('main.clickhouse') %}class="active"{% endif %}>База данных</a>
+            <a href="{{ url_for('main.predict') }}" {% if request.path == url_for('main.predict') %}class="active"{% endif %}>Прогнозирование</a>
+            <a href="{{ url_for('main.reports') }}" {% if request.path == url_for('main.reports') %}class="active"{% endif %}>Отчеты</a>
+            <a href="{{ url_for('main.trends') }}" {% if request.path == url_for('main.trends') %}class="active"{% endif %}>Тренды</a>
+            <a href="{{ url_for('main.archive') }}" {% if request.path == url_for('main.archive') %}class="active"{% endif %}>Архив</a>
+            <a href="{{ url_for('main.about') }}" {% if request.path == url_for('main.about') %}class="active"{% endif %}>О проекте</a>
         </div>
         <div class="user-actions">
             {% if request.path == '/clickhouse' %}

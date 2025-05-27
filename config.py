@@ -14,3 +14,8 @@ class Config:
     # Другие настройки приложения
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-key-please-change-in-production')
     DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
+    
+    # Настройки для OpenRouter API
+    OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+    SITE_URL = os.environ.get('SITE_URL', 'http://localhost:5000')
+    SITE_NAME = os.environ.get('SITE_NAME', 'NewsAnalytics')
