@@ -1,46 +1,83 @@
 {% extends "base.html" %}
 
-{% block title %}NewsAnalytics - Прогнозирование{% endblock %}
+{% block title %}Прогнозирование{% endblock %}
 
 {% block head %}
-    {{ super() }}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/predict.css') }}">
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/predict.css') }}">
 {% endblock %}
 
 {% block content %}
-<h1>Прогнозирование</h1>
-<!-- Форма для DeepSeek -->
-<div class="ai-form">
-    <h3>DeepSeek</h3>
-    <textarea id="deepseek-prompt" class="ai-prompt-input" placeholder="Введите ваш промт..."></textarea>
-    <button onclick="sendToDeepSeek()" class="ai-submit-btn">Отправить</button>
-    <div id="deepseek-response" class="ai-response-box"></div>
-</div>
-
-<div class="ai-form">
-    <h3>Gemma через OpenRouter</h3>
+<div class="predict-container">
+    <h3 class="predict-title">Прогнозирование социальной напряженности</h3>
     
-    <select id="openrouter-model" class="model-select">
-        <option value="google/gemma-3n-e4b-it:free">Gemma 3 (бесплатная)</option>
-        <option value="google/gemma-3-8b-it:free">Gemma 3 8B (бесплатная)</option>
-    </select>
-
-    <textarea id="openrouter-prompt" class="ai-prompt-input" placeholder="Введите ваш промт..."></textarea>
+    <input type="hidden" id="ai-model" value="deepseek-ai/DeepSeek-R1">
+    <input type="hidden" id="temperature" value="0.7">
     
-    <div class="controls">
-        <label>Температура:
-            <input type="number" id="temperature" value="0.7" step="0.1" min="0" max="2">
-        </label>
-        <label>Макс. токены:
-            <input type="number" id="max_tokens" value="2048" min="1" max="8192">
-        </label>
+    <div class="forecast-controls">
+        <div class="control-group">
+            <h4 class="control-title">Категория новостей:</h4>
+            <div class="category-selector">
+                <select id="news-category" class="select-control">
+                    <option value="all">Все категории</option>
+                    <option value="ukraine">Украина</option>
+                    <option value="middle_east">Ближний восток</option>
+                    <option value="fake_news">Фейки</option>
+                    <option value="info_war">Инфовойна</option>
+                    <option value="europe">Европа</option>
+                    <option value="usa">США</option>
+                    <option value="other">Другое</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h4 class="control-title">Период анализа:</h4>
+            <div class="period-selector">
+                <select id="analysis-period" class="select-control">
+                    <option value="1">Последний час</option>
+                    <option value="24" selected>Последний день</option>
+                    <option value="168">Последняя неделя</option>
+                    <option value="720">Последний месяц</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h4 class="control-title">Период прогноза:</h4>
+            <div class="forecast-selector">
+                <select id="forecast-period" class="select-control">
+                    <option value="1">1 час вперед</option>
+                    <option value="24" selected>1 день вперед</option>
+                    <option value="72">3 дня вперед</option>
+                    <option value="168">1 неделя вперед</option>
+                </select>
+            </div>
+        </div>
     </div>
-
-    <button onclick="sendToOpenRouter()" class="ai-submit-btn">Отправить</button>
-    <div id="openrouter-response" class="ai-response-box"></div>
+    
+    <div class="input-area">
+        <h4 class="output-title">Введите запрос для уточнения прогноза (опционально):</h4>
+        <textarea class="prompt-input" id="ai-prompt" placeholder="Например: Проанализируй влияние последних событий на социальную напряженность и дай прогноз..."></textarea>
+        
+        <div class="tokens-control">
+            <label for="max_tokens">Количество токенов: <span id="tokens-value">2048</span></label>
+            <input type="range" id="max_tokens" min="100" max="4096" value="2048" step="10" class="tokens-slider">
+        </div>
+        
+        <div class="tokens-balance">
+            <span>Остаток токенов: <span id="tokens-balance">998300</span></span>
+        </div>
+        
+        <button class="submit-btn" onclick="generateForecast()">Сгенерировать прогноз</button>
+    </div>
+    
+    <div class="output-area">
+        <h4 class="output-title">Прогноз:</h4>
+        <div id="ai-response" class="response-box"></div>
+        <div id="forecast-chart" class="chart-container"></div>
+    </div>
 </div>
-{% endblock %}
-{% block scripts %}
-    {{ super() }}
-    <script src="{{ url_for('static', filename='js/predict.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/predict.js') }}"></script>
 {% endblock %}

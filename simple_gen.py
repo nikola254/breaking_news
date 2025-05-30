@@ -1,10 +1,21 @@
 from clickhouse_driver import Client
+import os
+import sys
+
+# Добавляем корневую директорию проекта в sys.path для импорта config
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from config import Config
 
 def get_headlines_from_clickhouse(limit=10):
     """
     Подключается к ClickHouse и выбирает последние заголовки из таблицы news.ria_headlines.
     """
-    client = Client(host='localhost', port=9000)
+    client = Client(
+        host=Config.CLICKHOUSE_HOST,
+        port=Config.CLICKHOUSE_NATIVE_PORT,
+        user=Config.CLICKHOUSE_USER,
+        password=Config.CLICKHOUSE_PASSWORD
+    )
     
     query = f"""
         SELECT title 

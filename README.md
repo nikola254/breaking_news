@@ -11,7 +11,7 @@ git push -u origin master
 docker-compose up -d
 
 
-http://localhost:8123/play
+http://localhost:18123/play
 и тут выполняем запросы к БД
 
 SHOW DATABASES;

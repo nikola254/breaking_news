@@ -9,7 +9,13 @@ from datetime import datetime, timedelta
 import re
 import time
 import logging
+import sys
+import os
 from news_categories import classify_news, create_category_tables
+
+# Добавляем корневую директорию проекта в sys.path для импорта config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import Config
 
 # Configure logging
 logging.basicConfig(
@@ -23,7 +29,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def create_table_if_not_exists():
-    client = Client(host='localhost', port=9000)
+    client = Client(
+        host=Config.CLICKHOUSE_HOST,
+        port=Config.CLICKHOUSE_NATIVE_PORT,
+        user=Config.CLICKHOUSE_USER,
+        password=Config.CLICKHOUSE_PASSWORD
+    )
     
     # Create database if not exists
     client.execute('CREATE DATABASE IF NOT EXISTS news')
@@ -140,7 +151,12 @@ def extract_article_content(soup):
 def view_database_data(limit=None):
     """View data from the ClickHouse database to check for duplicates"""
     try:
-        client = Client(host='localhost', port=9000)
+        client = Client(
+            host=Config.CLICKHOUSE_HOST,
+            port=Config.CLICKHOUSE_NATIVE_PORT,
+            user=Config.CLICKHOUSE_USER,
+            password=Config.CLICKHOUSE_PASSWORD
+        )
         
         # Get total count
         count = client.execute("SELECT COUNT(*) FROM news.israil_headlines")[0][0]
@@ -224,7 +240,12 @@ def parse_israil_news(driver=None):
         soup = BeautifulSoup(html, "html.parser")
         
         # Connect to ClickHouse
-        client = Client(host='localhost', port=9000)
+        client = Client(
+            host=Config.CLICKHOUSE_HOST,
+            port=Config.CLICKHOUSE_NATIVE_PORT,
+            user=Config.CLICKHOUSE_USER,
+            password=Config.CLICKHOUSE_PASSWORD
+        )
         
         # Get existing links to avoid duplicates - use DISTINCT to ensure no duplicates
         existing_links = set(row[0] for row in client.execute('SELECT DISTINCT link FROM news.israil_headlines'))
@@ -404,7 +425,12 @@ def continuous_monitoring(interval_minutes=15):
 def test_clickhouse_connection():
     """Test connection to ClickHouse and verify table exists"""
     try:
-        client = Client(host='localhost', port=9000)
+        client = Client(
+            host=Config.CLICKHOUSE_HOST,
+            port=Config.CLICKHOUSE_NATIVE_PORT,
+            user=Config.CLICKHOUSE_USER,
+            password=Config.CLICKHOUSE_PASSWORD
+        )
         
         # Test basic connection
         result = client.execute('SELECT 1')
@@ -451,7 +477,12 @@ if __name__ == "__main__":
     if args.fix_duplicates:
         logger.info("Fixing duplicate entries...")
         # Add code to fix duplicates
-        client = Client(host='localhost', port=9000)
+        client = Client(
+            host=Config.CLICKHOUSE_HOST,
+            port=Config.CLICKHOUSE_NATIVE_PORT,
+            user=Config.CLICKHOUSE_USER,
+            password=Config.CLICKHOUSE_PASSWORD
+        )
         
         # Find duplicates
         duplicates = client.execute("""

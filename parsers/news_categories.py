@@ -1,6 +1,12 @@
 # Словари ключевых слов для классификации новостей по категориям
 
 from clickhouse_driver import Client
+import sys
+import os
+
+# Добавляем корневую директорию проекта в sys.path для импорта config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import Config
 
 # Категория: Украина
 UKRAINE_KEYWORDS = [
@@ -180,7 +186,12 @@ def create_category_tables(client):
 # Функция для перемещения существующих данных в категоризированные таблицы
 def migrate_existing_data():
     """Перемещает существующие данные в таблицы по категориям"""
-    client = Client(host='localhost', port=9000)
+    client = Client(
+        host=Config.CLICKHOUSE_HOST,
+        port=Config.CLICKHOUSE_NATIVE_PORT,
+        user=Config.CLICKHOUSE_USER,
+        password=Config.CLICKHOUSE_PASSWORD
+    )
     
     # Создаем таблицы для категорий, если они не существуют
     create_category_tables(client)

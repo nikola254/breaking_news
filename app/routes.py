@@ -193,7 +193,7 @@ def get_news():
                 'content': row[2],
                 'source': row[3],
                 'category': row[4],
-                'parsed_date': row[5].strftime('%Y-%m-%d %H:%M:%S')
+                'parsed_date': row[5].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[5], 'strftime') else row[5]
             }
             
             # Добавляем специфичные поля в зависимости от источника
@@ -398,7 +398,7 @@ def get_telegram_headlines():
                 'channel': row[3],
                 'message_id': row[4],
                 'message_link': row[5],
-                'parsed_date': row[6].strftime('%Y-%m-%d %H:%M:%S')
+                'parsed_date': row[6].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[6], 'strftime') else row[6]
             }
             for row in result.result_rows
         ]

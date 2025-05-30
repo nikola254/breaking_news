@@ -5,10 +5,21 @@ from datetime import datetime
 import time
 import random
 from news_categories import classify_news, create_category_tables
+import sys
+import os
+
+# Добавляем корневую директорию проекта в sys.path для импорта config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import Config
 
 
 def create_table_if_not_exists():
-    client = Client(host='localhost', port=9000)
+    client = Client(
+        host=Config.CLICKHOUSE_HOST,
+        port=Config.CLICKHOUSE_NATIVE_PORT,
+        user=Config.CLICKHOUSE_USER,
+        password=Config.CLICKHOUSE_PASSWORD
+    )
     
     # Create database if not exists
     client.execute('CREATE DATABASE IF NOT EXISTS news')
@@ -78,7 +89,12 @@ def parse_politics_headlines():
         return
 
     # Connect to ClickHouse
-    client = Client(host='localhost', port=9000)
+    client = Client(
+        host=Config.CLICKHOUSE_HOST,
+        port=Config.CLICKHOUSE_NATIVE_PORT,
+        user=Config.CLICKHOUSE_USER,
+        password=Config.CLICKHOUSE_PASSWORD
+    )
     
     # Get existing links to avoid duplicates
     existing_links = set(row[0] for row in client.execute('SELECT link FROM news.ria_headlines'))

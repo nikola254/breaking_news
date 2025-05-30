@@ -1,4 +1,5 @@
 import sys
+import os
 from clickhouse_driver import Client
 from datetime import datetime, timedelta
 import pandas as pd
@@ -6,6 +7,10 @@ import re
 import random
 import socket
 import time
+
+# Добавляем корневую директорию проекта в sys.path для импорта config
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from config import Config
 
 def connect_to_clickhouse(max_retries=3, retry_delay=2):
     """Establish connection to ClickHouse database with retry mechanism"""
@@ -16,8 +21,10 @@ def connect_to_clickhouse(max_retries=3, retry_delay=2):
         try:
             # Try with explicit settings to avoid buffer issues
             client = Client(
-                host='localhost', 
-                port=9000,
+                host=Config.CLICKHOUSE_HOST, 
+                port=Config.CLICKHOUSE_NATIVE_PORT,
+                user=Config.CLICKHOUSE_USER,
+                password=Config.CLICKHOUSE_PASSWORD,
                 settings={
                     'max_block_size': 100000,
                     'connect_timeout': 10,

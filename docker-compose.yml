@@ -2,8 +2,22 @@ version: '3'
 services:
   clickhouse:
     image: yandex/clickhouse-server:latest
+    container_name: clickhouse
     ports:
       - "8123:8123"
       - "9000:9000"
     volumes:
       - ./clickhouse_data:/var/lib/clickhouse
+      - ./cleanup.sh:/cleanup.sh
+    environment:
+      - CLICKHOUSE_DEFAULT_PASSWORD=your_password
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        # Настройка cron
+        echo "0 * * * * /cleanup.sh >> /var/log/clickhouse_cleanup.log 2>&1" > /etc/cron.d/clickhouse-cleanup
+        chmod 0644 /etc/cron.d/clickhouse-cleanup
+        crontab /etc/cron.d/clickhouse-cleanup
+        # Запуск ClickHouse
+        /entrypoint.sh

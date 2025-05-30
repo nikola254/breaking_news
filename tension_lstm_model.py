@@ -3,6 +3,11 @@ import time
 import pickle
 from datetime import datetime, timedelta
 import logging
+import sys
+
+# Добавляем корневую директорию проекта в sys.path для импорта config
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from config import Config
 
 import numpy as np
 import pandas as pd
@@ -84,8 +89,10 @@ class TensionLSTMModel:
         for attempt in range(max_retries):
             try:
                 client = Client(
-                    host='localhost', 
-                    port=9000,
+                    host=Config.CLICKHOUSE_HOST, 
+                    port=Config.CLICKHOUSE_NATIVE_PORT,
+                    user=Config.CLICKHOUSE_USER,
+                    password=Config.CLICKHOUSE_PASSWORD,
                     settings={
                         'max_block_size': 100000,
                         'connect_timeout': 10,

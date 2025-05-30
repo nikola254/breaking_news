@@ -5,7 +5,12 @@ from datetime import datetime
 import asyncio
 import re
 import os
+import sys
 from dotenv import load_dotenv
+
+# Добавляем корневую директорию проекта в sys.path для импорта config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import Config
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,7 +33,12 @@ TELEGRAM_CHANNELS = [
 
 def create_table_if_not_exists():
     """Create ClickHouse table if it doesn't exist"""
-    client = ClickHouseClient(host='localhost', port=9000)
+    client = ClickHouseClient(
+        host=Config.CLICKHOUSE_HOST,
+        port=Config.CLICKHOUSE_NATIVE_PORT,
+        user=Config.CLICKHOUSE_USER,
+        password=Config.CLICKHOUSE_PASSWORD
+    )
     
     # Create database if not exists
     client.execute('CREATE DATABASE IF NOT EXISTS news')
@@ -83,7 +93,12 @@ async def parse_telegram_channels():
     create_table_if_not_exists()
     
     # Connect to ClickHouse
-    clickhouse_client = ClickHouseClient(host='localhost', port=9000)
+    clickhouse_client = ClickHouseClient(
+        host=Config.CLICKHOUSE_HOST,
+        port=Config.CLICKHOUSE_NATIVE_PORT,
+        user=Config.CLICKHOUSE_USER,
+        password=Config.CLICKHOUSE_PASSWORD
+    )
     
     # Get existing message IDs to avoid duplicates
     existing_messages = {}
@@ -149,7 +164,7 @@ async def parse_telegram_channels():
                 # Insert data into ClickHouse if we have any
                 if headlines_data:
                     clickhouse_client.execute(
-                        'INSERT INTO news.telegram_headlines (title, content, channel, message_id, message_link, category, parsed_date) VALUES',
+                        'INSERT INTO news.telegram_headlines (title, content, channel, message_id, message_link, category, source, parsed_date) VALUES',
                         headlines_data
                     )
                     print(f"Added {len(headlines_data)} records to database from channel {channel}")

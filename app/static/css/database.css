@@ -5,6 +5,44 @@
     margin: 0 auto;
 }
 
+/* Стили для поисковой строки */
+.search-container {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.search-input {
+    flex: 1;
+    background-color: #0d2b50;
+    color: #e0e0e0;
+    border: 1px solid #1976d2;
+    padding: 10px 15px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #4fc3f7;
+    box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.2);
+}
+
+.search-btn {
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.search-btn:hover {
+    background-color: #1565c0;
+}
+
 .db-controls {
     display: flex;
     justify-content: space-between;
@@ -107,6 +145,13 @@
 .title-col:hover {
     color: #4fc3f7;
     text-decoration: underline;
+}
+
+.category-col {
+    width: 120px;
+    text-align: center;
+    font-weight: 500;
+    color: #4fc3f7;
 }
 
 .pagination {

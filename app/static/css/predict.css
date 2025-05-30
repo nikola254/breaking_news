@@ -1,126 +1,220 @@
-/* Стили для формы DeepSeek */
-.ai-form {
-    background-color: #0d2b50;
+.predict-container {
+    max-width: 1200px;
+    margin: 0 auto;
     padding: 20px;
+    background-color: #f0f8ff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.predict-title {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+.forecast-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #e6f2ff;
     border-radius: 8px;
-    margin: 20px 0;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-.ai-form:hover {
-    background-color: #113c6e;
+.control-group {
+    flex: 1;
+    min-width: 200px;
+    margin: 0 10px 10px 0;
 }
 
-/* Стили для текстового поля промта */
-.ai-prompt-input {
+.control-title {
+    font-size: 16px;
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.select-control {
     width: 100%;
-    height: 120px;
-    padding: 12px;
-    margin-bottom: 15px;
-    background-color: #1e3a6a;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    font-size: 14px;
+    color: #333;
+}
+
+.chart-container {
+    margin-top: 20px;
+    min-height: 300px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.forecast-chart-img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.input-area {
+    background-color: #0d2b50;
+    border: 1px solid #2d4a7a;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.prompt-input {
+    width: 100%;
+    background-color: #0a1f3d;
     color: #e0e0e0;
     border: 1px solid #2d4a7a;
-    border-radius: 6px;
+    border-radius: 4px;
+    padding: 10px;
+    min-height: 100px;
     resize: vertical;
-    font-family: inherit;
-    font-size: 14px;
-    transition: border-color 0.3s ease;
 }
 
-.ai-prompt-input::placeholder {
-    color: #888;
+.prompt-input::placeholder {
+    color: #bbdefb;
+    opacity: 0.7;
 }
 
-.ai-prompt-input:focus {
-    outline: none;
-    border-color: #4fc3f7;
-    box-shadow: 0 0 0 2px #4fc3f788;
-}
-
-/* Стили для кнопки отправки */
-.ai-submit-btn {
-    background-color: #4fc3f7;
-    color: #0a1f3d;
+.submit-btn {
+    background-color: #1976d2;
+    color: white;
     border: none;
     padding: 10px 20px;
-    font-weight: bold;
-    border-radius: 20px;
+    border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    float: right;
+    margin-top: 10px;
 }
 
-.ai-submit-btn:hover {
-    background-color: #81d4fa;
-    transform: translateY(-2px);
+.submit-btn:hover {
+    background-color: #1565c0;
 }
 
-.ai-submit-btn:disabled {
-    background-color: #2d4a7a;
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-/* Стили для области ответа */
-.ai-response-box {
-    background-color: #1e3a6a;
-    padding: 15px;
-    border-radius: 6px;
-    margin-top: 20px;
-    min-height: 150px;
-    white-space: pre-wrap;
-    line-height: 1.6;
+.output-area {
+    background-color: #0d2b50;
     border: 1px solid #2d4a7a;
-    font-size: 14px;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.output-title {
+    color: #bbdefb;
+    margin-bottom: 10px;
+}
+
+.response-box {
+    min-height: 100px;
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: #0a1f3d;
+    border: 1px solid #2d4a7a;
+    border-radius: 4px;
+    padding: 15px;
+    white-space: pre-wrap;
     color: #e0e0e0;
     position: relative;
-    overflow: hidden;
 }
 
-.ai-response-box.loading::after {
-    content: 'Обработка запроса...';
+.thinking-text {
+    opacity: 0.6;
+    color: #bbdefb;
+    font-style: italic;
+}
+
+.loading:after {
+    content: "";
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    color: #4fc3f7;
-    font-style: italic;
-    animation: blink 2s infinite;
+    width: 30px;
+    height: 30px;
+    margin: -15px 0 0 -15px;
+    border: 4px solid #1e3a6a;
+    border-top: 4px solid #4fc3f7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
 }
 
-/* Анимация для индикатора загрузки */
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+.usage-info {
+    margin-top: 15px;
+    font-size: 0.8em;
+    color: #bbdefb;
+    opacity: 0.7;
+    text-align: right;
+    border-top: 1px solid #2d4a7a;
+    padding-top: 8px;
 }
 
-.controls {
+.tokens-control {
+    margin: 15px 0 10px 0;
     display: flex;
-    gap: 15px;
-    margin: 10px 0;
-    flex-wrap: wrap;
+    align-items: center;
 }
 
-.model-select {
-    padding: 8px 12px;
-    margin-bottom: 10px;
-    border-radius: 4px;
-    border: 1px solid #2d4a7a;
-    background-color: #1e3a6a;
-    color: #e0e0e0;
-    width: 100%;
-    max-width: 300px;
+.tokens-control label {
+    color: #bbdefb;
+    margin-right: 15px;
+    flex: 0 0 auto;
 }
 
-.controls input[type="number"] {
-    width: 100px;
-    padding: 6px;
+.tokens-slider {
+    height: 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #1e3a6a;
+    outline: none;
     border-radius: 4px;
-    border: 1px solid #2d4a7a;
-    background-color: #1e3a6a;
-    color: #e0e0e0;
+    flex: 1;
+}
+
+.tokens-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #4fc3f7;
+    cursor: pointer;
+}
+
+.tokens-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #4fc3f7;
+    cursor: pointer;
+    border: none;
+}
+
+.tokens-balance {
+    color: #bbdefb;
+    font-size: 0.9em;
+    margin: 5px 0 15px 0;
+    display: inline-block;
+    width: auto;
+}
+
+#tokens-balance {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

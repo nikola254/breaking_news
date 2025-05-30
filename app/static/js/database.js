@@ -5,6 +5,7 @@ let currentFilter = null;
 let currentFilterValue = null;
 let currentDays = 7;
 let totalPages = 1;
+let currentSearchQuery = '';
 
 // DOM-элементы
 const dataTable = document.getElementById('data-table');
@@ -15,6 +16,8 @@ const loading = document.getElementById('loading');
 const errorContainer = document.getElementById('error-container');
 const filterContainer = document.getElementById('filter-container');
 const daysSelect = document.getElementById('days-select');
+const searchInput = document.getElementById('search-input');
+const searchBtn = document.getElementById('search-btn');
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
@@ -36,6 +39,22 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDays = parseInt(daysSelect.value);
         currentPage = 1;
         loadData();
+    });
+    
+    // Обработчик для поиска
+    searchBtn.addEventListener('click', () => {
+        currentSearchQuery = searchInput.value.trim();
+        currentPage = 1;
+        loadData();
+    });
+    
+    // Обработчик для поиска по нажатию Enter
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            currentSearchQuery = searchInput.value.trim();
+            currentPage = 1;
+            loadData();
+        }
     });
     
     // Обработчики для кнопок в навигации
@@ -65,8 +84,14 @@ function loadData() {
     showLoading(true);
     clearError();
     
+    console.log('Загрузка данных для страницы:', currentPage);
+    
+    // Вычисляем offset на основе текущей страницы и лимита
+    const limit = 20;
+    const offset = (currentPage - 1) * limit;
+    
     // Формирование URL запроса с параметрами
-    let url = `/api/news?source=${currentSource}&page=${currentPage}&limit=20`;
+    let url = `/api/news?source=${currentSource}&limit=${limit}&offset=${offset}`;
     
     // Добавляем фильтр по дням
     const endDate = new Date();
@@ -78,15 +103,27 @@ function loadData() {
         url += `&${currentFilter}=${encodeURIComponent(currentFilterValue)}`;
     }
     
+    // Добавляем поисковый запрос если он есть
+    if (currentSearchQuery) {
+        url += `&search=${encodeURIComponent(currentSearchQuery)}`;
+    }
+    
+    console.log('URL запроса:', url);
+    
     fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
+                console.log('Получены данные:', data);
+                console.log('Текущая страница:', data.current_page);
+                console.log('Всего страниц:', data.total_pages);
+                
                 // Обновляем данные на странице
                 updateTable(data.data);
                 updatePagination(data.total_pages, data.current_page);
                 updateFilters(data);
                 totalPages = data.total_pages;
+                currentPage = data.current_page; // Синхронизируем текущую страницу с ответом сервера
             } else {
                 showError(data.message || 'Ошибка при загрузке данных');
             }
@@ -126,39 +163,28 @@ function updateTable(data) {
         headers.forEach(header => {
             const cell = document.createElement('td');
             
-            if (header.key === 'link' || header.key === 'telegram_link' || header.key === 'israil_link') {
-                // Для ссылок создаем элемент <a>
-                cell.className = 'link-cell';
-                const linkValue = item[header.key] || item.link || item.telegram_link || item.israil_link;
-                if (linkValue) {
-                    const link = document.createElement('a');
-                    link.href = linkValue;
-                    link.target = '_blank';
-                    link.textContent = 'Открыть';
-                    cell.appendChild(link);
+            if (header.key === 'parsed_date' || header.key === 'date') {
+                // Форматируем дату
+                const dateValue = item['parsed_date'] || item['date'];
+                if (dateValue) {
+                    try {
+                        const date = new Date(dateValue);
+                        if (!isNaN(date.getTime())) {
+                            cell.textContent = date.toLocaleString('ru-RU');
+                        } else {
+                            cell.textContent = dateValue;
+                        }
+                    } catch (e) {
+                        cell.textContent = dateValue;
+                    }
                 } else {
                     cell.textContent = '-';
                 }
-            } else if (header.key === 'content') {
-                // Для контента добавляем возможность разворачивания
-                cell.className = 'content-cell';
-                const content = item[header.key] || '-';
-                cell.textContent = content;
-                
-                if (content && content.length > 100) {
-                    const expandBtn = document.createElement('button');
-                    expandBtn.className = 'expand-btn';
-                    expandBtn.textContent = '[Развернуть]';
-                    expandBtn.addEventListener('click', () => {
-                        cell.classList.toggle('expanded');
-                        expandBtn.textContent = cell.classList.contains('expanded') ? '[Свернуть]' : '[Развернуть]';
-                    });
-                    cell.appendChild(expandBtn);
-                }
+                cell.className = 'date-col';
             } else if (header.key === 'title') {
                 // Для заголовка добавляем возможность открытия модального окна
                 cell.className = 'title-col';
-                cell.textContent = item[header.key] || '-';
+                cell.textContent = item['title'] || '-';
                 cell.style.cursor = 'pointer';
                 cell.title = 'Нажмите, чтобы открыть полную статью';
                 
@@ -166,15 +192,48 @@ function updateTable(data) {
                 cell.addEventListener('click', () => {
                     openArticleModal(item);
                 });
-            } else if (header.key === 'parsed_date' || header.key === 'date') {
-                // Форматируем дату
-                const dateValue = item[header.key] || item.parsed_date || item.date;
-                if (dateValue) {
-                    const date = new Date(dateValue);
-                    cell.textContent = date.toLocaleString('ru-RU');
-                } else {
-                    cell.textContent = '-';
+            } else if (header.key === 'content') {
+                // Для контента добавляем возможность разворачивания
+                cell.className = 'content-cell';
+                const content = item['content'] || '-';
+                
+                // Ограничиваем длину контента в таблице
+                const shortContent = content.length > 100 ? content.substring(0, 100) + '...' : content;
+                cell.textContent = shortContent;
+                
+                if (content && content.length > 100) {
+                    const expandBtn = document.createElement('button');
+                    expandBtn.className = 'expand-btn';
+                    expandBtn.textContent = '[Развернуть]';
+                    expandBtn.addEventListener('click', () => {
+                        if (cell.classList.contains('expanded')) {
+                            cell.textContent = shortContent;
+                            cell.classList.remove('expanded');
+                            cell.appendChild(expandBtn);
+                            expandBtn.textContent = '[Развернуть]';
+                        } else {
+                            cell.textContent = content;
+                            cell.classList.add('expanded');
+                            cell.appendChild(expandBtn);
+                            expandBtn.textContent = '[Свернуть]';
+                        }
+                    });
+                    cell.appendChild(expandBtn);
                 }
+            } else if (header.key === 'category') {
+                // Для категории переводим на русский язык
+                const categoryTranslations = {
+                    'ukraine': 'Украина',
+                    'middle_east': 'Ближний восток',
+                    'fake_news': 'Фейки',
+                    'info_war': 'Инфовойна',
+                    'europe': 'Европа',
+                    'usa': 'США',
+                    'other': 'Другое'
+                };
+                const category = item['category'] || 'other';
+                cell.textContent = categoryTranslations[category] || category;
+                cell.className = 'category-col';
             } else {
                 // Для остальных полей просто выводим значение
                 cell.textContent = item[header.key] || '-';
@@ -189,43 +248,24 @@ function updateTable(data) {
 
 // Функция получения заголовков таблицы в зависимости от источника
 function getHeadersForSource(source) {
-    switch (source) {
-        case 'telegram':
-            return [
-                { key: 'parsed_date', label: 'Дата', class: 'date-col' },
-                { key: 'telegram_channel', label: 'Канал', class: 'source-col' },
-                { key: 'title', label: 'Заголовок', class: 'title-col' },
-                { key: 'content', label: 'Содержание' },
-                { key: 'telegram_link', label: 'Ссылка' }
-            ];
-        case 'israil':
-            return [
-                { key: 'parsed_date', label: 'Дата', class: 'date-col' },
-                { key: 'source', label: 'Источник', class: 'source-col' },
-                { key: 'category', label: 'Категория' },
-                { key: 'title', label: 'Заголовок', class: 'title-col' },
-                { key: 'content', label: 'Содержание' },
-                { key: 'israil_link', label: 'Ссылка' }
-            ];
-        case 'ria':
-            return [
-                { key: 'parsed_date', label: 'Дата', class: 'date-col' },
-                { key: 'source', label: 'Источник', class: 'source-col' },
-                { key: 'category', label: 'Категория' },
-                { key: 'title', label: 'Заголовок', class: 'title-col' },
-                { key: 'content', label: 'Содержание' },
-                { key: 'link', label: 'Ссылка' }
-            ];
-        default:
-            return [];
-    }
+    // Унифицированная структура для всех источников
+    return [
+        { key: 'parsed_date', label: 'Дата', class: 'date-col' },
+        { key: 'title', label: 'Заголовок', class: 'title-col' },
+        { key: 'content', label: 'Содержание' },
+        { key: 'category', label: 'Категория', class: 'category-col' }
+    ];
 }
 
 // Функция обновления пагинации
 function updatePagination(totalPages, currentPage) {
+    console.log('Обновление пагинации:', totalPages, currentPage);
     pagination.innerHTML = '';
     
-    if (totalPages <= 1) return;
+    if (totalPages <= 1) {
+        console.log('Всего одна страница, пагинация не нужна');
+        return;
+    }
     
     // Кнопка "Предыдущая"
     if (currentPage > 1) {
@@ -236,8 +276,12 @@ function updatePagination(totalPages, currentPage) {
     const startPage = Math.max(1, currentPage - 2);
     const endPage = Math.min(totalPages, startPage + 4);
     
+    console.log('Диапазон страниц:', startPage, endPage);
+    
     for (let i = startPage; i <= endPage; i++) {
-        addPageButton(i, i, i === currentPage);
+        const isActive = i === parseInt(currentPage);
+        console.log('Добавление кнопки страницы:', i, 'активна:', isActive);
+        addPageButton(i, i, isActive);
     }
     
     // Кнопка "Следующая"
@@ -251,9 +295,11 @@ function addPageButton(text, page, isActive = false) {
     const button = document.createElement('button');
     button.className = `page-btn${isActive ? ' active' : ''}`;
     button.textContent = text;
-    button.addEventListener('click', () => {
+    button.addEventListener('click', function() {
+        console.log('Нажата кнопка пагинации:', page);
         if (page !== currentPage) {
             currentPage = page;
+            console.log('Установлена новая страница:', currentPage);
             loadData();
         }
     });
@@ -352,16 +398,20 @@ function openArticleModal(article) {
     modalContent.textContent = article.content || 'Содержание отсутствует';
     
     // Устанавливаем метаданные
-    if (currentSource === 'telegram') {
-        modalSource.textContent = article.telegram_channel || 'Неизвестный канал';
-    } else {
-        modalSource.textContent = article.source || 'Неизвестный источник';
-    }
+    modalSource.textContent = article.source || 'Неизвестный источник';
     
     const dateValue = article.parsed_date || article.date;
     if (dateValue) {
-        const date = new Date(dateValue);
-        modalDate.textContent = date.toLocaleString('ru-RU');
+        try {
+            const date = new Date(dateValue);
+            if (!isNaN(date.getTime())) {
+                modalDate.textContent = date.toLocaleString('ru-RU');
+            } else {
+                modalDate.textContent = dateValue;
+            }
+        } catch (e) {
+            modalDate.textContent = dateValue;
+        }
     } else {
         modalDate.textContent = 'Дата неизвестна';
     }
