@@ -201,9 +201,9 @@ def get_news():
             }
             
             # Добавляем специфичные поля в зависимости от источника
-            if row[6]:  # link
+            if len(row) > 6 and row[6]:  # link
                 news_item['link'] = row[6]
-            if row[7]:  # telegram_channel
+            if len(row) > 7 and row[7]:  # telegram_channel
                 news_item['telegram_channel'] = row[7]
                 
             news.append(news_item)

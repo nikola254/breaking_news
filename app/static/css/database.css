@@ -101,18 +101,20 @@
 
 .news-table {
     width: 100%;
+    margin: 20px auto 0;
     border-collapse: collapse;
-    margin-top: 20px;
-    background-color: #0d2b50;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    background-color: #1e3a6a;
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 .news-table th, .news-table td {
     padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #1e3a6a;
+    text-align: center;
+    border-bottom: 1px solid #2d4a7a;
+    vertical-align: middle;
+    text-align: center !important;
 }
 
 .news-table th {
@@ -129,17 +131,26 @@
 }
 
 .date-col {
-    width: 120px;
+    width: 90px;
     white-space: nowrap;
 }
 
 .source-col {
-    width: 120px;
+    width: 70px;
 }
 
 .title-col {
-    width: 250px;
+    width: 180px;
     cursor: pointer;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+.title-col:hover {
+    color: #4fc3f7;
 }
 
 .title-col:hover {
@@ -148,7 +159,7 @@
 }
 
 .category-col {
-    width: 120px;
+    width: 60px;
     text-align: center;
     font-weight: 500;
     color: #4fc3f7;
@@ -213,7 +224,8 @@
 }
 
 .content-cell {
-    max-width: 400px;
+    min-width: 400px;
+    max-width: none;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -254,22 +266,26 @@
     backdrop-filter: blur(2px);
 }
 
+.modal.show .modal-content {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
 .modal-content {
     background-color: #0d2b50;
     margin: 5% auto;
     padding: 0;
-    border: 1px solid #1976d2;
+    border: 1px solid #4fc3f7;
     border-radius: 8px;
     width: 80%;
-    max-width: 900px;
+    max-width: 800px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     color: #e0e0e0;
-    animation: modalSlideIn 0.3s ease-out;
+    opacity: 1;
 }
 
 @keyframes modalSlideIn {
     from {
-        opacity: 0;
+        opacity: 1;
         transform: translateY(-50px);
     }
     to {
@@ -282,9 +298,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #1e3a6a;
+    border-bottom: 1px solid #4fc3f7;
     padding: 20px;
-    background-color: #1e3a6a;
+    background-color: #0a1f3d;
     border-radius: 8px 8px 0 0;
 }
 
@@ -326,7 +342,7 @@
 }
 
 .modal-footer {
-    border-top: 1px solid #1e3a6a;
+    border-top: 1px solid #4fc3f7;
     padding: 15px 20px;
     display: flex;
     justify-content: space-between;
@@ -353,6 +369,14 @@
     background-color: #4fc3f7;
     color: #0d2b50;
     text-decoration: none;
+}
+
+#modal-title {
+    transition: color 0.2s ease;
+}
+
+#modal-title:hover {
+    color: #4fc3f7;
 }
 
 /* Стили для модального окна парсинга */

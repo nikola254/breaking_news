@@ -250,10 +250,9 @@ function updateTable(data) {
 function getHeadersForSource(source) {
     // Унифицированная структура для всех источников
     return [
-        { key: 'parsed_date', label: 'Дата', class: 'date-col' },
+        { key: 'parsed_date', label: 'Категория', class: 'date-col' },
         { key: 'title', label: 'Заголовок', class: 'title-col' },
-        { key: 'content', label: 'Содержание' },
-        { key: 'category', label: 'Категория', class: 'category-col' }
+        { key: 'source', label: 'Содержание', class: 'source-col' }
     ];
 }
 
@@ -426,17 +425,20 @@ function openArticleModal(article) {
     }
     
     // Отображаем модальное окно
+    modal.classList.add('show');
     modal.style.display = 'block';
     
     // Обработчик закрытия модального окна
     const closeBtn = modal.querySelector('.close-modal');
     closeBtn.onclick = function() {
+        modal.classList.remove('show');
         modal.style.display = 'none';
     }
     
     // Закрытие при клике вне модального окна
     window.onclick = function(event) {
         if (event.target === modal) {
+            modal.classList.remove('show');
             modal.style.display = 'none';
         }
     }
