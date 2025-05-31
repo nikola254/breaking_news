@@ -250,9 +250,9 @@ function updateTable(data) {
 function getHeadersForSource(source) {
     // Унифицированная структура для всех источников
     return [
-        { key: 'parsed_date', label: 'Категория', class: 'date-col' },
+        { key: 'parsed_date', label: 'Дата', class: 'date-col' },
         { key: 'title', label: 'Заголовок', class: 'title-col' },
-        { key: 'source', label: 'Содержание', class: 'source-col' }
+        { key: 'category', label: 'Категория', class: 'category-col' }
     ];
 }
 
@@ -416,10 +416,13 @@ function openArticleModal(article) {
     }
     
     // Устанавливаем ссылку на оригинал
-    const linkValue = article.link || article.telegram_link || article.israil_link;
-    if (linkValue) {
+    // Проверяем различные возможные поля для ссылки
+    const linkValue = article.link || article.telegram_link || article.israil_link || article.url || article.original_url;
+    
+    if (linkValue && linkValue.trim() !== '') {
         modalLink.href = linkValue;
         modalLink.style.display = 'inline';
+        modalLink.target = '_blank'; // Убеждаемся, что ссылка открывается в новой вкладке
     } else {
         modalLink.style.display = 'none';
     }
@@ -429,7 +432,7 @@ function openArticleModal(article) {
     modal.style.display = 'block';
     
     // Обработчик закрытия модального окна
-    const closeBtn = modal.querySelector('.close-modal');
+    const closeBtn = modal.querySelector('.article-close-btn');
     closeBtn.onclick = function() {
         modal.classList.remove('show');
         modal.style.display = 'none';
@@ -440,6 +443,46 @@ function openArticleModal(article) {
         if (event.target === modal) {
             modal.classList.remove('show');
             modal.style.display = 'none';
+        }
+    }
+}
+
+// Функция открытия модального окна выбора парсеров
+function openParserSelectionModal() {
+    const modal = document.getElementById('parser-modal');
+    modal.classList.add('show');
+    modal.style.display = 'block';
+    
+    // Обработчик закрытия модального окна
+    const closeBtn = modal.querySelector('.article-close-btn');
+    closeBtn.onclick = function() {
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+    }
+    
+    // Закрытие при клике вне модального окна
+    window.onclick = function(event) {
+        if (event.target === modal) {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+        }
+    }
+    
+    // Обработчик кнопки запуска парсинга
+    const startBtn = document.getElementById('start-parsing-btn');
+    startBtn.onclick = function() {
+        const selectedParsers = [];
+        const checkboxes = modal.querySelectorAll('input[name="parser"]:checked');
+        checkboxes.forEach(checkbox => {
+            selectedParsers.push(checkbox.value);
+        });
+        
+        if (selectedParsers.length > 0) {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            runParsers(selectedParsers);
+        } else {
+            alert('Выберите хотя бы один источник для парсинга!');
         }
     }
 }

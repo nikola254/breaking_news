@@ -107,7 +107,7 @@ def get_news():
             # Только РИА, все категории
             query = f'''
                 SELECT 
-                    id, title, link, content, source, category, parsed_date,
+                    id, title, content, source, category, parsed_date, link,
                     '' as telegram_channel
                 FROM news.ria_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
@@ -118,7 +118,7 @@ def get_news():
             # Только РИА, конкретная категория
             query = f'''
                 SELECT 
-                    id, title, link, content, source, category, parsed_date,
+                    id, title, content, source, category, parsed_date, link,
                     '' as telegram_channel
                 FROM news.ria_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
@@ -129,7 +129,7 @@ def get_news():
             # Только Израиль, все категории
             query = f'''
                 SELECT 
-                    id, title, link, content, source, category, parsed_date,
+                    id, title, content, source, category, parsed_date, link,
                     '' as telegram_channel
                 FROM news.israil_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
@@ -140,7 +140,7 @@ def get_news():
             # Только Израиль, конкретная категория
             query = f'''
                 SELECT 
-                    id, title, link, content, source, category, parsed_date,
+                    id, title, content, source, category, parsed_date, link,
                     '' as telegram_channel
                 FROM news.israil_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}

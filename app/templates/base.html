@@ -27,6 +27,7 @@
         </div>
         <div class="user-actions">
             {% if request.path == '/clickhouse' %}
+            <button id="parse-btn" class="action-btn">Запустить парсинг</button>
             <button id="refresh-btn" class="action-btn">Обновить данные</button>
             {% else %}
             <a href="#">Войти</a>

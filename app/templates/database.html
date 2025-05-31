@@ -55,21 +55,30 @@
 </div>
 
 <!-- Модальное окно для просмотра статьи -->
-<div id="article-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 class="modal-title" id="modal-title">Заголовок статьи</h2>
-            <button class="close-modal">&times;</button>
+<!-- .article-modal-overlay - полупрозрачный фон модального окна -->
+<div id="article-modal" class="article-modal-overlay">
+    <!-- .article-modal-window - основное окно модального диалога -->
+    <div class="article-modal-window">
+        <!-- .article-modal-top - верхняя часть с заголовком и кнопкой закрытия -->
+        <div class="article-modal-top">
+            <!-- .article-title - заголовок статьи -->
+            <h2 class="article-title" id="modal-title">Заголовок статьи</h2>
+            <!-- .article-close-btn - кнопка закрытия модального окна -->
+            <button class="article-close-btn">&times;</button>
         </div>
-        <div class="modal-body" id="modal-content">
+        <!-- .article-modal-main - основное содержимое статьи -->
+        <div class="article-modal-main" id="modal-content">
             Содержание статьи...
         </div>
-        <div class="modal-footer">
-            <div class="article-meta">
+        <!-- .article-modal-bottom - нижняя часть с метаданными и ссылкой -->
+        <div class="article-modal-bottom">
+            <!-- .article-info - информация об источнике и дате -->
+            <div class="article-info">
                 <span id="modal-source">Источник</span> | 
                 <span id="modal-date">Дата публикации</span>
             </div>
-            <a href="#" target="_blank" id="modal-link" class="article-link">Открыть оригинал</a>
+            <!-- .article-original-link - ссылка на оригинальную статью -->
+            <a href="#" target="_blank" id="modal-link" class="article-original-link">Открыть оригинал</a>
         </div>
     </div>
 </div>
