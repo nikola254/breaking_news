@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import jsonify, request, render_template
+from flask import jsonify, request, render_template, current_app
 import clickhouse_connect
 import datetime
 import threading
@@ -439,7 +439,7 @@ def deepseek_query():
     data = request.json
     prompt = data.get('prompt', '')
     
-    api_key = os.getenv("DEEPSEEK_API_KEY")
+    api_key = current_app.config.get('DEEPSEEK_API_KEY')
     if not api_key:
         return jsonify({'status': 'error', 'message': 'API ключ не найден'}), 500
 
@@ -489,7 +489,7 @@ def openrouter_query():
     prompt = data.get('prompt', '')
     model = data.get('model', 'meta-llama/llama-3.3-8b-instruct:free')
     
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    api_key = current_app.config.get('OPENROUTER_API_KEY')
     if not api_key:
         return jsonify({'status': 'error', 'message': 'OPENROUTER_API_KEY не найден'}), 500
 

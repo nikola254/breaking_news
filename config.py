@@ -1,26 +1,47 @@
+"""Конфигурация приложения для анализа новостей.
+
+Все настройки загружаются из .env файла для обеспечения безопасности.
+Никаких захардкоженных значений - все параметры должны быть в .env файле.
+"""
+
 import os
 from dotenv import load_dotenv
 
+# Определяем базовую директорию проекта
 basedir = os.path.abspath(os.path.dirname(__file__))
+# Загружаем переменные окружения из .env файла
 load_dotenv(os.path.join(basedir, '.env'))
 
 class Config:
-    # Настройки ClickHouse
-    CLICKHOUSE_HOST = os.environ.get('CLICKHOUSE_HOST', '81.94.158.134')
-    CLICKHOUSE_PORT = int(os.environ.get('CLICKHOUSE_PORT', 8123))
-    CLICKHOUSE_NATIVE_PORT = int(os.environ.get('CLICKHOUSE_NATIVE_PORT', 9000))
-    CLICKHOUSE_USER = os.environ.get('CLICKHOUSE_USER', 'default')
-    CLICKHOUSE_PASSWORD = os.environ.get('CLICKHOUSE_PASSWORD', '')
+    """Класс конфигурации приложения.
     
-    # Другие настройки приложения
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-key-please-change-in-production')
+    Все настройки берутся из переменных окружения (.env файл).
+    Если переменная не найдена, возвращается None - это заставляет
+    правильно настроить все необходимые параметры.
+    """
+    # Настройки ClickHouse
+    CLICKHOUSE_HOST = os.environ.get('CLICKHOUSE_HOST')
+    CLICKHOUSE_PORT = int(os.environ.get('CLICKHOUSE_PORT')) if os.environ.get('CLICKHOUSE_PORT') else None
+    CLICKHOUSE_NATIVE_PORT = int(os.environ.get('CLICKHOUSE_NATIVE_PORT')) if os.environ.get('CLICKHOUSE_NATIVE_PORT') else None
+    CLICKHOUSE_USER = os.environ.get('CLICKHOUSE_USER')
+    CLICKHOUSE_PASSWORD = os.environ.get('CLICKHOUSE_PASSWORD')
+    
+    # Настройки Flask
+    SECRET_KEY = os.environ.get('SECRET_KEY')
     DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
     
-    # Настройки для OpenRouter API
-    OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
-    OPENROUTER_DEEPSEEK_R1_API_KEY = os.environ.get('OPENROUTER_DEEPSEEK_R1_API_KEY', '')
-    SITE_URL = os.environ.get('SITE_URL', 'http://localhost:5000')
-    SITE_NAME = os.environ.get('SITE_NAME', 'NewsAnalytics')
+    # Настройки Telegram API
+    TELEGRAM_API_ID = os.environ.get('TELEGRAM_API_ID')
+    TELEGRAM_API_HASH = os.environ.get('TELEGRAM_API_HASH')
+    TELEGRAM_PHONE = os.environ.get('TELEGRAM_PHONE')
     
-    # Настройки для AI.IO API
-    AIIO_API_KEY = os.environ.get('AIIO_API_KEY', 'io-v2-eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6ImVjODQ0MjA4LTVhMjYtNGEyZC1iZjc3LWI5MWM3YWM1NDBkZiIsImV4cCI6NDkwMjAwODMyMn0.KwUhPdVppnVNwtVYbQCUkm8AkbxRipaklZFf20OgWnVjV4Xmo2S4RIX73_j3B5JjdYh4HJI2QS1vvYACcDTxfg')
+    # Настройки AI API
+    DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
+    OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
+    OPENROUTER_DEEPSEEK_R1_API_KEY = os.environ.get('OPENROUTER_DEEPSEEK_R1_API_KEY')
+    AUTH_KEY_GIGA_CHAT = os.environ.get('AUTH_KEY_GIGA_CHAT')
+    AI_IO_KEY = os.environ.get('AI_IO_KEY')
+    
+    # Настройки сайта
+    SITE_URL = os.environ.get('SITE_URL')
+    SITE_NAME = os.environ.get('SITE_NAME')

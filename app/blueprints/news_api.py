@@ -1,13 +1,33 @@
-from flask import Blueprint, jsonify, request
+"""API для работы с новостями.
+
+Этот модуль содержит REST API эндпоинты для:
+- Получения новостей из различных источников
+- Фильтрации по категориям и источникам
+- Поиска по содержимому
+- Получения статистики
+"""
+
+from flask import Blueprint, request, jsonify
 import datetime
 from app.models import get_clickhouse_client
 
 # Создаем Blueprint для API новостей
 news_api_bp = Blueprint('news_api', __name__, url_prefix='/api')
 
-# API-эндпоинт для получения новостей
 @news_api_bp.route('/news', methods=['GET'])
 def get_news():
+    """Получение новостей с фильтрацией и поиском.
+    
+    Query Parameters:
+        source (str): Источник новостей ('all', 'ria', 'israil', 'telegram')
+        category (str): Категория новостей ('all', 'ukraine', 'middle_east', etc.)
+        limit (int): Количество новостей для возврата (по умолчанию 100)
+        offset (int): Смещение для пагинации (по умолчанию 0)
+        search (str): Поисковый запрос по заголовку и содержимому
+    
+    Returns:
+        JSON: Список новостей с метаданными или сообщение об ошибке
+    """
     source = request.args.get('source', 'all')
     category = request.args.get('category', 'all')
     limit = request.args.get('limit', 100, type=int)
@@ -239,6 +259,16 @@ def get_news():
 # API-эндпоинт для получения данных из telegram_headlines
 @news_api_bp.route('/telegram', methods=['GET'])
 def get_telegram_headlines():
+    """Получение заголовков новостей из Telegram каналов с пагинацией.
+    
+    Query Parameters:
+        page (int): Номер страницы для пагинации (по умолчанию 1)
+        channel (str): Фильтр по конкретному каналу (опционально)
+        days (int): Количество дней для выборки (по умолчанию 7)
+    
+    Returns:
+        JSON: Список заголовков Telegram новостей с метаданными пагинации
+    """
     try:
         page = int(request.args.get('page', 1))
         page_size = 10  # Количество записей на странице

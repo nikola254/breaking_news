@@ -1,4 +1,12 @@
-from flask import Blueprint, jsonify, request, current_app
+"""API для работы с внешними сервисами.
+
+Этот модуль содержит интеграции с внешними AI сервисами:
+- DeepSeek API для анализа текста
+- OpenRouter API для различных AI моделей
+- GigaChat API для обработки естественного языка
+"""
+
+from flask import Blueprint, request, jsonify, current_app
 import os
 import requests
 import json
@@ -6,9 +14,16 @@ import json
 # Создаем Blueprint для API внешних сервисов
 external_api_bp = Blueprint('external_api', __name__, url_prefix='/api')
 
-# API эндпоинт для отправки промта в DeepSeek
 @external_api_bp.route('/deepseek', methods=['POST'])
 def deepseek_query():
+    """Отправка запроса к DeepSeek API для анализа текста.
+    
+    Request JSON:
+        prompt (str): Текст запроса для анализа
+    
+    Returns:
+        JSON: Ответ от DeepSeek API с результатом анализа
+    """
     data = request.json
     prompt = data.get('prompt', '')
     
@@ -59,6 +74,14 @@ def deepseek_query():
 # API эндпоинт для DeepSeek R1 через OpenRouter
 @external_api_bp.route('/deepseek-r1', methods=['POST'])
 def deepseek_r1_query():
+    """Отправка запроса к DeepSeek R1 через OpenRouter API.
+    
+    Request JSON:
+        prompt (str): Текст запроса для анализа
+    
+    Returns:
+        JSON: Ответ от DeepSeek R1 модели
+    """
     data = request.json
     prompt = data.get('prompt', '')
     
@@ -106,6 +129,15 @@ def deepseek_r1_query():
 # API эндпоинт для OpenRouter
 @external_api_bp.route('/openrouter', methods=['POST'])
 def openrouter_query():
+    """Отправка запроса к различным AI моделям через OpenRouter API.
+    
+    Request JSON:
+        prompt (str): Текст запроса для анализа
+        model (str): Модель для использования (по умолчанию 'google/gemma-3-8b-it:free')
+    
+    Returns:
+        JSON: Ответ от выбранной AI модели
+    """
     data = request.json
     prompt = data.get('prompt', '')
     model = data.get('model', 'google/gemma-3-8b-it:free')
@@ -154,6 +186,11 @@ def openrouter_query():
 # API эндпоинты для работы с AI.IO
 @external_api_bp.route('/aiio/models', methods=['GET'])
 def aiio_models():
+    """Получение списка доступных моделей от AI.IO API.
+    
+    Returns:
+        JSON: Список доступных AI моделей
+    """
     api_key = current_app.config.get('AIIO_API_KEY')
     if not api_key:
         return jsonify({'status': 'error', 'message': 'AIIO_API_KEY не найден'}), 500
@@ -188,6 +225,15 @@ def aiio_models():
 
 @external_api_bp.route('/aiio/chat', methods=['POST'])
 def aiio_chat():
+    """Отправка запроса к AI.IO Chat API для общения с AI моделями.
+    
+    Request JSON:
+        prompt (str): Текст запроса пользователя
+        system_prompt (str): Системный промпт (по умолчанию 'You are a helpful assistant.')
+    
+    Returns:
+        JSON: Ответ от AI модели DeepSeek-R1
+    """
     data = request.json
     prompt = data.get('prompt', '')
     model = "deepseek-ai/DeepSeek-R1"  # Фиксированная модель

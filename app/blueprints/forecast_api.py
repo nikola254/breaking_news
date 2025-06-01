@@ -1,4 +1,13 @@
-from flask import Blueprint, jsonify, request, current_app
+"""API для прогнозирования и анализа трендов новостей.
+
+Этот модуль содержит функции для:
+- Генерации прогнозов напряженности новостей
+- Анализа трендов по категориям
+- Создания визуализаций данных
+- Статистического анализа новостных потоков
+"""
+
+from flask import Blueprint, request, jsonify, current_app
 import datetime
 import random
 import os
@@ -14,8 +23,12 @@ from config import Config
 # Создаем Blueprint для API прогнозов
 forecast_api_bp = Blueprint('forecast_api', __name__, url_prefix='/api')
 
-# Функция для получения клиента ClickHouse
 def get_clickhouse_client():
+    """Создание клиента для подключения к ClickHouse.
+    
+    Returns:
+        Client: Настроенный клиент ClickHouse
+    """
     return Client(
         host=Config.CLICKHOUSE_HOST,
         port=Config.CLICKHOUSE_NATIVE_PORT,
@@ -24,9 +37,21 @@ def get_clickhouse_client():
         database=current_app.config.get('CLICKHOUSE_DB', 'default')
     )
 
-# API-эндпоинт для генерации прогноза
 @forecast_api_bp.route('/generate_forecast', methods=['POST'])
 def generate_forecast():
+    """Генерация прогноза напряженности новостей.
+    
+    Анализирует исторические данные и создает прогноз
+    напряженности новостей на указанный период.
+    
+    Request JSON:
+        category (str): Категория новостей для анализа
+        analysis_period (int): Период анализа в часах
+        forecast_period (int): Период прогноза в часах
+    
+    Returns:
+        JSON: Прогноз с данными и путем к графику
+    """
     try:
         data = request.json
         category = data.get('category', 'all')

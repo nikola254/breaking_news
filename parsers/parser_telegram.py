@@ -1,3 +1,13 @@
+"""Парсер новостей из Telegram каналов.
+
+Этот модуль содержит:
+- Подключение к Telegram API через Telethon
+- Парсинг сообщений из указанных каналов
+- Сохранение новостей в ClickHouse
+- Обработка медиафайлов и форматирование текста
+- Автоматическую категоризацию новостей
+"""
+
 from telethon import TelegramClient, events
 from telethon.tl.functions.messages import GetHistoryRequest
 from clickhouse_driver import Client as ClickHouseClient
@@ -17,9 +27,9 @@ load_dotenv()
 
 # Telegram API credentials
 # You need to get these from https://my.telegram.org/
-API_ID = os.getenv('TELEGRAM_API_ID')
-API_HASH = os.getenv('TELEGRAM_API_HASH')
-PHONE = os.getenv('TELEGRAM_PHONE')  # Your phone number with country code
+API_ID = Config.TELEGRAM_API_ID
+API_HASH = Config.TELEGRAM_API_HASH
+PHONE = Config.TELEGRAM_PHONE  # Your phone number with country code
 
 # List of Telegram channels to parse (use channel usernames without @)
 TELEGRAM_CHANNELS = [
@@ -32,7 +42,11 @@ TELEGRAM_CHANNELS = [
 ]
 
 def create_table_if_not_exists():
-    """Create ClickHouse table if it doesn't exist"""
+    """Создание таблицы в ClickHouse для хранения Telegram новостей.
+    
+    Создает базу данных 'news' и таблицу 'telegram_headlines'
+    с полями для хранения заголовков, контента, канала и метаданных.
+    """
     client = ClickHouseClient(
         host=Config.CLICKHOUSE_HOST,
         port=Config.CLICKHOUSE_NATIVE_PORT,
@@ -60,7 +74,16 @@ def create_table_if_not_exists():
     ''')
 
 async def get_telegram_messages(client, channel, limit=100):
-    """Get messages from a Telegram channel"""
+    """Получение сообщений из Telegram канала.
+    
+    Args:
+        client: Telegram клиент
+        channel (str): Имя канала без @
+        limit (int): Максимальное количество сообщений
+    
+    Returns:
+        list: Список сообщений из канала
+    """
     entity = await client.get_entity(channel)
     
     # Get messages

@@ -48,18 +48,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Обработчик для поиска
     searchBtn.addEventListener('click', () => {
-        currentSearchQuery = searchInput.value.trim();
-        currentPage = 1;
-        loadData();
+        performSearch();
     });
     
     // Обработчик для поиска по нажатию Enter
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            currentSearchQuery = searchInput.value.trim();
-            currentPage = 1;
-            loadData();
+            performSearch();
         }
+    });
+    
+    // Добавляем обработчик для автоматического поиска при вводе
+    searchInput.addEventListener('input', () => {
+        // Автоматический поиск с задержкой
+        clearTimeout(searchInput.searchTimeout);
+        searchInput.searchTimeout = setTimeout(() => {
+            performSearch();
+        }, 500); // Задержка 500мс
     });
     
     // Обработчики для кнопок в навигации
@@ -269,6 +274,13 @@ function updateTable(data) {
         
         tableBody.appendChild(row);
     });
+    
+    // Выделяем поисковый текст после отображения данных
+    if (currentSearchQuery) {
+        setTimeout(() => {
+            highlightAllArticles();
+        }, 50);
+    }
 }
 
 // Функция получения заголовков таблицы в зависимости от источника
@@ -408,6 +420,68 @@ function clearError() {
     errorContainer.innerHTML = '';
 }
 
+// Функция для выделения текста поиска
+function highlightSearchText(text, searchQuery) {
+    if (!searchQuery || !text) return text;
+    
+    const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+}
+
+// Функция для очистления выделения
+function clearHighlights(element) {
+    if (element) {
+        element.innerHTML = element.innerHTML.replace(/<mark class="search-highlight">(.*?)<\/mark>/gi, '$1');
+    }
+}
+
+// Функция для выделения текста во всех статьях
+function highlightAllArticles() {
+    const searchQuery = currentSearchQuery.trim();
+    
+    // Выделяем в заголовках таблицы
+    document.querySelectorAll('.title-col').forEach(cell => {
+        if (searchQuery) {
+            const originalText = cell.textContent;
+            cell.innerHTML = highlightSearchText(originalText, searchQuery);
+        } else {
+            clearHighlights(cell);
+        }
+    });
+    
+    // Выделяем в содержимом статей
+    document.querySelectorAll('.content-cell').forEach(cell => {
+        if (searchQuery) {
+            const expandBtn = cell.querySelector('.expand-btn');
+            const btnText = expandBtn ? expandBtn.textContent : '';
+            const originalText = cell.textContent.replace(btnText, '');
+            
+            const highlightedText = highlightSearchText(originalText, searchQuery);
+            cell.innerHTML = highlightedText;
+            
+            if (expandBtn) {
+                cell.appendChild(expandBtn);
+            }
+        } else {
+            clearHighlights(cell);
+        }
+    });
+}
+
+// Модифицированная функция поиска с автоматическим выделением
+function performSearch() {
+    currentSearchQuery = searchInput.value.trim();
+    currentPage = 1;
+    loadData().then(() => {
+        // Выделяем текст после загрузки данных
+        setTimeout(() => {
+            highlightAllArticles();
+        }, 100);
+    });
+}
+
+
+
 // Функция открытия модального окна со статьей
 function openArticleModal(article) {
     const modal = document.getElementById('article-modal');
@@ -417,9 +491,17 @@ function openArticleModal(article) {
     const modalDate = document.getElementById('modal-date');
     const modalLink = document.getElementById('modal-link');
     
-    // Заполняем данными модальное окно
-    modalTitle.textContent = article.title || 'Без заголовка';
-    modalContent.textContent = article.content || 'Содержание отсутствует';
+    // Заполняем данными модальное окно с выделением поискового запроса
+    const title = article.title || 'Без заголовка';
+    const content = article.content || 'Содержание отсутствует';
+    
+    if (currentSearchQuery) {
+        modalTitle.innerHTML = highlightSearchText(title, currentSearchQuery);
+        modalContent.innerHTML = highlightSearchText(content, currentSearchQuery);
+    } else {
+        modalTitle.textContent = title;
+        modalContent.textContent = content;
+    }
     
     // Устанавливаем метаданные
     modalSource.textContent = article.source || 'Неизвестный источник';
@@ -441,13 +523,12 @@ function openArticleModal(article) {
     }
     
     // Устанавливаем ссылку на оригинал
-    // Проверяем различные возможные поля для ссылки
     const linkValue = article.link || article.telegram_link || article.israil_link || article.url || article.original_url;
     
     if (linkValue && linkValue.trim() !== '') {
         modalLink.href = linkValue;
         modalLink.style.display = 'inline';
-        modalLink.target = '_blank'; // Убеждаемся, что ссылка открывается в новой вкладке
+        modalLink.target = '_blank';
     } else {
         modalLink.style.display = 'none';
     }

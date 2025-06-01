@@ -1,3 +1,12 @@
+"""API для управления парсерами новостей.
+
+Этот модуль содержит функции для:
+- Запуска парсеров новостей из различных источников
+- Мониторинга процесса парсинга через WebSocket
+- Управления активными процессами парсинга
+- Real-time логирования процесса парсинга
+"""
+
 from flask import Blueprint, request, jsonify
 from flask_socketio import SocketIO, emit
 import threading
@@ -17,12 +26,25 @@ socketio = None
 active_parsers = {}
 
 def init_socketio(app_socketio):
-    """Инициализация SocketIO для использования в parser_api"""
+    """Инициализация SocketIO для использования в parser_api.
+    
+    Args:
+        app_socketio: Экземпляр SocketIO из основного приложения
+    """
     global socketio
     socketio = app_socketio
 
 def run_parser_with_logging(parser_path, source_name):
-    """Запускает парсер и передает его вывод через WebSocket"""
+    """Запускает парсер и передает его вывод через WebSocket.
+    
+    Функция выполняет парсер в отдельном процессе и передает
+    все сообщения о ходе выполнения через WebSocket соединение
+    для real-time мониторинга.
+    
+    Args:
+        parser_path (str): Путь к файлу парсера
+        source_name (str): Название источника для логирования
+    """
     try:
         # Отправляем начальное сообщение
         if socketio:
@@ -172,6 +194,19 @@ def run_parser_with_logging(parser_path, source_name):
 # API-эндпоинт для запуска парсеров
 @parser_api_bp.route('/run_parser', methods=['POST'])
 def run_parser():
+    """Запуск парсеров новостей из указанных источников.
+    
+    Принимает JSON с массивом источников и запускает соответствующие
+    парсеры в отдельных потоках. Поддерживает real-time мониторинг
+    через WebSocket.
+    
+    Request JSON:
+        sources (list): Список источников для парсинга ['telegram', 'ria', 'israil']
+        source (str): Альтернативный формат - строка с источниками через запятую
+    
+    Returns:
+        JSON: Статус запуска парсеров
+    """
     try:
         data = request.json
         sources = data.get('sources', [])
@@ -226,9 +261,20 @@ def run_parser():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# API-эндпоинт для остановки парсеров
 @parser_api_bp.route('/stop_parser', methods=['POST'])
 def stop_parser():
+    """Остановка активных парсеров.
+    
+    Принимает JSON с массивом источников и останавливает
+    соответствующие активные процессы парсинга.
+    
+    Request JSON:
+        sources (list): Список источников для остановки ['telegram', 'ria', 'israil']
+        source (str): Альтернативный формат - строка с источниками через запятую
+    
+    Returns:
+        JSON: Статус остановки парсеров
+    """
     try:
         data = request.json
         sources = data.get('sources', [])
@@ -303,6 +349,11 @@ def stop_parser():
 # API-эндпоинт для получения статуса активных парсеров
 @parser_api_bp.route('/parser_status', methods=['GET'])
 def parser_status():
+    """Получение статуса активных парсеров.
+    
+    Returns:
+        JSON: Список активных парсеров
+    """
     try:
         return jsonify({
             'status': 'success',
