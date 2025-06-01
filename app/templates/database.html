@@ -102,6 +102,20 @@
         </div>
     </div>
 </div>
+
+<!-- Окно логирования парсера -->
+<div id="parser-log">
+    <div class="log-header">
+        <span>Лог парсинга</span>
+        <div class="log-controls">
+            <button id="stop-parsing-btn" class="stop-btn" title="Остановить парсинг">⏹</button>
+            <button class="log-close">&times;</button>
+        </div>
+    </div>
+    <div class="log-content" id="log-content">
+        <!-- Логи будут добавляться динамически -->
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}

@@ -355,8 +355,64 @@
 }
 
 /* Стили для модального окна парсинга */
+#parser-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.6);
+}
+
+#parser-modal .modal-content {
+    background-color: #1e3a6a;
+    margin: 10% auto;
+    padding: 0;
+    border: 1px solid #888;
+    width: 60%;
+    max-width: 500px;
+    border-radius: 8px;
+    color: #e0e0e0;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #2d4a7a;
+}
+
+.modal-title {
+    color: #e0e0e0;
+    margin: 0;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.close-modal {
+    color: #aaa;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.close-modal:hover {
+    color: #fff;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
 .parser-options {
-    margin: 20px 0;
+    margin: 0;
 }
 
 .parser-options label {
@@ -366,15 +422,22 @@
     padding: 10px;
     border-radius: 4px;
     transition: background-color 0.2s;
+    color: #e0e0e0;
 }
 
 .parser-options label:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(79, 195, 247, 0.1);
 }
 
 .parser-options input[type="checkbox"] {
     margin-right: 10px;
     transform: scale(1.2);
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #2d4a7a;
+    text-align: right;
 }
 
 .btn {
@@ -383,16 +446,105 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
-    transition: all 0.2s;
+    transition: all 0.3s;
 }
 
 .btn-primary {
-    background-color: #1976d2;
-    color: white;
+    background-color: #4fc3f7;
+    color: #0a1f3d;
+    font-weight: 600;
 }
 
 .btn-primary:hover {
-    background-color: #1565c0;
+    background-color: #81d4fa;
+    transform: translateY(-2px);
+}
+
+/* Окно логирования */
+#parser-log {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 350px;
+    height: 200px;
+    background-color: #1e3a6a;
+    border: 1px solid #2d4a7a;
+    border-radius: 8px;
+    display: none;
+    z-index: 1001;
+    overflow: hidden;
+}
+
+.log-header {
+    background-color: #0288d1;
+    color: white;
+    padding: 10px 15px;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.log-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.log-close, .stop-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.log-close:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.stop-btn {
+    font-size: 14px;
+}
+
+.stop-btn:hover {
+    background-color: rgba(244, 67, 54, 0.2);
+}
+
+.stop-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.log-content {
+    padding: 10px;
+    height: calc(100% - 44px);
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #e0e0e0;
+    line-height: 1.4;
+}
+
+.log-entry {
+    margin-bottom: 5px;
+    padding: 2px 0;
+}
+
+.log-entry.success {
+    color: #4caf50;
+}
+
+.log-entry.error {
+    color: #f44336;
+}
+
+.log-entry.info {
+    color: #2196f3;
 }
 
 /* Адаптивность */

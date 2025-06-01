@@ -7,6 +7,11 @@ let currentDays = 7;
 let totalPages = 1;
 let currentSearchQuery = '';
 
+// Переменные для управления парсингом
+let activeParsers = [];
+let isParsingActive = false;
+let logWindowVisible = false;
+
 // DOM-элементы
 const dataTable = document.getElementById('data-table');
 const tableHeader = document.getElementById('table-header');
@@ -77,7 +82,27 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Загрузка данных при первом открытии страницы
     loadData();
+    
+    // Инициализируем WebSocket и проверяем статус парсеров
+    initWebSocket();
+    
+    // Восстанавливаем состояние окна логирования если оно было открыто
+    restoreLogWindowState();
 });
+
+// Сохраняем состояние окна логирования при переходе на другую страницу
+window.addEventListener('beforeunload', function() {
+    // Сохраняем состояние в sessionStorage
+    sessionStorage.setItem('logWindowVisible', logWindowVisible);
+    if (logWindowVisible) {
+        const logContent = document.getElementById('log-content');
+        if (logContent) {
+            sessionStorage.setItem('logContent', logContent.innerHTML);
+        }
+    }
+});
+
+
 
 // Функция загрузки данных из API
 function loadData() {
@@ -450,20 +475,17 @@ function openArticleModal(article) {
 // Функция открытия модального окна выбора парсеров
 function openParserSelectionModal() {
     const modal = document.getElementById('parser-modal');
-    modal.classList.add('show');
     modal.style.display = 'block';
     
     // Обработчик закрытия модального окна
-    const closeBtn = modal.querySelector('.article-close-btn');
+    const closeBtn = modal.querySelector('.close-modal');
     closeBtn.onclick = function() {
-        modal.classList.remove('show');
         modal.style.display = 'none';
     }
     
     // Закрытие при клике вне модального окна
     window.onclick = function(event) {
         if (event.target === modal) {
-            modal.classList.remove('show');
             modal.style.display = 'none';
         }
     }
@@ -478,7 +500,6 @@ function openParserSelectionModal() {
         });
         
         if (selectedParsers.length > 0) {
-            modal.classList.remove('show');
             modal.style.display = 'none';
             runParsers(selectedParsers);
         } else {
@@ -487,34 +508,189 @@ function openParserSelectionModal() {
     }
 }
 
-// Функция для запуска парсеров
-function runParsers(sources) {
-    showLoading(true);
+// Функции для работы с окном логирования
+function showParserLog() {
+    const logWindow = document.getElementById('parser-log');
+    logWindow.style.display = 'block';
+    logWindowVisible = true;
     
-    // Отправляем запрос на запуск парсинга
-    fetch('/api/run_parser', {
+    // Закрытие окна логирования
+    const closeBtn = logWindow.querySelector('.log-close');
+    closeBtn.onclick = function() {
+        logWindow.style.display = 'none';
+        logWindowVisible = false;
+    };
+    
+    // Обработчик кнопки остановки парсинга
+    const stopBtn = document.getElementById('stop-parsing-btn');
+    stopBtn.onclick = function() {
+        stopParsing();
+    };
+    
+    // Обновляем состояние кнопки остановки
+    updateStopButtonState();
+}
+
+function addLogEntry(message, type = 'info') {
+    const logContent = document.getElementById('log-content');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    logContent.appendChild(entry);
+    logContent.scrollTop = logContent.scrollHeight;
+}
+
+function clearLog() {
+    const logContent = document.getElementById('log-content');
+    logContent.innerHTML = '';
+}
+
+// Функция для остановки парсинга
+function stopParsing() {
+    if (!isParsingActive) {
+        addLogEntry('Нет активных процессов парсинга для остановки', 'info');
+        return;
+    }
+    
+    addLogEntry('Отправка команды остановки парсинга...', 'info');
+    
+    fetch('/api/stop_parser', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ source: sources.length === 3 ? 'all' : sources.join(',') })
+        body: JSON.stringify({ sources: ['all'] })
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Остановка парсинга:', data);
+        addLogEntry(data.message, data.status === 'success' ? 'success' : 'info');
         if (data.status === 'success') {
-            alert('Парсинг успешно запущен! Обновите данные через несколько минут.');
-            // Автоматически обновляем данные через 5 секунд
-            setTimeout(() => {
-                loadData();
-            }, 5000);
-        } else {
-            showError(data.message || 'Ошибка при запуске парсинга');
+            isParsingActive = false;
+            activeParsers = [];
+            updateStopButtonState();
         }
     })
     .catch(error => {
-        showError(`Ошибка при запуске парсинга: ${error.message}`);
+        console.error('Ошибка при остановке парсинга:', error);
+        addLogEntry(`Ошибка при остановке парсинга: ${error.message}`, 'error');
+    });
+}
+
+// Функция для обновления состояния кнопки остановки
+function updateStopButtonState() {
+    const stopBtn = document.getElementById('stop-parsing-btn');
+    if (stopBtn) {
+        stopBtn.disabled = !isParsingActive;
+        stopBtn.title = isParsingActive ? 'Остановить парсинг' : 'Нет активных процессов';
+    }
+}
+
+// Функция для проверки статуса активных парсеров
+function checkParserStatus() {
+    fetch('/api/parser_status')
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            activeParsers = data.active_parsers;
+            isParsingActive = activeParsers.length > 0;
+            updateStopButtonState();
+        }
     })
-    .finally(() => {
-        showLoading(false);
+    .catch(error => {
+        console.error('Ошибка при проверке статуса парсеров:', error);
+    });
+}
+
+// Функция для восстановления состояния окна логирования
+function restoreLogWindowState() {
+    const savedLogWindowVisible = sessionStorage.getItem('logWindowVisible');
+    const savedLogContent = sessionStorage.getItem('logContent');
+    
+    if (savedLogWindowVisible === 'true') {
+        logWindowVisible = true;
+        showParserLog();
+        
+        if (savedLogContent) {
+            const logContent = document.getElementById('log-content');
+            if (logContent) {
+                logContent.innerHTML = savedLogContent;
+                logContent.scrollTop = logContent.scrollHeight;
+            }
+        }
+    }
+}
+
+// Инициализация WebSocket соединения
+let socket = null;
+
+function initWebSocket() {
+    if (!socket) {
+        socket = io();
+        
+        // Обработчик получения логов от парсера
+        socket.on('parser_log', function(data) {
+            addLogEntry(data.message, data.type);
+            
+            // Обновляем статус парсинга на основе сообщений
+            if (data.message.includes('Запуск парсера')) {
+                isParsingActive = true;
+                if (!activeParsers.includes(data.source)) {
+                    activeParsers.push(data.source);
+                }
+                updateStopButtonState();
+            } else if (data.message.includes('завершен') || data.message.includes('остановлен')) {
+                activeParsers = activeParsers.filter(parser => parser !== data.source);
+                isParsingActive = activeParsers.length > 0;
+                updateStopButtonState();
+            }
+        });
+        
+        socket.on('connect', function() {
+            console.log('WebSocket соединение установлено');
+            // Проверяем статус парсеров при подключении
+            checkParserStatus();
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('WebSocket соединение разорвано');
+        });
+    }
+}
+
+// Функция для запуска парсеров
+function runParsers(sources) {
+    // Инициализируем WebSocket если еще не инициализирован
+    initWebSocket();
+    
+    // Показываем окно логирования и очищаем предыдущие логи
+    showParserLog();
+    clearLog();
+    addLogEntry('Инициализация парсинга...', 'info');
+    addLogEntry(`Выбранные источники: ${sources.join(', ')}`, 'info');
+    
+    // Обновляем состояние парсинга
+    isParsingActive = true;
+    activeParsers = [...sources];
+    updateStopButtonState();
+    
+    fetch('/api/run_parser', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sources: sources })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Парсинг запущен:', data);
+        addLogEntry('Запрос на парсинг отправлен', 'success');
+    })
+    .catch(error => {
+        console.error('Ошибка при запуске парсинга:', error);
+        addLogEntry(`Ошибка при запуске парсинга: ${error.message}`, 'error');
+        isParsingActive = false;
+        activeParsers = [];
+        updateStopButtonState();
     });
 }

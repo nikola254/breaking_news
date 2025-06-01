@@ -1,33 +1,198 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, jsonify
+from flask_socketio import SocketIO, emit
 import threading
 import subprocess
 import os
+import sys
+from io import StringIO
+import time
 
 # Создаем Blueprint для API парсеров
 parser_api_bp = Blueprint('parser_api', __name__, url_prefix='/api')
+
+# Глобальная переменная для SocketIO (будет инициализирована в main app)
+socketio = None
+
+# Глобальный словарь для отслеживания активных процессов парсинга
+active_parsers = {}
+
+def init_socketio(app_socketio):
+    """Инициализация SocketIO для использования в parser_api"""
+    global socketio
+    socketio = app_socketio
+
+def run_parser_with_logging(parser_path, source_name):
+    """Запускает парсер и передает его вывод через WebSocket"""
+    try:
+        # Отправляем начальное сообщение
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Запуск парсера {source_name}...',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        # Проверяем существование файла парсера
+        if not os.path.exists(parser_path):
+            if socketio:
+                socketio.emit('parser_log', {
+                    'message': f'Ошибка: файл парсера {parser_path} не найден',
+                    'type': 'error',
+                    'source': source_name
+                })
+            return
+        
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Файл парсера найден: {parser_path}',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        # Запускаем процесс парсера
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Создание процесса для {source_name}...',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        process = subprocess.Popen(
+            ['python', parser_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            bufsize=1
+        )
+        
+        # Сохраняем процесс в глобальном словаре
+        active_parsers[source_name] = process
+        
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Процесс {source_name} создан с PID: {process.pid}',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        # Читаем вывод построчно и отправляем через WebSocket
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Начинаем чтение вывода процесса {source_name}...',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        line_count = 0
+        for line in iter(process.stdout.readline, ''):
+            line_count += 1
+            if line.strip():
+                # Определяем тип сообщения на основе содержимого
+                message_type = 'info'
+                if 'Ошибка' in line or 'Error' in line:
+                    message_type = 'error'
+                elif 'Найдена новая статья' in line or 'Добавлено' in line or 'Получено' in line:
+                    message_type = 'success'
+                
+                if socketio:
+                    socketio.emit('parser_log', {
+                        'message': line.strip(),
+                        'type': message_type,
+                        'source': source_name
+                    })
+            
+            # Логируем каждые 10 строк для отладки
+            if line_count % 10 == 0 and socketio:
+                socketio.emit('parser_log', {
+                    'message': f'Обработано {line_count} строк вывода от {source_name}',
+                    'type': 'debug',
+                    'source': source_name
+                })
+        
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Завершено чтение вывода {source_name}. Всего строк: {line_count}',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        # Ждем завершения процесса
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Ожидание завершения процесса {source_name}...',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        process.wait()
+        
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Процесс {source_name} завершился с кодом: {process.returncode}',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        # Удаляем процесс из словаря активных процессов
+        if source_name in active_parsers:
+            del active_parsers[source_name]
+        
+        # Отправляем финальное сообщение
+        if socketio:
+            if process.returncode == 0:
+                socketio.emit('parser_log', {
+                    'message': f'Парсер {source_name} завершен успешно',
+                    'type': 'success',
+                    'source': source_name
+                })
+            else:
+                socketio.emit('parser_log', {
+                    'message': f'Парсер {source_name} завершен с ошибкой (код: {process.returncode})',
+                    'type': 'error',
+                    'source': source_name
+                })
+                
+    except Exception as e:
+        # Удаляем процесс из словаря в случае ошибки
+        if source_name in active_parsers:
+            del active_parsers[source_name]
+            
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Исключение при запуске парсера {source_name}: {str(e)}',
+                'type': 'error',
+                'source': source_name
+            })
+            socketio.emit('parser_log', {
+                'message': f'Тип исключения: {type(e).__name__}',
+                'type': 'error',
+                'source': source_name
+            })
 
 # API-эндпоинт для запуска парсеров
 @parser_api_bp.route('/run_parser', methods=['POST'])
 def run_parser():
     try:
         data = request.json
-        source = data.get('source', 'all')
+        sources = data.get('sources', [])
         
         # Получаем базовый путь проекта
         basedir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
         
-        # Обрабатываем случай, когда источники переданы в виде строки с разделителями
-        if isinstance(source, str) and ',' in source:
-            sources = source.split(',')
-        else:
-            sources = [source]
+        # Обрабатываем случай совместимости со старым форматом
+        if not sources:
+            source = data.get('source', 'all')
+            if isinstance(source, str) and ',' in source:
+                sources = source.split(',')
+            else:
+                sources = [source]
         
         # Определяем, какой парсер запустить в зависимости от источника
         if 'telegram' in sources or 'all' in sources:
             # Запускаем парсер Telegram в отдельном потоке
             def run_telegram_parser():
-                parser_path = os.path.join(basedir, 'parser_telegram.py')
-                subprocess.run(['python', parser_path])
+                parser_path = os.path.join(basedir, 'parsers', 'parser_telegram.py')
+                run_parser_with_logging(parser_path, 'telegram')
             
             thread = threading.Thread(target=run_telegram_parser)
             thread.daemon = True
@@ -36,8 +201,8 @@ def run_parser():
         if 'israil' in sources or 'all' in sources:
             # Запускаем парсер Израиль в отдельном потоке
             def run_israil_parser():
-                parser_path = os.path.join(basedir, 'parser_israil.py')
-                subprocess.run(['python', parser_path])
+                parser_path = os.path.join(basedir, 'parsers', 'parser_israil.py')
+                run_parser_with_logging(parser_path, 'israil')
             
             thread = threading.Thread(target=run_israil_parser)
             thread.daemon = True
@@ -46,16 +211,102 @@ def run_parser():
         if 'ria' in sources or 'all' in sources:
             # Запускаем парсер РИА в отдельном потоке
             def run_ria_parser():
-                parser_path = os.path.join(basedir, 'parser_ria.py')
-                subprocess.run(['python', parser_path])
+                parser_path = os.path.join(basedir, 'parsers', 'parser_ria.py')
+                run_parser_with_logging(parser_path, 'ria')
             
             thread = threading.Thread(target=run_ria_parser)
             thread.daemon = True
             thread.start()
         
+
         return jsonify({
             'status': 'success',
-            'message': f'Парсер для источника {source} успешно запущен'
+            'message': f'Парсеры для источников {sources} успешно запущены'
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# API-эндпоинт для остановки парсеров
+@parser_api_bp.route('/stop_parser', methods=['POST'])
+def stop_parser():
+    try:
+        data = request.json
+        sources = data.get('sources', [])
+        
+        # Обрабатываем случай совместимости со старым форматом
+        if not sources:
+            source = data.get('source', 'all')
+            if isinstance(source, str) and ',' in source:
+                sources = source.split(',')
+            else:
+                sources = [source]
+        
+        stopped_parsers = []
+        
+        for source in sources:
+            if source == 'all':
+                # Останавливаем все активные парсеры
+                for parser_name, process in list(active_parsers.items()):
+                    try:
+                        process.terminate()
+                        stopped_parsers.append(parser_name)
+                        if socketio:
+                            socketio.emit('parser_log', {
+                                'message': f'Парсер {parser_name} остановлен пользователем',
+                                'type': 'info',
+                                'source': parser_name
+                            })
+                    except Exception as e:
+                        if socketio:
+                            socketio.emit('parser_log', {
+                                'message': f'Ошибка при остановке парсера {parser_name}: {str(e)}',
+                                'type': 'error',
+                                'source': parser_name
+                            })
+                active_parsers.clear()
+                break
+            elif source in active_parsers:
+                # Останавливаем конкретный парсер
+                try:
+                    process = active_parsers[source]
+                    process.terminate()
+                    del active_parsers[source]
+                    stopped_parsers.append(source)
+                    if socketio:
+                        socketio.emit('parser_log', {
+                            'message': f'Парсер {source} остановлен пользователем',
+                            'type': 'info',
+                            'source': source
+                        })
+                except Exception as e:
+                    if socketio:
+                        socketio.emit('parser_log', {
+                            'message': f'Ошибка при остановке парсера {source}: {str(e)}',
+                            'type': 'error',
+                            'source': source
+                        })
+        
+        if stopped_parsers:
+            return jsonify({
+                'status': 'success',
+                'message': f'Остановлены парсеры: {stopped_parsers}'
+            })
+        else:
+            return jsonify({
+                'status': 'info',
+                'message': 'Нет активных парсеров для остановки'
+            })
+            
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# API-эндпоинт для получения статуса активных парсеров
+@parser_api_bp.route('/parser_status', methods=['GET'])
+def parser_status():
+    try:
+        return jsonify({
+            'status': 'success',
+            'active_parsers': list(active_parsers.keys())
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

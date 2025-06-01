@@ -1,8 +1,12 @@
 from flask import Flask
+from flask_socketio import SocketIO
 from config import Config
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 app.config.from_object(Config)
+
+# Инициализируем SocketIO
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Импортируем и регистрируем Blueprint-модули
 from app.blueprints import main_bp, news_api_bp, parser_api_bp, forecast_api_bp, external_api_bp
@@ -12,6 +16,10 @@ app.register_blueprint(news_api_bp)
 app.register_blueprint(parser_api_bp)
 app.register_blueprint(forecast_api_bp)
 app.register_blueprint(external_api_bp)
+
+# Инициализируем SocketIO в parser_api
+from app.blueprints.parser_api import init_socketio
+init_socketio(socketio)
 
 # Импортируем модели после инициализации приложения
 from app import models

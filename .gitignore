@@ -6,7 +6,12 @@ __pycache__/
 
 clickhouse_data/
 
+test/
+
+models/
+
 telegram_parser_session.session
 israil_parser.log
 parsers.log
 migration.log
+ЧТО_ДОБАВИТЬ.txt
