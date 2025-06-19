@@ -19,9 +19,23 @@
 
     <div class="db-controls">
         <div class="db-selector">
-            <button class="db-btn active" data-source="telegram">Telegram</button>
-            <button class="db-btn" data-source="israil">Израиль</button>
+            <button class="db-btn active" data-source="all">Все источники</button>
             <button class="db-btn" data-source="ria">РИА</button>
+            <button class="db-btn" data-source="lenta">Lenta.ru</button>
+            <button class="db-btn" data-source="rbc">RBC</button>
+            <button class="db-btn" data-source="gazeta">Gazeta.ru</button>
+            <button class="db-btn" data-source="kommersant">Kommersant</button>
+            <button class="db-btn" data-source="tsn">TSN.ua</button>
+            <button class="db-btn" data-source="unian">UNIAN.ua</button>
+            <button class="db-btn" data-source="rt">RT.com</button>
+            <button class="db-btn" data-source="cnn">CNN</button>
+            <button class="db-btn" data-source="aljazeera">Al Jazeera</button>
+            <button class="db-btn" data-source="reuters">Reuters</button>
+            <button class="db-btn" data-source="france24">France 24</button>
+            <button class="db-btn" data-source="dw">Deutsche Welle</button>
+            <button class="db-btn" data-source="euronews">Euronews</button>
+            <button class="db-btn" data-source="israil">7kanal.co.il</button>
+            <button class="db-btn" data-source="telegram">Telegram</button>
         </div>
         
         <div class="filter-controls">
@@ -92,9 +106,34 @@
         </div>
         <div class="modal-body">
             <div class="parser-options">
-                <label><input type="checkbox" name="parser" value="telegram" checked> Telegram</label>
-                <label><input type="checkbox" name="parser" value="israil" checked> Израиль</label>
-                <label><input type="checkbox" name="parser" value="ria" checked> РИА</label>
+                <div class="parser-group">
+                    <h4>Российские источники</h4>
+                    <label><input type="checkbox" name="parser" value="ria" checked><span>РИА Новости</span></label>
+                    <label><input type="checkbox" name="parser" value="lenta" checked><span>Lenta.ru</span></label>
+                    <label><input type="checkbox" name="parser" value="rbc" checked><span>RBC</span></label>
+                    <label><input type="checkbox" name="parser" value="gazeta" checked><span>Gazeta.ru</span></label>
+                    <label><input type="checkbox" name="parser" value="kommersant" checked><span>Kommersant</span></label>
+                </div>
+                <div class="parser-group">
+                    <h4>Украинские источники</h4>
+                    <label><input type="checkbox" name="parser" value="tsn" checked><span>TSN.ua</span></label>
+                    <label><input type="checkbox" name="parser" value="unian" checked><span>UNIAN.ua</span></label>
+                </div>
+                <div class="parser-group">
+                    <h4>Международные источники</h4>
+                    <label><input type="checkbox" name="parser" value="rt" checked><span>RT.com</span></label>
+                    <label><input type="checkbox" name="parser" value="cnn" checked><span>CNN</span></label>
+                    <label><input type="checkbox" name="parser" value="aljazeera" checked><span>Al Jazeera</span></label>
+                    <label><input type="checkbox" name="parser" value="reuters" checked><span>Reuters</span></label>
+                    <label><input type="checkbox" name="parser" value="france24" checked><span>France 24</span></label>
+                    <label><input type="checkbox" name="parser" value="dw" checked><span>Deutsche Welle</span></label>
+                    <label><input type="checkbox" name="parser" value="euronews" checked><span>Euronews</span></label>
+                </div>
+                <div class="parser-group">
+                    <h4>Другие источники</h4>
+                    <label><input type="checkbox" name="parser" value="israil" checked><span>7kanal.co.il</span></label>
+                    <label><input type="checkbox" name="parser" value="telegram" checked><span>Telegram каналы</span></label>
+                </div>
             </div>
         </div>
         <div class="modal-footer">

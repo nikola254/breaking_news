@@ -8,6 +8,8 @@ clickhouse_data/
 
 test/
 
+plots/
+
 models/
 
 telegram_parser_session.session
@@ -15,3 +17,17 @@ israil_parser.log
 parsers.log
 migration.log
 ЧТО_ДОБАВИТЬ.txt
+
+aljazeera_parser.log
+cnn_parser.log
+dw_parser.log
+euronews_parser.log
+france24_parser.log
+gazeta_parser.log
+kommersant_parser.log
+lenta_parser.log
+rbc_parser.log
+reuters_parser.log
+rt_parser.log
+tsn_parser.log
+unian_parser.log

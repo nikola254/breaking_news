@@ -191,9 +191,9 @@ def aiio_models():
     Returns:
         JSON: Список доступных AI моделей
     """
-    api_key = current_app.config.get('AIIO_API_KEY')
+    api_key = current_app.config.get('AI_IO_KEY')
     if not api_key:
-        return jsonify({'status': 'error', 'message': 'AIIO_API_KEY не найден'}), 500
+        return jsonify({'status': 'error', 'message': 'AI_IO_KEY не найден'}), 500
 
     try:
         response = requests.get(
@@ -239,9 +239,9 @@ def aiio_chat():
     model = "deepseek-ai/DeepSeek-R1"  # Фиксированная модель
     system_prompt = data.get('system_prompt', 'You are a helpful assistant.')
     
-    api_key = current_app.config.get('AIIO_API_KEY')
+    api_key = current_app.config.get('AI_IO_KEY')
     if not api_key:
-        return jsonify({'status': 'error', 'message': 'AIIO_API_KEY не найден'}), 500
+        return jsonify({'status': 'error', 'message': 'AI_IO_KEY не найден'}), 500
 
     try:
         response = requests.post(

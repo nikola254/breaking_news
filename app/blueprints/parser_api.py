@@ -222,34 +222,42 @@ def run_parser():
             else:
                 sources = [source]
         
-        # Определяем, какой парсер запустить в зависимости от источника
-        if 'telegram' in sources or 'all' in sources:
-            # Запускаем парсер Telegram в отдельном потоке
-            def run_telegram_parser():
-                parser_path = os.path.join(basedir, 'parsers', 'parser_telegram.py')
-                run_parser_with_logging(parser_path, 'telegram')
-            
-            thread = threading.Thread(target=run_telegram_parser)
-            thread.daemon = True
-            thread.start()
+        # Словарь всех доступных парсеров
+        available_parsers = {
+            'ria': 'parser_ria.py',
+            'lenta': 'parser_lenta.py',
+            'rbc': 'parser_rbc.py',
+            'gazeta': 'parser_gazeta.py',
+            'kommersant': 'parser_kommersant.py',
+            'tsn': 'parser_tsn.py',
+            'unian': 'parser_unian.py',
+            'rt': 'parser_rt.py',
+            'cnn': 'parser_cnn.py',
+            'aljazeera': 'parser_aljazeera.py',
+            'reuters': 'parser_reuters.py',
+            'france24': 'parser_france24.py',
+            'dw': 'parser_dw.py',
+            'euronews': 'parser_euronews.py',
+            'israil': 'parser_israil.py',
+            'telegram': 'parser_telegram.py'
+        }
         
-        if 'israil' in sources or 'all' in sources:
-            # Запускаем парсер Израиль в отдельном потоке
-            def run_israil_parser():
-                parser_path = os.path.join(basedir, 'parsers', 'parser_israil.py')
-                run_parser_with_logging(parser_path, 'israil')
-            
-            thread = threading.Thread(target=run_israil_parser)
-            thread.daemon = True
-            thread.start()
+        # Определяем, какие парсеры запустить
+        parsers_to_run = []
+        if 'all' in sources:
+            parsers_to_run = list(available_parsers.keys())
+        else:
+            parsers_to_run = [source for source in sources if source in available_parsers]
         
-        if 'ria' in sources or 'all' in sources:
-            # Запускаем парсер РИА в отдельном потоке
-            def run_ria_parser():
-                parser_path = os.path.join(basedir, 'parsers', 'parser_ria.py')
-                run_parser_with_logging(parser_path, 'ria')
+        # Запускаем каждый парсер в отдельном потоке
+        for parser_name in parsers_to_run:
+            parser_file = available_parsers[parser_name]
             
-            thread = threading.Thread(target=run_ria_parser)
+            def run_specific_parser(name, file):
+                parser_path = os.path.join(basedir, 'parsers', file)
+                run_parser_with_logging(parser_path, name)
+            
+            thread = threading.Thread(target=run_specific_parser, args=(parser_name, parser_file))
             thread.daemon = True
             thread.start()
         

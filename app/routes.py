@@ -75,6 +75,71 @@ def get_news():
                     
                     UNION ALL
                     
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.lenta_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.rbc_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.gazeta_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.kommersant_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.tsn_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.unian_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.rt_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.cnn_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.aljazeera_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.reuters_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.france24_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.dw_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.euronews_headlines
+                    
+                    UNION ALL
+                    
                     SELECT id, title, link, content, source, category, parsed_date, source_links, '' as message_link, '' as channel
                     FROM news.israil_headlines
                     
@@ -99,6 +164,84 @@ def get_news():
                 FROM (
                     SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
                     FROM news.ria_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.lenta_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.rbc_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.gazeta_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.kommersant_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.tsn_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.unian_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.rt_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.cnn_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.aljazeera_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.reuters_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.france24_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.dw_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.euronews_headlines
                     WHERE category = '{category}'
                     
                     UNION ALL
@@ -180,7 +323,90 @@ def get_news():
                 LIMIT {limit} OFFSET {offset}
             '''
         else:
-            return jsonify({'status': 'error', 'message': 'Недопустимый источник'}), 400
+            # Обработка конкретных источников
+            source_tables = {
+                'ria': 'news.ria_headlines',
+                'lenta': 'news.lenta_headlines',
+                'rbc': 'news.rbc_headlines',
+                'gazeta': 'news.gazeta_headlines',
+                'kommersant': 'news.kommersant_headlines',
+                'tsn': 'news.tsn_headlines',
+                'unian': 'news.unian_headlines',
+                'rt': 'news.rt_headlines',
+                'cnn': 'news.cnn_headlines',
+                'aljazeera': 'news.aljazeera_headlines',
+                'reuters': 'news.reuters_headlines',
+                'france24': 'news.france24_headlines',
+                'dw': 'news.dw_headlines',
+                'euronews': 'news.euronews_headlines',
+                'israil': 'news.israil_headlines',
+                'telegram': 'news.telegram_headlines'
+            }
+            
+            if source not in source_tables:
+                return jsonify({'status': 'error', 'message': 'Недопустимый источник'}), 400
+            
+            table_name = source_tables[source]
+            
+            if category == 'all':
+                if source == 'telegram':
+                    query = f'''
+                        SELECT 
+                            id, title, '' as link, content, source, category, parsed_date,
+                            '' as israil_link, '' as source_links, message_link as telegram_link, channel as telegram_channel
+                        FROM {table_name}
+                        ORDER BY parsed_date DESC
+                        LIMIT {limit} OFFSET {offset}
+                    '''
+                elif source == 'israil':
+                    query = f'''
+                        SELECT 
+                            id, title, '' as link, content, source, category, parsed_date,
+                            link as israil_link, source_links, '' as telegram_link, '' as telegram_channel
+                        FROM {table_name}
+                        ORDER BY parsed_date DESC
+                        LIMIT {limit} OFFSET {offset}
+                    '''
+                else:
+                    query = f'''
+                        SELECT 
+                            id, title, link, content, source, category, parsed_date,
+                            '' as israil_link, '' as source_links, '' as telegram_link, '' as telegram_channel
+                        FROM {table_name}
+                        ORDER BY parsed_date DESC
+                        LIMIT {limit} OFFSET {offset}
+                    '''
+            else:
+                if source == 'telegram':
+                    query = f'''
+                        SELECT 
+                            id, title, '' as link, content, source, category, parsed_date,
+                            '' as israil_link, '' as source_links, message_link as telegram_link, channel as telegram_channel
+                        FROM {table_name}
+                        WHERE category = '{category}'
+                        ORDER BY parsed_date DESC
+                        LIMIT {limit} OFFSET {offset}
+                    '''
+                elif source == 'israil':
+                    query = f'''
+                        SELECT 
+                            id, title, '' as link, content, source, category, parsed_date,
+                            link as israil_link, source_links, '' as telegram_link, '' as telegram_channel
+                        FROM {table_name}
+                        WHERE category = '{category}'
+                        ORDER BY parsed_date DESC
+                        LIMIT {limit} OFFSET {offset}
+                    '''
+                else:
+                    query = f'''
+                        SELECT 
+                            id, title, link, content, source, category, parsed_date,
+                            '' as israil_link, '' as source_links, '' as telegram_link, '' as telegram_channel
+                        FROM {table_name}
+                        WHERE category = '{category}'
+                        ORDER BY parsed_date DESC
+                        LIMIT {limit} OFFSET {offset}
+                    '''
             
         result = client.query(query)
         
@@ -196,8 +422,8 @@ def get_news():
                 'parsed_date': row[5].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[5], 'strftime') else row[5]
             }
             
-            # Добавляем специфичные поля в зависимости от источника
-            if row[6]:  # link для РИА
+                # Добавляем специфичные поля в зависимости от источника
+            if row[6]:  # link для обычных источников
                 news_item['link'] = row[6]
             if row[7]:  # israil_link
                 news_item['israil_link'] = row[7]

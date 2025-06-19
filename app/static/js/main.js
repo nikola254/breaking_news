@@ -102,9 +102,20 @@ function openModal(news) {
 
     // Определяем ссылку в зависимости от источника
     let linkUrl = '';
-    if (news.link) linkUrl = news.link;
-    else if (news.israil_link) linkUrl = news.israil_link;
-    else if (news.telegram_link) linkUrl = news.telegram_link;
+    // Проверяем все возможные поля для ссылок
+    const linkFields = [
+        'link', 'israil_link', 'telegram_link', 'lenta_link', 'rbc_link', 'gazeta_link', 
+        'kommersant_link', 'tsn_link', 'unian_link', 'rt_link', 'cnn_link', 'aljazeera_link', 
+        'reuters_link', 'france24_link', 'dw_link', 'euronews_link'
+    ];
+    
+    // Перебираем все возможные поля ссылок
+    for (const field of linkFields) {
+        if (news[field]) {
+            linkUrl = news[field];
+            break;
+        }
+    }
 
     const modalLink = document.getElementById('modal-link');
     if (linkUrl) {
