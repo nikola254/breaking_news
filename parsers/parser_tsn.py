@@ -200,16 +200,16 @@ def parse_tsn_news():
             
             # Сохранение в основную таблицу
             client.execute(
-                'INSERT INTO news.tsn_headlines (title, link, content, rubric, category) VALUES',
-                [(title, link, content, rubric, category)]
+                'INSERT INTO news.tsn_headlines (title, link, content, rubric, source, category) VALUES',
+                [(title, link, content, rubric, 'tsn.ua', category)]
             )
             
             # Сохранение в категорийную таблицу
-            category_table = f'news.telegram_{category}'
+            category_table = f'news.tsn_{category}'
             try:
                 client.execute(
-                    f'INSERT INTO {category_table} (title, content, source, category, channel) VALUES',
-                    [(title, content, 'tsn.ua', category, 'tsn_ua')]
+                    f'INSERT INTO {category_table} (title, link, content, source, category, parsed_date) VALUES',
+                    [(title, link, content, 'tsn.ua', category, datetime.now())]
                 )
             except Exception as e:
                 logger.warning(f"Не удалось сохранить в категорийную таблицу {category_table}: {e}")

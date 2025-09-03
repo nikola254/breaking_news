@@ -146,49 +146,75 @@ def create_category_tables(client):
     # Список категорий
     categories = ['ukraine', 'middle_east', 'fake_news', 'info_war', 'europe', 'usa', 'other']
     
-    # Создаем таблицу для каждой категории
-    for category in categories:
-        client.execute(f'''
-            CREATE TABLE IF NOT EXISTS news.ria_{category} (
-                id UUID DEFAULT generateUUIDv4(),
-                title String,
-                link String,
-                content String,
-                source String DEFAULT 'ria.ru',
-                category String DEFAULT '{category}',
-                parsed_date DateTime DEFAULT now()
-            ) ENGINE = MergeTree()
-            ORDER BY (parsed_date, id)
-        ''')
-        
-        client.execute(f'''
-            CREATE TABLE IF NOT EXISTS news.israil_{category} (
-                id UUID DEFAULT generateUUIDv4(),
-                title String,
-                link String,
-                content String,
-                source_links String,
-                source String DEFAULT '7kanal.co.il',
-                category String DEFAULT '{category}',
-                parsed_date DateTime DEFAULT now()
-            ) ENGINE = MergeTree()
-            ORDER BY (parsed_date, id)
-        ''')
-        
-        client.execute(f'''
-            CREATE TABLE IF NOT EXISTS news.telegram_{category} (
-                id UUID DEFAULT generateUUIDv4(),
-                title String,
-                content String,
-                channel String,
-                message_id Int64,
-                message_link String,
-                source String DEFAULT 'telegram',
-                category String DEFAULT '{category}',
-                parsed_date DateTime DEFAULT now()
-            ) ENGINE = MergeTree()
-            ORDER BY (parsed_date, id)
-        ''')
+    # Список всех источников новостей
+    sources = {
+        'ria': {'table_suffix': 'ria', 'default_source': 'ria.ru', 'extra_fields': ''},
+        'israil': {'table_suffix': 'israil', 'default_source': '7kanal.co.il', 'extra_fields': 'source_links String,'},
+        'telegram': {'table_suffix': 'telegram', 'default_source': 'telegram', 'extra_fields': 'channel String, message_id Int64, message_link String,'},
+        'lenta': {'table_suffix': 'lenta', 'default_source': 'lenta.ru', 'extra_fields': ''},
+        'rbc': {'table_suffix': 'rbc', 'default_source': 'rbc.ru', 'extra_fields': ''},
+        'cnn': {'table_suffix': 'cnn', 'default_source': 'cnn.com', 'extra_fields': ''},
+        'aljazeera': {'table_suffix': 'aljazeera', 'default_source': 'aljazeera.com', 'extra_fields': ''},
+        'tsn': {'table_suffix': 'tsn', 'default_source': 'tsn.ua', 'extra_fields': ''},
+        'unian': {'table_suffix': 'unian', 'default_source': 'unian.net', 'extra_fields': ''},
+        'rt': {'table_suffix': 'rt', 'default_source': 'rt.com', 'extra_fields': ''},
+        'euronews': {'table_suffix': 'euronews', 'default_source': 'euronews.com', 'extra_fields': ''},
+        'reuters': {'table_suffix': 'reuters', 'default_source': 'reuters.com', 'extra_fields': ''},
+        'france24': {'table_suffix': 'france24', 'default_source': 'france24.com', 'extra_fields': ''},
+        'dw': {'table_suffix': 'dw', 'default_source': 'dw.com', 'extra_fields': ''},
+        'bbc': {'table_suffix': 'bbc', 'default_source': 'bbc.com', 'extra_fields': ''},
+        'gazeta': {'table_suffix': 'gazeta', 'default_source': 'gazeta.ru', 'extra_fields': ''},
+        'kommersant': {'table_suffix': 'kommersant', 'default_source': 'kommersant.ru', 'extra_fields': ''}
+    }
+    
+    # Создаем таблицы для каждого источника и каждой категории
+    for source_key, source_info in sources.items():
+        for category in categories:
+            # Специальная обработка для telegram
+            if source_key == 'telegram':
+                client.execute(f'''
+                    CREATE TABLE IF NOT EXISTS news.telegram_{category} (
+                        id UUID DEFAULT generateUUIDv4(),
+                        title String,
+                        content String,
+                        channel String,
+                        message_id Int64,
+                        message_link String,
+                        source String DEFAULT 'telegram',
+                        category String DEFAULT '{category}',
+                        parsed_date DateTime DEFAULT now()
+                    ) ENGINE = MergeTree()
+                    ORDER BY (parsed_date, id)
+                ''')
+            # Специальная обработка для israil
+            elif source_key == 'israil':
+                client.execute(f'''
+                    CREATE TABLE IF NOT EXISTS news.israil_{category} (
+                        id UUID DEFAULT generateUUIDv4(),
+                        title String,
+                        link String,
+                        content String,
+                        source_links String,
+                        source String DEFAULT '7kanal.co.il',
+                        category String DEFAULT '{category}',
+                        parsed_date DateTime DEFAULT now()
+                    ) ENGINE = MergeTree()
+                    ORDER BY (parsed_date, id)
+                ''')
+            # Стандартная структура для остальных источников
+            else:
+                client.execute(f'''
+                    CREATE TABLE IF NOT EXISTS news.{source_info["table_suffix"]}_{category} (
+                        id UUID DEFAULT generateUUIDv4(),
+                        title String,
+                        link String,
+                        content String,
+                        source String DEFAULT '{source_info["default_source"]}',
+                        category String DEFAULT '{category}',
+                        parsed_date DateTime DEFAULT now()
+                    ) ENGINE = MergeTree()
+                    ORDER BY (parsed_date, id)
+                ''')
 
 
 # Функция для перемещения существующих данных в категоризированные таблицы

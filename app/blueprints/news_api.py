@@ -19,7 +19,7 @@ def get_news():
     """Получение новостей с фильтрацией и поиском.
     
     Query Parameters:
-        source (str): Источник новостей ('all', 'ria', 'israil', 'telegram')
+        source (str): Источник новостей ('all', 'ria', 'israil', 'telegram', 'lenta', 'rbc', 'cnn', 'aljazeera', 'tsn', 'unian', 'rt', 'euronews', 'reuters', 'france24', 'dw', 'bbc', 'gazeta', 'kommersant')
         category (str): Категория новостей ('all', 'ukraine', 'middle_east', etc.)
         limit (int): Количество новостей для возврата (по умолчанию 100)
         offset (int): Смещение для пагинации (по умолчанию 0)
@@ -52,7 +52,7 @@ def get_news():
                         WHEN source = 'ria.ru' THEN link
                         WHEN source = '7kanal.co.il' THEN link
                         WHEN source = 'telegram' THEN message_link
-                        ELSE ''
+                        ELSE link
                     END as link,
                     if(source = 'telegram', channel, '') as telegram_channel
                 FROM (
@@ -64,6 +64,90 @@ def get_news():
                     
                     SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
                     FROM news.israil_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.lenta_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.rbc_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.cnn_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.aljazeera_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.tsn_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.unian_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.rt_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.euronews_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.reuters_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.france24_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.dw_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.bbc_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.gazeta_headlines
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.kommersant_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
@@ -200,6 +284,314 @@ def get_news():
                     channel as telegram_channel
                 FROM news.telegram_{category}
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'lenta' and category == 'all':
+            # Только Lenta, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.lenta_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'lenta' and category != 'all':
+            # Только Lenta, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.lenta_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'rbc' and category == 'all':
+            # Только RBC, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.rbc_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'rbc' and category != 'all':
+            # Только RBC, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.rbc_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'cnn' and category == 'all':
+            # Только CNN, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.cnn_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'cnn' and category != 'all':
+            # Только CNN, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.cnn_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'aljazeera' and category == 'all':
+            # Только Al Jazeera, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.aljazeera_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'aljazeera' and category != 'all':
+            # Только Al Jazeera, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.aljazeera_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'tsn' and category == 'all':
+            # Только TSN, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.tsn_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'tsn' and category != 'all':
+            # Только TSN, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.tsn_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'unian' and category == 'all':
+            # Только UNIAN, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.unian_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'unian' and category != 'all':
+            # Только UNIAN, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.unian_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'rt' and category == 'all':
+            # Только RT, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.rt_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'rt' and category != 'all':
+            # Только RT, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.rt_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'euronews' and category == 'all':
+            # Только Euronews, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.euronews_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'euronews' and category != 'all':
+            # Только Euronews, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.euronews_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'reuters' and category == 'all':
+            # Только Reuters, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.reuters_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'reuters' and category != 'all':
+            # Только Reuters, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.reuters_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'france24' and category == 'all':
+            # Только France24, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.france24_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'france24' and category != 'all':
+            # Только France24, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.france24_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'dw' and category == 'all':
+            # Только DW, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.dw_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'dw' and category != 'all':
+            # Только DW, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.dw_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'bbc' and category == 'all':
+            # Только BBC, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.bbc_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'bbc' and category != 'all':
+            # Только BBC, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.bbc_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'gazeta' and category == 'all':
+            # Только Gazeta, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.gazeta_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'gazeta' and category != 'all':
+            # Только Gazeta, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.gazeta_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'kommersant' and category == 'all':
+            # Только Kommersant, все категории
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.kommersant_headlines
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'kommersant' and category != 'all':
+            # Только Kommersant, конкретная категория
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.kommersant_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                 ORDER BY parsed_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''

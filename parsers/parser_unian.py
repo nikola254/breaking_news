@@ -196,16 +196,16 @@ def parse_unian_news():
             
             # Сохранение в основную таблицу
             client.execute(
-                'INSERT INTO news.unian_headlines (title, link, content, rubric, category) VALUES',
-                [(title, link, content, rubric, category)]
+                'INSERT INTO news.unian_headlines (title, link, content, rubric, source, category) VALUES',
+                [(title, link, content, rubric, 'unian.ua', category)]
             )
             
             # Сохранение в категорийную таблицу
-            category_table = f'news.telegram_{category}'
+            category_table = f'news.unian_{category}'
             try:
                 client.execute(
-                    f'INSERT INTO {category_table} (title, content, source, category, channel) VALUES',
-                    [(title, content, 'unian.ua', category, 'unian_ua')]
+                    f'INSERT INTO {category_table} (title, link, content, source, category, parsed_date) VALUES',
+                    [(title, link, content, 'unian.net', category, datetime.now())]
                 )
             except Exception as e:
                 logger.warning(f"Не удалось сохранить в категорийную таблицу {category_table}: {e}")

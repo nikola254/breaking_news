@@ -135,6 +135,7 @@ def parse_politics_headlines():
                 'title': title,
                 'link': link,
                 'content': content,
+                'source': 'ria.ru',
                 'category': category,
                 'parsed_date': datetime.now()
             })
@@ -150,7 +151,7 @@ def parse_politics_headlines():
     if headlines_data:
         # Вставляем в общую таблицу
         client.execute(
-            'INSERT INTO news.ria_headlines (title, link, content, category, parsed_date) VALUES',
+            'INSERT INTO news.ria_headlines (title, link, content, source, category, parsed_date) VALUES',
             headlines_data
         )
         
@@ -166,7 +167,7 @@ def parse_politics_headlines():
         for category, data in categorized_data.items():
             if data:
                 client.execute(
-                    f'INSERT INTO news.ria_{category} (title, link, content, category, parsed_date) VALUES',
+                    f'INSERT INTO news.ria_{category} (title, link, content, source, category, parsed_date) VALUES',
                     data
                 )
         

@@ -198,16 +198,16 @@ def parse_rt_news():
             
             # Сохранение в основную таблицу
             client.execute(
-                'INSERT INTO news.rt_headlines (title, link, content, rubric, category) VALUES',
-                [(title, link, content, rubric, category)]
+                'INSERT INTO news.rt_headlines (title, link, content, rubric, source, category) VALUES',
+                [(title, link, content, rubric, 'rt.com', category)]
             )
             
             # Сохранение в категорийную таблицу
-            category_table = f'news.telegram_{category}'
+            category_table = f'news.rt_{category}'
             try:
                 client.execute(
-                    f'INSERT INTO {category_table} (title, content, source, category, channel) VALUES',
-                    [(title, content, 'rt.com', category, 'rt_com')]
+                    f'INSERT INTO {category_table} (title, link, content, source, category, parsed_date) VALUES',
+                    [(title, link, content, 'rt.com', category, datetime.now())]
                 )
             except Exception as e:
                 logger.warning(f"Не удалось сохранить в категорийную таблицу {category_table}: {e}")
