@@ -1,5 +1,5 @@
 // Глобальные переменные
-let currentSource = 'telegram';
+let currentSource = 'all';
 let currentPage = 1;
 let currentFilter = null;
 let currentFilterValue = null;
@@ -87,6 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Загрузка данных при первом открытии страницы
     loadData();
+    
+    // Загружаем доступные источники
+    loadAvailableSources();
     
     // Инициализируем WebSocket и проверяем статус парсеров
     initWebSocket();
@@ -558,6 +561,18 @@ function openParserSelectionModal() {
     const modal = document.getElementById('parser-modal');
     modal.style.display = 'block';
     
+    // Обработчик для показа/скрытия поля ввода URL
+    const universalCheckbox = document.getElementById('universal-parser-checkbox');
+    const customSiteContainer = document.getElementById('custom-site-container');
+    
+    universalCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            customSiteContainer.style.display = 'block';
+        } else {
+            customSiteContainer.style.display = 'none';
+        }
+    });
+    
     // Обработчик закрытия модального окна
     const closeBtn = modal.querySelector('.close-modal');
     closeBtn.onclick = function() {
@@ -576,8 +591,22 @@ function openParserSelectionModal() {
     startBtn.onclick = function() {
         const selectedParsers = [];
         const checkboxes = modal.querySelectorAll('input[name="parser"]:checked');
+        
         checkboxes.forEach(checkbox => {
-            selectedParsers.push(checkbox.value);
+            if (checkbox.value === 'universal') {
+                const customUrl = document.getElementById('custom-site-url').value.trim();
+                if (customUrl) {
+                    selectedParsers.push({
+                        type: 'universal',
+                        url: customUrl
+                    });
+                } else {
+                    alert('Пожалуйста, введите URL сайта для универсального парсера!');
+                    return;
+                }
+            } else {
+                selectedParsers.push(checkbox.value);
+            }
         });
         
         if (selectedParsers.length > 0) {
@@ -713,6 +742,15 @@ function initWebSocket() {
         socket.on('parser_log', function(data) {
             addLogEntry(data.message, data.type);
             
+            // Проверяем, создана ли новая таблица для пользовательского сайта
+            if (data.message.includes('Создана таблица') && data.type === 'success') {
+                addLogEntry('Создана новая таблица - обновляем список источников', 'success');
+                // Автоматически обновляем список доступных источников
+                setTimeout(() => {
+                    loadAvailableSources();
+                }, 1000); // Небольшая задержка для завершения создания таблицы
+            }
+            
             // Обновляем статус парсинга на основе сообщений
             if (data.message.includes('Запуск парсера')) {
                 isParsingActive = true;
@@ -721,9 +759,28 @@ function initWebSocket() {
                 }
                 updateStopButtonState();
             } else if (data.message.includes('завершен') || data.message.includes('остановлен')) {
-                activeParsers = activeParsers.filter(parser => parser !== data.source);
+                // Удаляем источник из списка активных парсеров
+                const sourceIndex = activeParsers.findIndex(parser => {
+                    if (typeof parser === 'object' && parser.type === 'universal') {
+                        return data.source === 'universal';
+                    }
+                    return parser === data.source;
+                });
+                
+                if (sourceIndex !== -1) {
+                    activeParsers.splice(sourceIndex, 1);
+                }
+                
                 isParsingActive = activeParsers.length > 0;
                 updateStopButtonState();
+                
+                // Если все парсеры завершены и был универсальный парсер
+                if (activeParsers.length === 0) {
+                    addLogEntry('Все парсеры завершены', 'info');
+                    if (data.source === 'universal') {
+                        addLogEntry('Для отображения нового раздела обновите страницу', 'success');
+                    }
+                }
             }
         });
         
@@ -740,6 +797,54 @@ function initWebSocket() {
 }
 
 // Функция для запуска парсеров
+function loadAvailableSources() {
+    // Загружает список доступных источников данных и обновляет интерфейс
+    fetch('/api/sources')
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            updateSourceButtons(data.data.sources);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при загрузке источников:', error);
+    });
+}
+
+function updateSourceButtons(sources) {
+    // Обновляет кнопки источников данных, добавляя пользовательские источники
+    const sourceButtonsContainer = document.querySelector('.source-buttons');
+    if (!sourceButtonsContainer) return;
+    
+    // Добавляем кнопки для пользовательских источников
+    if (sources.custom && Object.keys(sources.custom).length > 0) {
+        Object.entries(sources.custom).forEach(([sourceKey, sourceName]) => {
+            // Проверяем, существует ли уже кнопка для этого источника
+            const existingButton = sourceButtonsContainer.querySelector(`[data-source="${sourceKey}"]`);
+            if (!existingButton) {
+                const button = document.createElement('button');
+                button.className = 'db-btn';
+                button.dataset.source = sourceKey;
+                button.textContent = sourceName;
+                button.title = `Просмотр новостей из ${sourceName}`;
+                
+                // Добавляем обработчик события
+                button.addEventListener('click', () => {
+                    document.querySelectorAll('.db-btn').forEach(b => b.classList.remove('active'));
+                    button.classList.add('active');
+                    currentSource = sourceKey;
+                    currentPage = 1;
+                    currentFilter = null;
+                    currentFilterValue = null;
+                    loadData();
+                });
+                
+                sourceButtonsContainer.appendChild(button);
+            }
+        });
+    }
+}
+
 function runParsers(sources) {
     // Инициализируем WebSocket если еще не инициализирован
     initWebSocket();
@@ -748,7 +853,15 @@ function runParsers(sources) {
     showParserLog();
     clearLog();
     addLogEntry('Инициализация парсинга...', 'info');
-    addLogEntry(`Выбранные источники: ${sources.join(', ')}`, 'info');
+    
+    // Формируем описание выбранных источников
+    const sourceDescriptions = sources.map(source => {
+        if (typeof source === 'object' && source.type === 'universal') {
+            return `Универсальный парсер (${source.url})`;
+        }
+        return source;
+    });
+    addLogEntry(`Выбранные источники: ${sourceDescriptions.join(', ')}`, 'info');
     
     // Обновляем состояние парсинга
     isParsingActive = true;
@@ -766,6 +879,15 @@ function runParsers(sources) {
     .then(data => {
         console.log('Парсинг запущен:', data);
         addLogEntry('Запрос на парсинг отправлен', 'success');
+        
+        // Проверяем, есть ли универсальные парсеры в списке
+        const hasUniversalParser = sources.some(source => 
+            typeof source === 'object' && source.type === 'universal'
+        );
+        
+        if (hasUniversalParser) {
+            addLogEntry('Обнаружен универсальный парсер - будет создан новый раздел', 'info');
+        }
     })
     .catch(error => {
         console.error('Ошибка при запуске парсинга:', error);

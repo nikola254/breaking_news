@@ -3,6 +3,7 @@
 // Глобальные переменные
 let currentCategory = 'ukraine';
 let currentPage = 1;
+let availableCategories = [];
 
 // Функция для загрузки новостей
 function loadNews(category, page) {
@@ -41,6 +42,55 @@ function loadNews(category, page) {
             }
         })
         .catch(error => console.error('Ошибка сети:', error));
+}
+
+// Функция для загрузки доступных категорий
+function loadCategories() {
+    fetch('/api/categories')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                availableCategories = data.data;
+                updateCategoryButtons();
+            } else {
+                console.error('Ошибка загрузки категорий:', data.message);
+            }
+        })
+        .catch(error => console.error('Ошибка сети при загрузке категорий:', error));
+}
+
+// Функция для обновления кнопок категорий
+function updateCategoryButtons() {
+    const newsTypesContainer = document.querySelector('.news-types');
+    if (!newsTypesContainer) return;
+    
+    // Очищаем существующие кнопки
+    newsTypesContainer.innerHTML = '';
+    
+    // Добавляем кнопки для всех категорий
+    availableCategories.forEach((category, index) => {
+        const button = document.createElement('button');
+        button.className = 'news-type-btn';
+        button.dataset.category = category.id;
+        button.textContent = category.name;
+        
+        // Первая кнопка активна по умолчанию
+        if (index === 0) {
+            button.classList.add('active');
+            currentCategory = category.id;
+        }
+        
+        // Добавляем обработчик клика
+        button.addEventListener('click', function() {
+            document.querySelector('.news-type-btn.active')?.classList.remove('active');
+            this.classList.add('active');
+            currentCategory = this.dataset.category;
+            currentPage = 1;
+            loadNews(currentCategory, currentPage);
+        });
+        
+        newsTypesContainer.appendChild(button);
+    });
 }
 
 // Функция обновления пагинации
@@ -130,17 +180,15 @@ function openModal(news) {
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    // Обработчики для кнопок категорий
-    document.querySelectorAll('.news-type-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelector('.news-type-btn.active').classList.remove('active');
-            this.classList.add('active');
-            // Получаем английское значение категории из data-category
-            currentCategory = this.dataset.category;
-            currentPage = 1;
+    // Загружаем категории и инициализируем интерфейс
+    loadCategories();
+    
+    // Ждем загрузки категорий, затем загружаем новости
+    setTimeout(() => {
+        if (currentCategory) {
             loadNews(currentCategory, currentPage);
-        });
-    });
+        }
+    }, 500);
     
     // Обработчик закрытия окна по клику на крестик
     document.querySelector('.close')?.addEventListener('click', () => {

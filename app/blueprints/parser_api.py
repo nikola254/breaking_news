@@ -191,6 +191,106 @@ def run_parser_with_logging(parser_path, source_name):
                 'source': source_name
             })
 
+def run_universal_parser_with_logging(parser_path, site_url):
+    """Запускает универсальный парсер с указанным URL и передает его вывод через WebSocket.
+    
+    Args:
+        parser_path (str): Путь к файлу универсального парсера
+        site_url (str): URL сайта для парсинга
+    """
+    try:
+        source_name = f"universal_{site_url}"
+        
+        # Отправляем начальное сообщение
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Запуск универсального парсера для {site_url}...',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        # Проверяем существование файла парсера
+        if not os.path.exists(parser_path):
+            if socketio:
+                socketio.emit('parser_log', {
+                    'message': f'Ошибка: файл универсального парсера {parser_path} не найден',
+                    'type': 'error',
+                    'source': source_name
+                })
+            return
+        
+        # Запускаем процесс универсального парсера с URL в качестве аргумента
+        process = subprocess.Popen(
+            ['python', parser_path, '--url', site_url],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            bufsize=1
+        )
+        
+        # Сохраняем процесс в глобальном словаре
+        active_parsers[source_name] = process
+        
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Универсальный парсер для {site_url} создан с PID: {process.pid}',
+                'type': 'info',
+                'source': source_name
+            })
+        
+        # Читаем вывод построчно и отправляем через WebSocket
+        line_count = 0
+        for line in iter(process.stdout.readline, ''):
+            line_count += 1
+            if line.strip():
+                # Определяем тип сообщения на основе содержимого
+                message_type = 'info'
+                if 'Ошибка' in line or 'Error' in line:
+                    message_type = 'error'
+                elif 'Найдена новая статья' in line or 'Добавлено' in line or 'Получено' in line:
+                    message_type = 'success'
+                
+                if socketio:
+                    socketio.emit('parser_log', {
+                        'message': line.strip(),
+                        'type': message_type,
+                        'source': source_name
+                    })
+        
+        # Ждем завершения процесса
+        process.wait()
+        
+        # Удаляем процесс из словаря активных процессов
+        if source_name in active_parsers:
+            del active_parsers[source_name]
+        
+        # Отправляем финальное сообщение
+        if socketio:
+            if process.returncode == 0:
+                socketio.emit('parser_log', {
+                    'message': f'Универсальный парсер для {site_url} завершен успешно',
+                    'type': 'success',
+                    'source': source_name
+                })
+            else:
+                socketio.emit('parser_log', {
+                    'message': f'Универсальный парсер для {site_url} завершен с ошибкой (код: {process.returncode})',
+                    'type': 'error',
+                    'source': source_name
+                })
+                
+    except Exception as e:
+        # Удаляем процесс из словаря в случае ошибки
+        if source_name in active_parsers:
+            del active_parsers[source_name]
+            
+        if socketio:
+            socketio.emit('parser_log', {
+                'message': f'Исключение при запуске универсального парсера для {site_url}: {str(e)}',
+                'type': 'error',
+                'source': source_name
+            })
+
 # API-эндпоинт для запуска парсеров
 @parser_api_bp.route('/run_parser', methods=['POST'])
 def run_parser():
@@ -244,12 +344,18 @@ def run_parser():
         
         # Определяем, какие парсеры запустить
         parsers_to_run = []
+        universal_sites = []
+        
         if 'all' in sources:
             parsers_to_run = list(available_parsers.keys())
         else:
-            parsers_to_run = [source for source in sources if source in available_parsers]
+            for source in sources:
+                if isinstance(source, dict) and source.get('type') == 'universal':
+                    universal_sites.append(source)
+                elif source in available_parsers:
+                    parsers_to_run.append(source)
         
-        # Запускаем каждый парсер в отдельном потоке
+        # Запускаем стандартные парсеры в отдельных потоках
         for parser_name in parsers_to_run:
             parser_file = available_parsers[parser_name]
             
@@ -258,6 +364,42 @@ def run_parser():
                 run_parser_with_logging(parser_path, name)
             
             thread = threading.Thread(target=run_specific_parser, args=(parser_name, parser_file))
+            thread.daemon = True
+            thread.start()
+        
+        # Запускаем универсальные парсеры для пользовательских сайтов
+        for site_config in universal_sites:
+            site_url = site_config.get('url')
+            
+            def run_universal_parser_with_category_creation(url):
+                # Сначала создаем таблицу для нового сайта
+                try:
+                    # Импортируем функцию создания таблицы
+                    sys.path.append(os.path.join(basedir, 'parsers'))
+                    from news_categories import create_custom_table_for_site
+                    
+                    # Создаем таблицу для пользовательского сайта
+                    table_name = create_custom_table_for_site(url)
+                    
+                    if socketio:
+                        socketio.emit('parser_log', {
+                            'message': f'Создана таблица {table_name} для сайта {url}',
+                            'type': 'success',
+                            'source': 'universal'
+                        })
+                except Exception as e:
+                    if socketio:
+                        socketio.emit('parser_log', {
+                            'message': f'Ошибка при создании таблицы для {url}: {str(e)}',
+                            'type': 'error',
+                            'source': 'universal'
+                        })
+                
+                # Затем запускаем парсер
+                parser_path = os.path.join(basedir, 'parsers', 'universal_parser.py')
+                run_universal_parser_with_logging(parser_path, url)
+            
+            thread = threading.Thread(target=run_universal_parser_with_category_creation, args=(site_url,))
             thread.daemon = True
             thread.start()
         

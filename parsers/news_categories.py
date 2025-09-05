@@ -8,9 +8,13 @@
 """
 
 import re
+import logging
 from clickhouse_driver import Client
 import sys
 import os
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 # Добавляем корневую директорию проекта в sys.path для импорта config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,22 +22,36 @@ from config import Config
 
 # Категория: Украина
 UKRAINE_KEYWORDS = [
+    # Русские ключевые слова
     'украин', 'киев', 'зеленск', 'харьков', 'одесс', 'львов', 'донбасс', 'донецк', 'луганск',
     'всу', 'афу', 'крым', 'херсон', 'николаев', 'запорожье', 'мариуполь',
     'укр', 'незалежн', 'хохл', 'бандер', 'азов', 'айдар', 'нацбат',
     'порошенко', 'тимошенко', 'яценюк', 'турчинов', 'аваков', 'кличко',
     'майдан', 'евромайдан', 'оун', 'упа', 'схрон', 'схід', 'захід',
-    'укрзализныця', 'укрэнерго', 'нафтогаз', 'укроборонпром'
+    'укрзализныця', 'укрэнерго', 'нафтогаз', 'укроборонпром',
+    # Английские ключевые слова
+    'ukraine', 'ukrainian', 'kyiv', 'kiev', 'zelensky', 'zelenskyy', 'kharkiv', 'odesa', 'lviv',
+    'donbas', 'donetsk', 'luhansk', 'crimea', 'kherson', 'mykolaiv', 'zaporizhzhia', 'mariupol',
+    'dnipro', 'chernihiv', 'sumy', 'poltava', 'vinnytsia', 'ternopil', 'rivne', 'volyn',
+    'maidan', 'euromaidan', 'azov', 'aidar', 'poroshenko', 'tymoshenko', 'yatsenyuk', 'klitschko'
 ]
 
 # Категория: Ближний восток
 MIDDLE_EAST_KEYWORDS = [
+    # Русские ключевые слова
     'израил', 'палестин', 'газ', 'хамас', 'сектор газа', 'тель-авив', 'иерусалим', 'нетаньяху',
     'хезболла', 'ливан', 'бейрут', 'сири', 'дамаск', 'асад', 'идлиб', 'алеппо',
     'иран', 'тегеран', 'хаменеи', 'ирак', 'багдад', 'курд', 'пешмерга',
     'саудовск', 'эр-рияд', 'йемен', 'хути', 'сана', 'аден', 'оаэ', 'катар', 'доха',
     'турц', 'анкар', 'эрдоган', 'стамбул', 'иордан', 'амман', 'египет', 'каир',
-    'синай', 'игил', 'исламск', 'джихад', 'талибан', 'моссад', 'цахал'
+    'синай', 'игил', 'исламск', 'джихад', 'талибан', 'моссад', 'цахал',
+    # Английские ключевые слова
+    'israel', 'israeli', 'palestine', 'palestinian', 'gaza', 'hamas', 'tel aviv', 'jerusalem', 'netanyahu',
+    'hezbollah', 'lebanon', 'beirut', 'syria', 'syrian', 'damascus', 'assad', 'idlib', 'aleppo',
+    'iran', 'iranian', 'tehran', 'khamenei', 'iraq', 'iraqi', 'baghdad', 'kurd', 'kurdish', 'peshmerga',
+    'saudi', 'riyadh', 'yemen', 'houthi', 'sanaa', 'aden', 'uae', 'qatar', 'doha',
+    'turkey', 'turkish', 'ankara', 'erdogan', 'istanbul', 'jordan', 'amman', 'egypt', 'egyptian', 'cairo',
+    'sinai', 'isis', 'islamic', 'jihad', 'taliban', 'mossad', 'idf'
 ]
 
 # Категория: Фейки
@@ -58,6 +76,7 @@ INFO_WAR_KEYWORDS = [
 
 # Категория: Европа
 EUROPE_KEYWORDS = [
+    # Русские ключевые слова
     'европ', 'ес', 'евросоюз', 'еврокомисс', 'брюссель', 'страсбург',
     'герман', 'берлин', 'франц', 'париж', 'великобритан', 'лондон',
     'итал', 'рим', 'испан', 'мадрид', 'польш', 'варшав', 'чех', 'прага',
@@ -65,11 +84,21 @@ EUROPE_KEYWORDS = [
     'финлянд', 'хельсинк', 'дан', 'копенгаген', 'нидерланд', 'голланд', 'амстердам',
     'бельг', 'брюссель', 'швейцар', 'берн', 'балкан', 'балти',
     'шольц', 'макрон', 'сунак', 'меланони', 'санчес', 'орбан',
-    'нато', 'альянс', 'евро', 'шенген', 'брексит', 'мигрант', 'беженц'
+    'нато', 'альянс', 'евро', 'шенген', 'брексит', 'мигрант', 'беженц',
+    # Английские ключевые слова
+    'europe', 'european', 'eu', 'brussels', 'strasbourg', 'commission',
+    'germany', 'german', 'berlin', 'france', 'french', 'paris', 'britain', 'uk', 'london',
+    'italy', 'italian', 'rome', 'spain', 'spanish', 'madrid', 'poland', 'polish', 'warsaw',
+    'czech', 'prague', 'hungary', 'hungarian', 'budapest', 'austria', 'austrian', 'vienna',
+    'sweden', 'swedish', 'stockholm', 'norway', 'norwegian', 'oslo', 'finland', 'finnish', 'helsinki',
+    'denmark', 'danish', 'copenhagen', 'netherlands', 'dutch', 'amsterdam', 'belgium', 'belgian',
+    'switzerland', 'swiss', 'bern', 'balkans', 'baltic', 'scholz', 'macron', 'sunak', 'meloni',
+    'nato', 'alliance', 'euro', 'schengen', 'brexit', 'migrant', 'refugee'
 ]
 
 # Категория: США
 USA_KEYWORDS = [
+    # Русские ключевые слова
     'сша', 'америк', 'штат', 'вашингтон', 'нью-йорк', 'белый дом', 'пентагон',
     'госдеп', 'госдепартамент', 'цру', 'фбр', 'нса', 'байден', 'трамп', 'обама',
     'клинтон', 'буш', 'рейган', 'конгресс', 'сенат', 'палата представител',
@@ -77,7 +106,16 @@ USA_KEYWORDS = [
     'доллар', 'уолл-стрит', 'фрс', 'федрезерв', 'калифорн', 'техас', 'флорид',
     'аляск', 'гавай', 'невад', 'аризон', 'нью-джерси', 'массачусетс',
     'пенсильван', 'огайо', 'мичиган', 'иллинойс', 'чикаго', 'лос-анджелес',
-    'сан-франциско', 'бостон', 'филадельфи', 'детройт', 'сиэтл', 'майами'
+    'сан-франциско', 'бостон', 'филадельфи', 'детройт', 'сиэтл', 'майами',
+    # Английские ключевые слова
+    'usa', 'america', 'american', 'states', 'washington', 'new york', 'white house', 'pentagon',
+    'state department', 'cia', 'fbi', 'nsa', 'biden', 'trump', 'obama',
+    'clinton', 'bush', 'reagan', 'congress', 'senate', 'house of representatives',
+    'republican', 'democrat', 'libertarian', 'impeachment', 'election',
+    'dollar', 'wall street', 'fed', 'federal reserve', 'california', 'texas', 'florida',
+    'alaska', 'hawaii', 'nevada', 'arizona', 'new jersey', 'massachusetts',
+    'pennsylvania', 'ohio', 'michigan', 'illinois', 'chicago', 'los angeles',
+    'san francisco', 'boston', 'philadelphia', 'detroit', 'seattle', 'miami'
 ]
 
 
@@ -362,6 +400,95 @@ def migrate_existing_data():
         ria_count = len(ria_categorized_data[category])
         israil_count = len(israil_categorized_data[category])
         print(f"Категория {category}: RIA - {ria_count}, Israil - {israil_count}")
+
+
+def create_custom_site_tables(client, site_name):
+    """Создает таблицы для пользовательского сайта
+    
+    Args:
+        client: Клиент ClickHouse
+        site_name (str): Название сайта (будет использовано как префикс таблицы)
+    """
+    # Список категорий
+    categories = ['ukraine', 'middle_east', 'fake_news', 'info_war', 'europe', 'usa', 'other']
+    
+    # Очищаем название сайта для использования в качестве имени таблицы
+    clean_site_name = re.sub(r'[^a-zA-Z0-9_]', '_', site_name.lower())
+    clean_site_name = re.sub(r'_+', '_', clean_site_name).strip('_')
+    
+    # Создаем основную таблицу для сайта
+    try:
+        client.execute(f'''
+            CREATE TABLE IF NOT EXISTS news.{clean_site_name}_headlines (
+                id UUID DEFAULT generateUUIDv4(),
+                title String,
+                link String,
+                content String,
+                source String DEFAULT '{site_name}',
+                category String DEFAULT 'other',
+                parsed_date DateTime DEFAULT now(),
+                language String DEFAULT 'unknown',
+                metadata String DEFAULT '{{}}'
+            ) ENGINE = MergeTree()
+            ORDER BY (parsed_date, id)
+        ''')
+        
+        # Создаем категорийные таблицы для каждой категории
+        for category in categories:
+            client.execute(f'''
+                CREATE TABLE IF NOT EXISTS news.{clean_site_name}_{category} (
+                    id UUID DEFAULT generateUUIDv4(),
+                    title String,
+                    link String,
+                    content String,
+                    source String DEFAULT '{site_name}',
+                    category String DEFAULT '{category}',
+                    parsed_date DateTime DEFAULT now(),
+                    language String DEFAULT 'unknown',
+                    metadata String DEFAULT '{{}}'
+                ) ENGINE = MergeTree()
+                ORDER BY (parsed_date, id)
+            ''')
+            
+        logger.info(f"Созданы таблицы для пользовательского сайта: {site_name}")
+        return clean_site_name
+        
+    except Exception as e:
+        logger.error(f"Ошибка создания таблиц для сайта {site_name}: {e}")
+        return None
+
+
+def get_site_table_name(site_url):
+    """Получает название таблицы на основе URL сайта
+    
+    Args:
+        site_url (str): URL сайта
+        
+    Returns:
+        str: Очищенное название для использования в качестве имени таблицы
+    """
+    from urllib.parse import urlparse
+    
+    # Извлекаем домен из URL
+    parsed_url = urlparse(site_url)
+    domain = parsed_url.netloc or parsed_url.path
+    
+    # Убираем www. если есть
+    if domain.startswith('www.'):
+        domain = domain[4:]
+    
+    # Убираем расширение домена для краткости
+    domain_parts = domain.split('.')
+    if len(domain_parts) > 1:
+        site_name = domain_parts[0]
+    else:
+        site_name = domain
+    
+    # Очищаем название для использования в БД
+    clean_name = re.sub(r'[^a-zA-Z0-9_]', '_', site_name.lower())
+    clean_name = re.sub(r'_+', '_', clean_name).strip('_')
+    
+    return clean_name
 
 
 if __name__ == "__main__":

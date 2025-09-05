@@ -101,7 +101,7 @@ function sendToAI() {
     const prompt = document.getElementById('ai-prompt').value;
     const responseBox = document.getElementById('ai-response');
     const temperature = parseFloat(document.getElementById('temperature').value) || 0.7;
-    const maxTokens = parseInt(document.getElementById('max_tokens').value) || 2048;
+    const maxTokens = parseInt(document.getElementById('max_tokens').value) || 1000;
     const model = document.getElementById('ai-model').value;
     
     if (!prompt.trim()) {
@@ -371,11 +371,19 @@ function generateForecast() {
     chartContainer.innerHTML = '';
     
     // Формируем системный промт для DeepSeek с инструкциями по анализу данных
-    const systemPrompt = `Ты - аналитик социальной напряженности. Проанализируй новостные данные из категории "${getReadableCategoryName(newsCategory)}" за последние ${getReadableTimePeriod(analysisPeriod)} и сделай прогноз социальной напряженности на ${getReadableTimePeriod(forecastPeriod)} вперед. Используй данные из ClickHouse для анализа. Твой ответ должен включать: 1) Общую оценку текущей ситуации, 2) Прогноз изменения индекса напряженности, 3) Ключевые факторы влияния, 4) Рекомендации.`;
+    const systemPrompt = `Ты - аналитик социальной напряженности. Проанализируй новостные статьи и дай текстовый прогноз развития ситуации. 
+
+Формат ответа:
+1) Краткий анализ текущей ситуации на основе новостей
+2) Прогноз развития событий на ближайшие дни
+3) Ключевые факторы влияния
+4) Возможные сценарии развития
+
+Отвечай текстом, без цифр и числовых индексов. Фокусируйся на качественном анализе событий.`;
     
     // Сначала отправляем запрос к AI для анализа данных и создания прогноза
-    const userPrompt = prompt.trim() ? prompt : 'Проанализируй новостные данные и создай прогноз социальной напряженности';
-    const aiPrompt = `${userPrompt}\n\nПараметры анализа:\n- Категория: ${getReadableCategoryName(newsCategory)}\n- Период анализа: ${getReadableTimePeriod(analysisPeriod)}\n- Период прогноза: ${getReadableTimePeriod(forecastPeriod)}\n\nВ ответе обязательно укажи конкретные числовые значения прогноза напряженности по дням в формате JSON в конце ответа.`;
+    const userPrompt = prompt.trim() ? prompt : 'Проанализируй новостные статьи и дай текстовый прогноз развития ситуации';
+    const aiPrompt = `${userPrompt}. Категория: ${getReadableCategoryName(newsCategory)}, период анализа: ${getReadableTimePeriod(analysisPeriod)}, прогноз на: ${getReadableTimePeriod(forecastPeriod)}. Дай качественный анализ без числовых данных.`;
     
     // Отправляем запрос к AI для получения прогноза
     const aiioEndpoint = '/api/aiio/chat';

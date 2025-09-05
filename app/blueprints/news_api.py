@@ -34,13 +34,36 @@ def get_news():
     offset = request.args.get('offset', 0, type=int)
     search = request.args.get('search', '')
     
-    # Проверка валидности категории
+    # Проверка валидности категории (включая пользовательские таблицы)
     valid_categories = ['ukraine', 'middle_east', 'fake_news', 'info_war', 'europe', 'usa', 'other']
-    if category not in valid_categories and category != 'all':
-        return jsonify({'status': 'error', 'message': f'Недопустимая категория. Допустимые категории: {valid_categories}'}), 400
+    
+    # Проверяем, является ли категория пользовательской таблицей
+    is_custom_table = category.startswith('custom_') and category.endswith('_headlines')
+    
+    if category not in valid_categories and category != 'all' and not is_custom_table:
+        return jsonify({'status': 'error', 'message': f'Недопустимая категория. Допустимые категории: {valid_categories} или пользовательские таблицы'}), 400
     
     try:
         client = get_clickhouse_client()
+        
+        # Получаем список пользовательских таблиц для включения в общий запрос
+        custom_tables_query = """
+            SELECT name 
+            FROM system.tables 
+            WHERE database = 'news' 
+            AND name LIKE 'custom_%_headlines'
+        """
+        custom_tables = client.query(custom_tables_query)
+        custom_tables_unions = []
+        
+        for table in custom_tables.result_rows:
+            table_name = table[0]
+            union_query = f"""
+                SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                FROM news.{table_name}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+            """
+            custom_tables_unions.append(union_query)
         
         # Формируем запрос в зависимости от источника и категории
         if source == 'all' and category == 'all':
@@ -595,6 +618,17 @@ def get_news():
                 ORDER BY parsed_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
+        elif is_custom_table:
+            # Пользовательская таблица
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, link,
+                    '' as telegram_channel
+                FROM news.{category}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
         else:
             return jsonify({'status': 'error', 'message': 'Недопустимый источник'}), 400
             
@@ -642,6 +676,64 @@ def get_news():
             'current_page': current_page,
             'page_size': page_size
         })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    finally:
+        if 'client' in locals():
+            client.close()
+
+@news_api_bp.route('/categories', methods=['GET'])
+def get_categories():
+    """Получение списка доступных категорий новостей, включая пользовательские сайты.
+    
+    Returns:
+        JSON: Список категорий с их названиями и типами
+    """
+    try:
+        client = get_clickhouse_client()
+        
+        # Базовые категории
+        base_categories = [
+            {'id': 'all', 'name': 'Все категории', 'type': 'base'},
+            {'id': 'ukraine', 'name': 'Украина', 'type': 'base'},
+            {'id': 'middle_east', 'name': 'Ближний восток', 'type': 'base'},
+            {'id': 'fake_news', 'name': 'Фейки', 'type': 'base'},
+            {'id': 'info_war', 'name': 'Инфовойна', 'type': 'base'},
+            {'id': 'europe', 'name': 'Европа', 'type': 'base'},
+            {'id': 'usa', 'name': 'США', 'type': 'base'},
+            {'id': 'other', 'name': 'Другое', 'type': 'base'}
+        ]
+        
+        # Получаем пользовательские таблицы
+        custom_tables_query = """
+            SELECT name 
+            FROM system.tables 
+            WHERE database = 'news' 
+            AND name LIKE 'custom_%_headlines'
+        """
+        
+        custom_tables = client.query(custom_tables_query)
+        custom_categories = []
+        
+        for table in custom_tables.result_rows:
+            table_name = table[0]
+            # Извлекаем название сайта из имени таблицы
+            site_name = table_name.replace('custom_', '').replace('_headlines', '').replace('_', '.')
+            custom_categories.append({
+                'id': table_name,
+                'name': site_name.title(),
+                'type': 'custom',
+                'table_name': table_name
+            })
+        
+        all_categories = base_categories + custom_categories
+        
+        return jsonify({
+            'status': 'success',
+            'data': all_categories,
+            'total': len(all_categories)
+        })
+        
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
     finally:
@@ -778,6 +870,87 @@ def get_telegram_headlines():
             'total_pages': total_pages,
             'current_page': page,
             'available_channels': channels
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    finally:
+        if 'client' in locals():
+            client.close()
+
+@news_api_bp.route('/sources', methods=['GET'])
+def get_available_sources():
+    """Получение списка всех доступных источников данных.
+    
+    Возвращает список всех доступных источников новостей,
+    включая стандартные источники и пользовательские таблицы.
+    
+    Returns:
+        JSON: Список доступных источников с их описаниями
+    """
+    try:
+        client = get_clickhouse_client()
+        
+        # Стандартные источники
+        standard_sources = {
+            'all': 'Все источники',
+            'ria': 'РИА Новости',
+            'lenta': 'Lenta.ru',
+            'rbc': 'РБК',
+            'gazeta': 'Газета.ru',
+            'kommersant': 'Коммерсантъ',
+            'tsn': 'ТСН',
+            'unian': 'УНИАН',
+            'rt': 'RT',
+            'cnn': 'CNN',
+            'aljazeera': 'Al Jazeera',
+            'reuters': 'Reuters',
+            'france24': 'France 24',
+            'dw': 'Deutsche Welle',
+            'euronews': 'Euronews',
+            'bbc': 'BBC',
+            'israil': '7kanal.co.il',
+            'telegram': 'Telegram каналы'
+        }
+        
+        # Получаем список пользовательских таблиц
+        custom_tables_query = """
+            SELECT name FROM system.tables 
+            WHERE database = 'news' 
+            AND name LIKE 'custom_%_headlines'
+            ORDER BY name
+        """
+        
+        custom_tables_result = client.query(custom_tables_query)
+        custom_sources = {}
+        
+        for row in custom_tables_result.result_rows:
+            table_name = row[0]
+            # Извлекаем название сайта из имени таблицы
+            site_name = table_name.replace('custom_', '').replace('_headlines', '')
+            display_name = site_name.replace('_', '.').title()
+            custom_sources[table_name] = f'Пользовательский сайт: {display_name}'
+        
+        # Стандартные категории
+        standard_categories = {
+            'all': 'Все категории',
+            'ukraine': 'Украина',
+            'middle_east': 'Ближний Восток',
+            'fake_news': 'Фейковые новости',
+            'info_war': 'Информационная война',
+            'europe': 'Европа',
+            'usa': 'США',
+            'other': 'Другое'
+        }
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'sources': {
+                    'standard': standard_sources,
+                    'custom': custom_sources
+                },
+                'categories': standard_categories
+            }
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

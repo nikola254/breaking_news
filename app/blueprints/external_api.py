@@ -236,7 +236,7 @@ def aiio_chat():
     """
     data = request.json
     prompt = data.get('prompt', '')
-    model = "deepseek-ai/DeepSeek-R1"  # Фиксированная модель
+    model = "deepseek-ai/DeepSeek-R1-0528"  # Поддерживаемая модель DeepSeek-R1
     system_prompt = data.get('system_prompt', 'You are a helpful assistant.')
     
     api_key = current_app.config.get('AI_IO_KEY')

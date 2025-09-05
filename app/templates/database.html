@@ -134,6 +134,15 @@
                     <label><input type="checkbox" name="parser" value="israil" checked><span>7kanal.co.il</span></label>
                     <label><input type="checkbox" name="parser" value="telegram" checked><span>Telegram каналы</span></label>
                 </div>
+                <div class="parser-group">
+                    <h4>Универсальный парсер</h4>
+                    <label><input type="checkbox" name="parser" value="universal" id="universal-parser-checkbox"><span>Пользовательский сайт</span></label>
+                    <div class="custom-site-input" id="custom-site-container" style="display: none; margin-top: 10px;">
+                        <label for="custom-site-url">URL сайта или домен:</label>
+                        <input type="text" id="custom-site-url" placeholder="Например: https://example.com или example.com" style="width: 100%; margin-top: 5px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <small style="color: #666; display: block; margin-top: 5px;">Введите полный URL или домен сайта для парсинга</small>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="modal-footer">

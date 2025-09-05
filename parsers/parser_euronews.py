@@ -16,10 +16,11 @@ from clickhouse_driver import Client
 from datetime import datetime
 import time
 import random
-from news_categories import classify_news, create_category_tables
+from parsers.news_categories import classify_news, create_category_tables
 import sys
 import os
 import logging
+import re
 
 # Добавляем корневую директорию проекта в sys.path для импорта config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -99,7 +100,14 @@ def get_article_content(url, headers):
 
 def parse_euronews_news():
     """Основная функция парсинга новостей с Euronews.com"""
-    base_url = "https://www.euronews.com"
+    # Попробуем парсить разные разделы новостей
+    sections = [
+        "https://www.euronews.com/news/europe",
+        "https://www.euronews.com/news/international",
+        "https://www.euronews.com/business",
+        "https://www.euronews.com/my-europe"
+    ]
+    
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -109,39 +117,84 @@ def parse_euronews_news():
         "Upgrade-Insecure-Requests": "1"
     }
     
-    try:
-        response = requests.get(base_url, headers=headers, timeout=15)
-        response.raise_for_status()
-        logger.info(f"Успешно получена главная страница Euronews.com")
-    except requests.RequestException as e:
-        logger.error(f"Ошибка при получении данных с Euronews.com: {e}")
-        return
-
-    soup = BeautifulSoup(response.content, "html.parser")
-
-    # Поиск новостных блоков на главной странице
+    article_links = []
+    
+    for section_url in sections:
+        try:
+            logger.info(f"Парсинг раздела: {section_url}")
+            response = requests.get(section_url, headers=headers, timeout=15)
+            response.raise_for_status()
+            response.encoding = 'utf-8'
+            
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # Ищем все ссылки на статьи
+            links = soup.find_all('a', href=True)
+            section_links = []
+            
+            for link in links:
+                href = link.get('href')
+                if href:
+                    # Ищем ссылки, которые выглядят как новостные статьи
+                    if ('/2024/' in href or '/2025/' in href) and not re.search(r'/(tag|programme|video|my-europe|green|next|travel|culture|sport)/', href):
+                        section_links.append(link)
+                    # Также ищем ссылки с длинными заголовками (характерно для новостей)
+                    elif len(href.split('/')[-1]) > 20 and not href.endswith('.html') and not re.search(r'/(tag|programme|video|my-europe|green|next|travel|culture|sport)/', href):
+                        section_links.append(link)
+            
+            logger.info(f"Найдено {len(section_links)} ссылок в разделе {section_url}")
+            article_links.extend(section_links)
+            
+            # Небольшая пауза между запросами
+            time.sleep(1)
+            
+        except requests.RequestException as e:
+            logger.error(f"Ошибка при получении раздела {section_url}: {e}")
+            continue
+    
+    logger.info(f"Всего найдено {len(article_links)} потенциальных новостных ссылок")
+    
+    # Удаляем дубликаты и обрабатываем ссылки
     articles = []
+    seen_urls = set()
+    base_url = "https://www.euronews.com"  # Определяем base_url
     
-    # Основные новости
-    main_news = soup.find_all("a", class_="m-object__title__link")
-    articles.extend(main_news)
-    
-    # Новости в блоках
-    block_news = soup.find_all("a", href=lambda x: x and '/news/' in x)
-    articles.extend(block_news)
-    
-    # Дополнительные новости
-    additional_news = soup.find_all("h1", class_="m-object__title")
-    for h1 in additional_news:
-        link_elem = h1.find("a")
-        if link_elem:
-            articles.append(link_elem)
+    for link in article_links:
+        href = link.get('href')
+        if not href:
+            continue
+            
+        # Преобразуем относительные ссылки в абсолютные
+        if href.startswith('/'):
+            full_url = base_url + href
+        elif href.startswith('http'):
+            full_url = href
+        else:
+            continue
+            
+        # Проверяем, что это действительно ссылка на Euronews
+        if 'euronews.com' not in full_url:
+            continue
+            
+        # Избегаем дубликатов
+        if full_url in seen_urls:
+            continue
+        seen_urls.add(full_url)
+        
+        # Создаем объект ссылки с полным URL, сохраняя оригинальные методы
+        link_obj = type('obj', (object,), {
+            'get': lambda self, attr, url=full_url: url if attr == 'href' else link.get(attr),
+            'find': lambda self, *args, **kwargs: link.find(*args, **kwargs) if hasattr(link, 'find') else None,
+            'text': getattr(link, 'text', ''),
+            'get_text': lambda self, *args, **kwargs: link.get_text(*args, **kwargs) if hasattr(link, 'get_text') else ''
+        })()
+        articles.append(link_obj)
     
     if not articles:
-        logger.warning("Не найдено новостных статей на главной странице")
+        logger.warning("Не найдено новостных статей")
         return
 
-    logger.info(f"Найдено {len(articles)} новостных ссылок")
+    logger.info(f"Обработано {len(articles)} уникальных новостных ссылок")
 
     # Подключение к ClickHouse
     client = Client(
@@ -174,12 +227,15 @@ def parse_euronews_news():
             if '/video/' in link or '/live/' in link or '/sport/' in link:
                 continue
             
-            # Извлечение заголовка
-            title_elem = article.find(["span", "h3", "h2", "h1"])
-            if not title_elem:
-                title_elem = article
+            # Извлечение заголовка из текста ссылки или из URL
+            title = article.get_text(strip=True) if hasattr(article, 'get_text') else ""
             
-            title = title_elem.get_text(strip=True) if title_elem else "Без заголовка"
+            # Если заголовок пустой, попробуем извлечь из URL
+            if not title or len(title) < 10:
+                # Извлекаем заголовок из URL (последняя часть после последнего слеша)
+                url_parts = link.rstrip('/').split('/')
+                if url_parts:
+                    title = url_parts[-1].replace('-', ' ').replace('_', ' ').title()
             
             if len(title) < 10:  # Пропускаем слишком короткие заголовки
                 continue

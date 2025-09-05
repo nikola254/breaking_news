@@ -186,30 +186,70 @@ def perform_real_analysis(category, analysis_period, forecast_period):
         if not client:
             return None
         
+        # Получаем список пользовательских таблиц
+        custom_tables_query = """
+            SELECT name 
+            FROM system.tables 
+            WHERE database = 'news' 
+            AND name LIKE 'custom_%_headlines'
+        """
+        custom_tables = client.query(custom_tables_query)
+        custom_unions = []
+        
+        for table in custom_tables.result_rows:
+            table_name = table[0]
+            custom_unions.append(f"SELECT title, content, parsed_date, category FROM news.{table_name}")
+        
         # Формируем запрос в зависимости от категории
         if category == 'all':
             category_filter = ""
         else:
             category_filter = f"AND category = '{category}'"
         
-        # Получаем данные за период анализа
+        # Получаем данные за период анализа из всех таблиц
+        # Формируем список всех таблиц (стандартные + пользовательские)
+        all_unions = [
+            "SELECT title, content, parsed_date, category FROM news.ria_headlines",
+            "SELECT title, content, parsed_date, category FROM news.bbc_headlines",
+            "SELECT title, content, parsed_date, category FROM news.cnn_headlines",
+            "SELECT title, content, parsed_date, category FROM news.reuters_headlines",
+            "SELECT title, content, parsed_date, category FROM news.france24_headlines",
+            "SELECT title, content, parsed_date, category FROM news.aljazeera_headlines",
+            "SELECT title, content, parsed_date, category FROM news.euronews_headlines",
+            "SELECT title, content, parsed_date, category FROM news.dw_headlines",
+            "SELECT title, content, parsed_date, category FROM news.rt_headlines",
+            "SELECT title, content, parsed_date, category FROM news.gazeta_headlines",
+            "SELECT title, content, parsed_date, category FROM news.lenta_headlines",
+            "SELECT title, content, parsed_date, category FROM news.kommersant_headlines",
+            "SELECT title, content, parsed_date, category FROM news.rbc_headlines",
+            "SELECT title, content, parsed_date, category FROM news.tsn_headlines",
+            "SELECT title, content, parsed_date, category FROM news.unian_headlines",
+            "SELECT title, content, parsed_date, category FROM news.israil_headlines",
+            "SELECT title, content, parsed_date, category FROM news.telegram_headlines"
+        ]
+        
+        # Добавляем пользовательские таблицы
+        all_unions.extend(custom_unions)
+        
         query = f"""
-        SELECT title, content, published_date, category
-        FROM news 
-        WHERE published_date >= now() - INTERVAL {analysis_period} HOUR
+        SELECT title, content, parsed_date as published_date, category
+        FROM (
+            {' UNION ALL '.join(all_unions)}
+        ) as all_news
+        WHERE parsed_date >= now() - INTERVAL {analysis_period} HOUR
         {category_filter}
         ORDER BY published_date DESC
         LIMIT 1000
         """
         
-        news_data = client.execute(query)
+        news_data = client.query(query)
         
-        if not news_data:
+        if not news_data.result_rows:
             return None
         
         # Преобразуем в список словарей
         articles = []
-        for row in news_data:
+        for row in news_data.result_rows:
             articles.append({
                 'title': row[0],
                 'content': row[1],

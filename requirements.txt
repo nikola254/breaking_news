@@ -75,7 +75,6 @@ tb-nightly==2.19.0a20250218
 Telethon==1.40.0
 tensorboard-data-server==0.7.2
 termcolor==3.1.0
-tf_nightly==2.20.0.dev20250425
 threadpoolctl==3.6.0
 trio==0.30.0
 trio-websocket==0.12.2
