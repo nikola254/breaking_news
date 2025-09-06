@@ -100,6 +100,30 @@ class UniversalParser:
         ORDER BY (site_name, parsed_date)
         """
         self.client.execute(create_table_query)
+        self._create_universal_category_tables()
+        
+    def _create_universal_category_tables(self):
+        """Создание стандартных таблиц категорий для универсального парсера"""
+        categories = ['ukraine', 'middle_east', 'fake_news', 'info_war', 'europe', 'usa', 'other']
+        
+        try:
+            for category in categories:
+                self.client.execute(f'''
+                    CREATE TABLE IF NOT EXISTS news.universal_{category} (
+                        id UUID DEFAULT generateUUIDv4(),
+                        title String,
+                        link String,
+                        content String,
+                        source String,
+                        category String DEFAULT '{category}',
+                        parsed_date DateTime DEFAULT now()
+                    ) ENGINE = MergeTree()
+                    ORDER BY (parsed_date, id)
+                ''')
+            
+            logger.info("Стандартные таблицы категорий созданы успешно")
+        except Exception as e:
+            logger.error(f"Ошибка создания таблиц категорий: {e}")
         
     def get_default_configs(self) -> Dict[str, SiteConfig]:
         """Получение конфигураций по умолчанию для популярных новостных сайтов"""
@@ -359,7 +383,7 @@ class UniversalParser:
         return any(indicator in url.lower() for indicator in article_indicators)
         
     def save_articles(self, articles: List[Dict], site_url: str = None):
-        """Сохранение статей в ClickHouse с автоматическим созданием таблиц"""
+        """Сохранение статей в ClickHouse в стандартные таблицы категорий"""
         if not articles or not self.client:
             return
             
@@ -384,65 +408,35 @@ class UniversalParser:
                     new_articles
                 )
                 
-                # Если указан URL сайта, создаем специфичные таблицы и сохраняем туда тоже
-                if site_url:
-                    site_table_name = get_site_table_name(site_url)
-                    site_name = articles[0].get('site_name', site_url) if articles else site_url
+                # Добавляем статьи в стандартные таблицы категорий
+                # Группируем статьи по категориям
+                articles_by_category = {}
+                for article in new_articles:
+                    category = article.get('category', 'other')
+                    if category not in articles_by_category:
+                        articles_by_category[category] = []
                     
-                    # Создаем таблицы для сайта если они не существуют
-                    clean_site_name = create_custom_site_tables(self.client, site_name)
-                    
-                    if clean_site_name:
-                        # Группируем статьи по категориям
-                        articles_by_category = {}
-                        for article in new_articles:
-                            category = article.get('category', 'other')
-                            if category not in articles_by_category:
-                                articles_by_category[category] = []
-                            
-                            # Подготавливаем данные для вставки в специфичную таблицу
-                            article_data = {
-                                'title': article['title'],
-                                'link': article['url'],
-                                'content': article['content'],
-                                'source': article['site_name'],
-                                'category': category,
-                                'language': article.get('language', 'unknown'),
-                                'metadata': article.get('metadata', '{}')
-                            }
-                            articles_by_category[category].append(article_data)
-                        
-                        # Сохраняем в основную таблицу сайта
-                        main_table_data = []
-                        for article in new_articles:
-                            main_table_data.append({
-                                'title': article['title'],
-                                'link': article['url'],
-                                'content': article['content'],
-                                'source': article['site_name'],
-                                'category': article.get('category', 'other'),
-                                'language': article.get('language', 'unknown'),
-                                'metadata': article.get('metadata', '{}')
-                            })
-                        
-                        try:
-                            self.client.execute(
-                                f"INSERT INTO news.{clean_site_name}_headlines (title, link, content, source, category, language, metadata) VALUES",
-                                main_table_data
-                            )
-                        except Exception as e:
-                            logger.warning(f"Не удалось сохранить в основную таблицу {clean_site_name}_headlines: {e}")
-                        
-                        # Сохраняем в категорийные таблицы
-                        for category, category_articles in articles_by_category.items():
-                            try:
-                                self.client.execute(
-                                    f"INSERT INTO news.{clean_site_name}_{category} (title, link, content, source, category, language, metadata) VALUES",
-                                    category_articles
-                                )
-                                logger.info(f"Сохранено {len(category_articles)} статей в категорию {category} для сайта {site_name}")
-                            except Exception as e:
-                                logger.warning(f"Не удалось сохранить в категорийную таблицу {clean_site_name}_{category}: {e}")
+                    # Подготавливаем данные для вставки в стандартную таблицу категории
+                    article_data = {
+                        'title': article['title'],
+                        'link': article['url'],
+                        'content': article['content'],
+                        'source': article['site_name'],
+                        'category': category
+                    }
+                    articles_by_category[category].append(article_data)
+                
+                # Сохраняем в стандартные таблицы категорий
+                for category, category_articles in articles_by_category.items():
+                    try:
+                        # Сохраняем в стандартную таблицу категории universal_{category}
+                        self.client.execute(
+                            f"INSERT INTO news.universal_{category} (title, link, content, source, category) VALUES",
+                            category_articles
+                        )
+                        logger.info(f"Сохранено {len(category_articles)} статей в стандартную категорию {category}")
+                    except Exception as e:
+                        logger.warning(f"Не удалось сохранить в стандартную таблицу universal_{category}: {e}")
                 
                 logger.info(f"Сохранено {len(new_articles)} новых статей")
             else:

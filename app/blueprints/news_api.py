@@ -192,6 +192,48 @@ def get_news():
                         SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_other
                     )
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.universal_ukraine
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.universal_middle_east
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.universal_fake_news
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.universal_info_war
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.universal_europe
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.universal_usa
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.universal_other
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                 )
                 ORDER BY parsed_date DESC
                 LIMIT {limit} OFFSET {offset}
@@ -676,6 +718,188 @@ def get_news():
             'current_page': current_page,
             'page_size': page_size
         })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    finally:
+        if 'client' in locals():
+            client.close()
+
+@news_api_bp.route('/statistics', methods=['GET'])
+def get_statistics():
+    """Получение статистики по количеству статей.
+    
+    Возвращает общее количество статей и разбивку по категориям
+    для отображения на главной странице.
+    
+    Returns:
+        JSON: Статистика по количеству статей
+    """
+    try:
+        client = get_clickhouse_client()
+        
+        # Получаем общее количество статей из всех источников (включая старые)
+        total_query = """
+            SELECT COUNT(*) as total FROM (
+                SELECT id FROM news.ria_headlines
+                UNION ALL
+                SELECT id FROM news.lenta_headlines
+                UNION ALL
+                SELECT id FROM news.rbc_headlines
+                UNION ALL
+                SELECT id FROM news.gazeta_headlines
+                UNION ALL
+                SELECT id FROM news.kommersant_headlines
+                UNION ALL
+                SELECT id FROM news.tsn_headlines
+                UNION ALL
+                SELECT id FROM news.unian_headlines
+                UNION ALL
+                SELECT id FROM news.rt_headlines
+                UNION ALL
+                SELECT id FROM news.cnn_headlines
+                UNION ALL
+                SELECT id FROM news.aljazeera_headlines
+                UNION ALL
+                SELECT id FROM news.reuters_headlines
+                UNION ALL
+                SELECT id FROM news.france24_headlines
+                UNION ALL
+                SELECT id FROM news.dw_headlines
+                UNION ALL
+                SELECT id FROM news.euronews_headlines
+                UNION ALL
+                SELECT id FROM news.bbc_headlines
+                UNION ALL
+                SELECT id FROM news.israil_headlines
+                UNION ALL
+                SELECT id FROM news.telegram_ukraine
+                UNION ALL
+                SELECT id FROM news.telegram_middle_east
+                UNION ALL
+                SELECT id FROM news.telegram_fake_news
+                UNION ALL
+                SELECT id FROM news.telegram_info_war
+                UNION ALL
+                SELECT id FROM news.telegram_europe
+                UNION ALL
+                SELECT id FROM news.telegram_usa
+                UNION ALL
+                SELECT id FROM news.telegram_other
+                UNION ALL
+                SELECT id FROM news.universal_ukraine
+                UNION ALL
+                SELECT id FROM news.universal_middle_east
+                UNION ALL
+                SELECT id FROM news.universal_fake_news
+                UNION ALL
+                SELECT id FROM news.universal_info_war
+                UNION ALL
+                SELECT id FROM news.universal_europe
+                UNION ALL
+                SELECT id FROM news.universal_usa
+                UNION ALL
+                SELECT id FROM news.universal_other
+            )
+        """
+        
+        total_result = client.query(total_query)
+        total_count = total_result.result_rows[0][0] if total_result.result_rows else 0
+        
+        # Получаем статистику по категориям
+        categories_stats = {}
+        
+        categories = {
+            'ukraine': 'Украина',
+            'middle_east': 'Ближний Восток', 
+            'fake_news': 'Фейки',
+            'info_war': 'Инфовойна',
+            'europe': 'Европа',
+            'usa': 'США',
+            'other': 'Другое'
+        }
+        
+        for category_key, category_name in categories.items():
+            category_query = f"""
+                SELECT COUNT(*) as count FROM (
+                    SELECT id FROM news.ria_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.lenta_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.rbc_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.gazeta_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.kommersant_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.tsn_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.unian_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.rt_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.cnn_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.aljazeera_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.reuters_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.france24_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.dw_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.euronews_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.bbc_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.israil_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.telegram_{category_key}
+                    UNION ALL
+                    SELECT id FROM news.universal_{category_key}
+                )
+            """
+            
+            category_result = client.query(category_query)
+            category_count = category_result.result_rows[0][0] if category_result.result_rows else 0
+            categories_stats[category_key] = {
+                'name': category_name,
+                'count': category_count
+            }
+        
+        # Получаем статистику по пользовательским таблицам
+        custom_tables_query = """
+            SELECT name FROM system.tables 
+            WHERE database = 'news' 
+            AND name LIKE 'custom_%_headlines'
+            ORDER BY name
+        """
+        
+        custom_tables_result = client.query(custom_tables_query)
+        custom_stats = {}
+        
+        for row in custom_tables_result.result_rows:
+            table_name = row[0]
+            site_name = table_name.replace('custom_', '').replace('_headlines', '')
+            display_name = site_name.replace('_', '.').title()
+            
+            custom_count_query = f"SELECT COUNT(*) FROM news.{table_name}"
+            custom_count_result = client.query(custom_count_query)
+            custom_count = custom_count_result.result_rows[0][0] if custom_count_result.result_rows else 0
+            
+            custom_stats[table_name] = {
+                'name': display_name,
+                'count': custom_count
+            }
+        
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'total': total_count,
+                'categories': categories_stats,
+                'custom_sources': custom_stats
+            }
+        })
+        
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
     finally:

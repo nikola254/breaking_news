@@ -91,6 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Загружаем доступные источники
     loadAvailableSources();
     
+    // Загружаем статистику
+    loadStatistics();
+    
     // Инициализируем WebSocket и проверяем статус парсеров
     initWebSocket();
     
@@ -888,6 +891,11 @@ function runParsers(sources) {
         if (hasUniversalParser) {
             addLogEntry('Обнаружен универсальный парсер - будет создан новый раздел', 'info');
         }
+        
+        // Обновляем статистику после завершения парсинга
+        setTimeout(() => {
+            loadStatistics();
+        }, 5000); // Обновляем через 5 секунд
     })
     .catch(error => {
         console.error('Ошибка при запуске парсинга:', error);
@@ -896,4 +904,70 @@ function runParsers(sources) {
         activeParsers = [];
         updateStopButtonState();
     });
+}
+
+// Функция для загрузки статистики
+function loadStatistics() {
+    fetch('/api/statistics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displayStatistics(data.data);
+            } else {
+                console.error('Ошибка загрузки статистики:', data.message);
+                document.getElementById('statistics-content').innerHTML = 
+                    '<div class="loading-stats">Ошибка загрузки статистики</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            document.getElementById('statistics-content').innerHTML = 
+                '<div class="loading-stats">Ошибка загрузки статистики</div>';
+        });
+}
+
+// Функция для отображения статистики
+function displayStatistics(stats) {
+    const container = document.getElementById('statistics-content');
+    
+    let html = `
+        <div class="stats-grid">
+            <div class="stat-card total-stat">
+                <div class="stat-number">${stats.total.toLocaleString()}</div>
+                <div class="stat-label">Всего статей</div>
+            </div>
+        </div>
+        
+        <h3 style="color: #4fc3f7; margin: 20px 0 15px 0; text-align: center;">По категориям</h3>
+        <div class="categories-grid">`;
+    
+    // Добавляем статистику по категориям
+    for (const [key, category] of Object.entries(stats.categories)) {
+        html += `
+            <div class="stat-card">
+                <div class="stat-number">${category.count.toLocaleString()}</div>
+                <div class="stat-label">${category.name}</div>
+            </div>`;
+    }
+    
+    html += '</div>';
+    
+    // Добавляем статистику по пользовательским источникам, если они есть
+    if (Object.keys(stats.custom_sources).length > 0) {
+        html += `
+            <h3 style="color: #4fc3f7; margin: 20px 0 15px 0; text-align: center;">Пользовательские источники</h3>
+            <div class="categories-grid">`;
+        
+        for (const [key, source] of Object.entries(stats.custom_sources)) {
+            html += `
+                <div class="stat-card">
+                    <div class="stat-number">${source.count.toLocaleString()}</div>
+                    <div class="stat-label">${source.name}</div>
+                </div>`;
+        }
+        
+        html += '</div>';
+    }
+    
+    container.innerHTML = html;
 }

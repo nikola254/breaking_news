@@ -5,6 +5,8 @@ let currentCategory = 'ukraine';
 let currentPage = 1;
 let availableCategories = [];
 
+
+
 // Функция для загрузки новостей
 function loadNews(category, page) {
     const validCategory = category;
