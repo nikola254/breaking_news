@@ -11,13 +11,6 @@ import time
 import logging
 import sys
 import os
-
-# Добавляем путь к парсерам для импорта модулей
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__)))
-
-from ai_news_classifier import classify_news_ai
 from news_categories import classify_news, create_category_tables
 
 # Добавляем корневую директорию проекта в sys.path для импорта config
@@ -336,15 +329,7 @@ def parse_israil_news(driver=None):
             logger.info(f"Content length: {len(content)} chars, Sources: {len(source_links)}")
             
             # Классифицируем новость по категориям
-            try:
-
-                category = classify_news_ai(title, content)
-
-            except Exception as e:
-
-                print(f"AI классификация не удалась: {e}")
-
-                category = classify_news(title, content)
+            category = classify_news(title, content)
             logger.info(f"Категория: {category}")
             
             # Add to data for insertion

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from ai_news_classifier import classify_news_ai
-from news_categories import classify_news
 """
 Универсальный адаптивный парсер новостей с краулером
 
@@ -273,15 +271,7 @@ class UniversalParser:
                 return None
                 
             # Определяем категорию
-            try:
-
-                category = classify_news_ai(title, content[:500])
-
-            except Exception as e:
-
-                print(f"AI классификация не удалась: {e}")
-
-                category = classify_news(title, content[:500])
+            category = classify_news(title, content[:500])
             
             # Определяем язык (простая эвристика)
             language = 'en'  # По умолчанию английский

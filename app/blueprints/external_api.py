@@ -102,8 +102,12 @@ def deepseek_r1_query():
                 "model": "deepseek/deepseek-r1:free",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": data.get('temperature', 0.7),
-                "max_tokens": data.get('max_tokens', 2048)
-            }
+                "max_tokens": data.get('max_tokens', 2048),
+                "presence_penalty": 0,
+                "top_p": 0.95
+            },
+            timeout=30,
+            verify=False
         )
         
         if response.status_code == 200:
@@ -159,8 +163,12 @@ def openrouter_query():
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": data.get('temperature', 0.7),
-                "max_tokens": data.get('max_tokens', 2048)
-            }
+                "max_tokens": data.get('max_tokens', 2048),
+                "presence_penalty": 0,
+                "top_p": 0.95
+            },
+            timeout=30,
+            verify=False
         )
         
         if response.status_code == 200:
@@ -225,40 +233,46 @@ def aiio_models():
 
 @external_api_bp.route('/aiio/chat', methods=['POST'])
 def aiio_chat():
-    """Отправка запроса к AI.IO Chat API для общения с AI моделями.
+    """Отправка запроса к Cloud.ru Foundation Models API для общения с AI моделями.
     
     Request JSON:
         prompt (str): Текст запроса пользователя
         system_prompt (str): Системный промпт (по умолчанию 'You are a helpful assistant.')
     
     Returns:
-        JSON: Ответ от AI модели DeepSeek-R1
+        JSON: Ответ от Cloud.ru AI модели
     """
     data = request.json
     prompt = data.get('prompt', '')
-    model = "deepseek-ai/DeepSeek-R1-0528"  # Поддерживаемая модель DeepSeek-R1
     system_prompt = data.get('system_prompt', 'You are a helpful assistant.')
     
-    api_key = current_app.config.get('AI_IO_KEY')
+    api_key = os.getenv('API_KEY')  # Cloud.ru API ключ
     if not api_key:
-        return jsonify({'status': 'error', 'message': 'AI_IO_KEY не найден'}), 500
+        return jsonify({'status': 'error', 'message': 'API_KEY (Cloud.ru) не найден'}), 500
 
     try:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
         response = requests.post(
-            "https://api.intelligence.io.solutions/api/v1/chat/completions",
+            "https://foundation-models.api.cloud.ru/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": model,
+                "model": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": data.get('temperature', 0.7),
-                "max_tokens": data.get('max_tokens', 2048)
-            }
+                "max_tokens": data.get('max_tokens', 2048),
+                "presence_penalty": 0,
+                "top_p": 0.95
+            },
+            timeout=30,
+            verify=False
         )
         
         if response.status_code == 200:

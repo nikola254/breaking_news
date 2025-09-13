@@ -37,3 +37,8 @@ tsn_parser.log
 rt_parser.log
 universal_parser.log
 clickhouse_converter.log
+bbc_parser.log
+remove_cross_duplicates.log
+remove_duplicates.log
+get_fake_news_count.log
+dataset_requirements.txt

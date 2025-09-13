@@ -113,7 +113,7 @@ function sendToAI() {
     responseBox.innerHTML = '<span class="thinking-text">Думаю...</span>';
     responseBox.classList.add('loading');
     
-    // Используем только AI.IO API с моделью DeepSeek-R1
+    // Используем только Cloud.ru API с моделью Qwen
     const apiEndpoint = '/api/aiio/chat';
     const requestBody = {
         prompt: prompt,
@@ -370,7 +370,7 @@ function generateForecast() {
     responseBox.classList.add('loading');
     chartContainer.innerHTML = '';
     
-    // Формируем системный промт для DeepSeek с инструкциями по анализу данных
+    // Формируем системный промт для Cloud.ru AI с инструкциями по анализу данных
     const systemPrompt = `Ты - аналитик социальной напряженности. Проанализируй новостные статьи и дай текстовый прогноз развития ситуации. 
 
 Формат ответа:

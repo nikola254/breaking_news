@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Парсер новостей с сайта DW.com (Deutsche Welle)
+Парсер новостей с сайта Kommersant.ru
 
 Этот модуль содержит функции для:
-- Парсинга новостей с главной страницы DW.com
+- Парсинга новостей с главной страницы Kommersant.ru
 - Извлечения полного содержимого статей
 - Автоматической категоризации новостей
 - Сохранения данных в ClickHouse
@@ -16,7 +16,6 @@ from clickhouse_driver import Client
 from datetime import datetime
 import time
 import random
-from ai_news_classifier import classify_news_ai
 from news_categories import classify_news, create_category_tables
 import sys
 import os
@@ -31,14 +30,14 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("dw_parser.log"),
+        logging.FileHandler("kommersant_parser.log"),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
 def create_table_if_not_exists():
-    """Создание таблицы в ClickHouse для хранения новостей DW.com"""
+    """Создание таблицы в ClickHouse для хранения новостей Kommersant.ru"""
     client = Client(
         host=Config.CLICKHOUSE_HOST,
         port=Config.CLICKHOUSE_NATIVE_PORT,
@@ -51,13 +50,13 @@ def create_table_if_not_exists():
     
     # Create table if not exists
     client.execute('''
-        CREATE TABLE IF NOT EXISTS news.dw_headlines (
+        CREATE TABLE IF NOT EXISTS news.kommersant_headlines (
             id UUID DEFAULT generateUUIDv4(),
             title String,
             link String,
             content String,
             rubric String,
-            source String DEFAULT 'dw.com',
+            source String DEFAULT 'kommersant.ru',
             category String DEFAULT 'other',
             parsed_date DateTime DEFAULT now()
         ) ENGINE = MergeTree()
@@ -68,7 +67,7 @@ def create_table_if_not_exists():
     create_category_tables(client)
 
 def get_article_content(url, headers):
-    """Извлечение полного содержимого статьи с DW.com"""
+    """Извлечение полного содержимого статьи с Kommersant.ru"""
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
@@ -76,14 +75,14 @@ def get_article_content(url, headers):
         soup = BeautifulSoup(response.content, "html.parser")
         
         # Поиск основного содержимого статьи
-        article_body = soup.find("div", class_="longText")
+        article_body = soup.find("div", class_="doc__text")
         
         if not article_body:
             # Альтернативные селекторы
-            article_body = soup.find("div", class_="col3")
+            article_body = soup.find("div", class_="article_text_wrapper")
             
         if not article_body:
-            article_body = soup.find("div", class_="articleContent")
+            article_body = soup.find("div", class_="b-article-text")
             
         if not article_body:
             return "Не удалось извлечь содержимое статьи"
@@ -98,13 +97,13 @@ def get_article_content(url, headers):
         logger.error(f"Ошибка при получении содержимого статьи {url}: {e}")
         return "Ошибка при получении содержимого статьи"
 
-def parse_dw_news():
-    """Основная функция парсинга новостей с DW.com"""
-    base_url = "https://www.dw.com/en"
+def parse_kommersant_news():
+    """Основная функция парсинга новостей с Kommersant.ru"""
+    base_url = "https://www.kommersant.ru"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.8",
+        "Accept-Language": "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3",
         "Accept-Encoding": "gzip, deflate",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1"
@@ -113,9 +112,9 @@ def parse_dw_news():
     try:
         response = requests.get(base_url, headers=headers, timeout=15)
         response.raise_for_status()
-        logger.info(f"Успешно получена главная страница DW.com")
+        logger.info(f"Успешно получена главная страница Kommersant.ru")
     except requests.RequestException as e:
-        logger.error(f"Ошибка при получении данных с DW.com: {e}")
+        logger.error(f"Ошибка при получении данных с Kommersant.ru: {e}")
         return
 
     soup = BeautifulSoup(response.content, "html.parser")
@@ -124,22 +123,16 @@ def parse_dw_news():
     articles = []
     
     # Основные новости
-    main_news = soup.find_all("a", href=lambda x: x and '/en/' in x and '/a-' in x)
+    main_news = soup.find_all("a", class_="uho__link")
     articles.extend(main_news)
     
-    # Новости в блоках
-    block_news = soup.find_all("h2", class_="linkable")
-    for h2 in block_news:
-        link_elem = h2.find("a")
-        if link_elem:
-            articles.append(link_elem)
+    # Новости в списках
+    list_news = soup.find_all("a", class_="rubric_lenta__item_link")
+    articles.extend(list_news)
     
     # Дополнительные новости
-    additional_news = soup.find_all("div", class_="news")
-    for div in additional_news:
-        link_elem = div.find("a")
-        if link_elem:
-            articles.append(link_elem)
+    additional_news = soup.find_all("a", href=lambda x: x and '/doc/' in x)
+    articles.extend(additional_news)
     
     if not articles:
         logger.warning("Не найдено новостных статей на главной странице")
@@ -156,7 +149,7 @@ def parse_dw_news():
     )
     
     # Получение существующих ссылок для избежания дубликатов
-    existing_links = set(row[0] for row in client.execute('SELECT link FROM news.dw_headlines'))
+    existing_links = set(row[0] for row in client.execute('SELECT link FROM news.kommersant_headlines'))
     
     new_articles = 0
     
@@ -168,18 +161,14 @@ def parse_dw_news():
                 continue
                 
             if not link.startswith('http'):
-                link = "https://www.dw.com" + link
+                link = base_url + link
             
             # Проверка на дубликаты
             if link in existing_links:
                 continue
             
-            # Пропускаем ссылки, которые не являются новостными статьями
-            if '/av-' in link or '/video/' in link or '/sports/' in link:
-                continue
-            
             # Извлечение заголовка
-            title_elem = article.find(["span", "h3", "h2", "h1"])
+            title_elem = article.find(["span", "h3", "h2"], class_=lambda x: x and ("title" in x or "headline" in x))
             if not title_elem:
                 title_elem = article
             
@@ -190,51 +179,33 @@ def parse_dw_news():
             
             # Определение рубрики из URL
             rubric = "Общие новости"
-            if '/world/' in link:
+            if '/politics/' in link:
+                rubric = "Политика"
+            elif '/economics/' in link:
+                rubric = "Экономика"
+            elif '/world/' in link:
                 rubric = "В мире"
-            elif '/europe/' in link:
-                rubric = "Европа"
-            elif '/germany/' in link:
-                rubric = "Германия"
             elif '/business/' in link:
                 rubric = "Бизнес"
-            elif '/science/' in link:
-                rubric = "Наука"
-            elif '/environment/' in link:
-                rubric = "Экология"
-            elif '/culture/' in link:
-                rubric = "Культура"
-            elif '/asia/' in link:
-                rubric = "Азия"
-            elif '/africa/' in link:
-                rubric = "Африка"
             
             # Получение полного содержимого статьи
             content = get_article_content(link, headers)
             
             # Классификация новости
-            try:
-
-                category = classify_news_ai(title, content)
-
-            except Exception as e:
-
-                print(f"AI классификация не удалась: {e}")
-
-                category = classify_news(title, content)
+            category = classify_news(title, content)
             
             # Сохранение в основную таблицу
             client.execute(
-                'INSERT INTO news.dw_headlines (title, link, content, rubric, source, category) VALUES',
-                [(title, link, content, rubric, 'dw.com', category)]
+                'INSERT INTO news.kommersant_headlines (title, link, content, rubric, source, category) VALUES',
+                [(title, link, content, rubric, 'kommersant.ru', category)]
             )
             
             # Сохранение в категорийную таблицу
-            category_table = f'news.dw_{category}'
+            category_table = f'news.kommersant_{category}'
             try:
                 client.execute(
                     f'INSERT INTO {category_table} (title, link, content, source, category, parsed_date) VALUES',
-                    [(title, link, content, 'dw.com', category, datetime.now())]
+                    [(title, link, content, 'kommersant.ru', category, datetime.now())]
                 )
             except Exception as e:
                 logger.warning(f"Не удалось сохранить в категорийную таблицу {category_table}: {e}")
@@ -243,7 +214,7 @@ def parse_dw_news():
             logger.info(f"Добавлена новость: {title[:50]}... (категория: {category})")
             
             # Задержка между запросами
-            time.sleep(random.uniform(2, 4))
+            time.sleep(random.uniform(1, 3))
             
         except Exception as e:
             logger.error(f"Ошибка при обработке статьи: {e}")
@@ -253,15 +224,15 @@ def parse_dw_news():
 
 def main():
     """Главная функция для запуска парсера"""
-    logger.info("Запуск парсера DW.com")
+    logger.info("Запуск парсера Kommersant.ru")
     
     # Создание таблиц
     create_table_if_not_exists()
     
     # Парсинг новостей
-    parse_dw_news()
+    parse_kommersant_news()
     
-    logger.info("Парсер DW.com завершил работу")
+    logger.info("Парсер Kommersant.ru завершил работу")
 
 if __name__ == "__main__":
     main()

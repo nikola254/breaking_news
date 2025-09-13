@@ -25,6 +25,7 @@ class Config:
     CLICKHOUSE_NATIVE_PORT = int(os.environ.get('CLICKHOUSE_NATIVE_PORT')) if os.environ.get('CLICKHOUSE_NATIVE_PORT') else None
     CLICKHOUSE_USER = os.environ.get('CLICKHOUSE_USER')
     CLICKHOUSE_PASSWORD = os.environ.get('CLICKHOUSE_PASSWORD')
+    CLICKHOUSE_DATABASE = os.environ.get('CLICKHOUSE_DATABASE', 'news')
     
     # Настройки Flask
     SECRET_KEY = os.environ.get('SECRET_KEY')
@@ -41,6 +42,10 @@ class Config:
     OPENROUTER_DEEPSEEK_R1_API_KEY = os.environ.get('OPENROUTER_DEEPSEEK_R1_API_KEY')
     AUTH_KEY_GIGA_CHAT = os.environ.get('AUTH_KEY_GIGA_CHAT')
     AI_IO_KEY = os.environ.get('AI_IO_KEY')
+    
+    # Настройки для генерации датасета
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
     
     # Настройки сайта
     SITE_URL = os.environ.get('SITE_URL')

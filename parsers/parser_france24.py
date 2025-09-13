@@ -16,6 +16,7 @@ from clickhouse_driver import Client
 from datetime import datetime
 import time
 import random
+from ai_news_classifier import classify_news_ai
 from news_categories import classify_news, create_category_tables
 import sys
 import os
@@ -207,7 +208,15 @@ def parse_france24_news():
             content = get_article_content(link, headers)
             
             # Классификация новости
-            category = classify_news(title, content)
+            try:
+
+                category = classify_news_ai(title, content)
+
+            except Exception as e:
+
+                print(f"AI классификация не удалась: {e}")
+
+                category = classify_news(title, content)
             
             # Сохранение в основную таблицу
             client.execute(

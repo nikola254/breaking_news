@@ -263,10 +263,100 @@ def get_news():
                     
                     UNION ALL
                     
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.lenta_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.rbc_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.cnn_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.aljazeera_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.tsn_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.unian_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.rt_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.euronews_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.reuters_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.france24_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.dw_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.bbc_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.gazeta_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.kommersant_headlines
+                    WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
+                    
+                    UNION ALL
+                    
                     SELECT id, title, '' as link, content, source, category, parsed_date, message_link, channel
                     FROM (
                         SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_{category}
                     )
+                    {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    FROM news.universal_{category}
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                 )
                 ORDER BY parsed_date DESC

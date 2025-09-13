@@ -8,19 +8,19 @@
 - Автоматическую категоризацию новостей
 """
 
-from telethon import TelegramClient, events
-from telethon.tl.functions.messages import GetHistoryRequest
-from clickhouse_driver import Client as ClickHouseClient
-from datetime import datetime
 import asyncio
 import re
 import os
 import sys
+from datetime import datetime
+from clickhouse_driver import Client as ClickHouseClient
 from dotenv import load_dotenv
 
 # Добавляем корневую директорию проекта в sys.path для импорта config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
+from telethon import TelegramClient, events
+from telethon.tl.functions.messages import GetHistoryRequest
 
 # Load environment variables from .env file
 load_dotenv()
@@ -82,23 +82,28 @@ async def get_telegram_messages(client, channel, limit=100):
         limit (int): Максимальное количество сообщений
     
     Returns:
-        list: Список сообщений из канала
+        tuple: (messages, entity) - Список сообщений и entity канала
     """
-    entity = await client.get_entity(channel)
+    try:
+        entity = await client.get_entity(channel)
+        
+        # Get messages
+        history = await client(GetHistoryRequest(
+            peer=entity,
+            offset_id=0,
+            offset_date=None,
+            add_offset=0,
+            limit=limit,
+            max_id=0,
+            min_id=0,
+            hash=0
+        ))
+        
+        return history.messages, entity
     
-    # Get messages
-    messages = await client(GetHistoryRequest(
-        peer=entity,
-        limit=limit,
-        offset_date=None,
-        offset_id=0,
-        max_id=0,
-        min_id=0,
-        add_offset=0,
-        hash=0
-    ))
-    
-    return messages.messages, entity
+    except Exception as e:
+        print(f"Error getting messages from {channel}: {e}")
+        return [], None
 
 def clean_text(text):
     """Clean text from special characters and extra spaces"""
@@ -110,42 +115,84 @@ def clean_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+def determine_category(channel):
+    """Определение категории новостей на основе канала.
+    
+    Args:
+        channel (str): Имя канала
+    
+    Returns:
+        str: Категория новостей
+    """
+    military_channels = ['infantmilitario', 'genshtab24', 'new_militarycolumnist', 'operline_ru']
+    international_channels = ['inosmichannel']
+    
+    if channel in military_channels:
+        return 'military'
+    elif channel in international_channels:
+        return 'international'
+    else:
+        return 'other'
+
 async def parse_telegram_channels():
-    """Parse messages from Telegram channels and save to ClickHouse"""
-    # Create ClickHouse table if it doesn't exist
+    """Основная функция парсинга Telegram каналов.
+    
+    Подключается к Telegram API, получает сообщения из каналов,
+    обрабатывает их и сохраняет в ClickHouse.
+    """
+    # Create table if not exists
     create_table_if_not_exists()
     
-    # Connect to ClickHouse
-    clickhouse_client = ClickHouseClient(
-        host=Config.CLICKHOUSE_HOST,
-        port=Config.CLICKHOUSE_NATIVE_PORT,
-        user=Config.CLICKHOUSE_USER,
-        password=Config.CLICKHOUSE_PASSWORD
-    )
+    # Initialize Telegram client with session file
+    session_file = os.path.join(os.path.dirname(__file__), 'telegram_session')
+    client = TelegramClient(session_file, API_ID, API_HASH)
     
-    # Get existing message IDs to avoid duplicates
-    existing_messages = {}
-    for channel in TELEGRAM_CHANNELS:
-        channel_messages = clickhouse_client.execute(
-            f"SELECT message_id FROM news.telegram_headlines WHERE channel = '{channel}'"
-        )
-        existing_messages[channel] = set(row[0] for row in channel_messages)
-    
-    # Initialize Telegram client
-    async with TelegramClient('telegram_parser_session', API_ID, API_HASH) as client:
-        # Login if needed
-        if not await client.is_user_authorized():
-            await client.send_code_request(PHONE)
-            code = input('Enter the code you received: ')
-            await client.sign_in(PHONE, code)
+    try:
+        print("Connecting to Telegram...")
+        await client.start(phone=PHONE)
+        print("Successfully connected to Telegram")
         
-        # Process each channel
+        # Check if we're authorized
+        if not await client.is_user_authorized():
+            print("User not authorized. Please run this script interactively first to authorize.")
+            return
+        
+        # Initialize ClickHouse client
+        clickhouse_client = ClickHouseClient(
+            host=Config.CLICKHOUSE_HOST,
+            port=Config.CLICKHOUSE_NATIVE_PORT,
+            user=Config.CLICKHOUSE_USER,
+            password=Config.CLICKHOUSE_PASSWORD
+        )
+        
+        # Get existing message IDs to avoid duplicates
+        existing_messages = {}
         for channel in TELEGRAM_CHANNELS:
             try:
-                print(f"Processing channel: {channel}")
-                messages, entity = await get_telegram_messages(client, channel)
+                result = clickhouse_client.execute(
+                    'SELECT message_id FROM news.telegram_headlines WHERE channel = %s',
+                    [channel]
+                )
+                existing_messages[channel] = {row[0] for row in result}
+            except Exception as e:
+                print(f"Warning: Could not get existing messages for {channel}: {e}")
+                existing_messages[channel] = set()
+        
+        # Parse each channel
+        for channel in TELEGRAM_CHANNELS:
+            try:
+                print(f"\nParsing channel: {channel}")
                 
-                # Prepare data for batch insert
+                # Get messages from channel
+                messages, entity = await get_telegram_messages(client, channel, limit=50)
+                
+                if not messages or not entity:
+                    print(f"Could not get messages from {channel}")
+                    continue
+                
+                # Determine category based on channel
+                category = determine_category(channel)
+                
                 headlines_data = []
                 skipped_count = 0
                 
@@ -200,6 +247,9 @@ async def parse_telegram_channels():
             
             # Sleep to avoid rate limiting
             await asyncio.sleep(2)
+    
+    finally:
+        await client.disconnect()
 
 if __name__ == "__main__":
     # Create .env file if it doesn't exist
