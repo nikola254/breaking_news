@@ -10,6 +10,8 @@ test/
 
 plots/
 
+dataset/
+
 models/
 
 telegram_parser_session.session
@@ -34,3 +36,4 @@ unian_parser.log
 tsn_parser.log
 rt_parser.log
 universal_parser.log
+clickhouse_converter.log
