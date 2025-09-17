@@ -1,8 +1,346 @@
 {% extends "base.html" %}
 
-{% block title %}NewsAnalytics - Аналитика{% endblock %}
+{% block title %}NewsAnalytics - Аналитика украинского конфликта{% endblock %}
 
 {% block content %}
-<h1>Аналитика</h1>
-<p>Здесь будет аналитика новостных данных (в разработке).</p>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Аналитика украинского конфликта</h1>
+        </div>
+    </div>
+    
+    <!-- Фильтры и управление -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Фильтры</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="categorySelect">Категория:</label>
+                        <select class="form-control" id="categorySelect">
+                            <option value="all">Все категории</option>
+                            <option value="military_operations">Военные операции</option>
+                        <option value="humanitarian_crisis">Гуманитарный кризис</option>
+                        <option value="economic_consequences">Экономические последствия</option>
+                        <option value="political_decisions">Политические решения</option>
+                        <option value="information_social">Информационно-социальные аспекты</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dateRange">Период:</label>
+                        <select class="form-control" id="dateRange">
+                            <option value="7">Последние 7 дней</option>
+                            <option value="30">Последние 30 дней</option>
+                            <option value="90">Последние 3 месяца</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="updateAnalytics()">Обновить</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Статистика</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h3 class="text-primary" id="totalNews">-</h3>
+                                <small>Всего новостей</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h3 class="text-warning" id="avgTension">-</h3>
+                                <small>Средняя напряженность</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Графики -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Динамика социальной напряженности</h5>
+                </div>
+                <div class="card-body">
+                    <div id="tensionChart" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="sr-only">Загрузка...</span>
+                        </div>
+                        <p class="mt-2">Загрузка данных...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Распределение по категориям</h5>
+                </div>
+                <div class="card-body">
+                    <div id="categoryChart" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="sr-only">Загрузка...</span>
+                        </div>
+                        <p class="mt-2">Загрузка данных...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Топ источников</h5>
+                </div>
+                <div class="card-body">
+                    <div id="sourcesChart" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="sr-only">Загрузка...</span>
+                        </div>
+                        <p class="mt-2">Загрузка данных...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Таблица последних новостей -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Последние новости</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="newsTable">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Заголовок</th>
+                                    <th>Источник</th>
+                                    <th>Категория</th>
+                                    <th>Напряженность</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        <div class="spinner-border" role="status">
+                                            <span class="sr-only">Загрузка...</span>
+                                        </div>
+                                        Загрузка данных...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Функция обновления аналитики
+function updateAnalytics() {
+    const category = document.getElementById('categorySelect').value;
+    const dateRange = document.getElementById('dateRange').value;
+    
+    // Показываем спиннеры
+    showLoadingSpinners();
+    
+    // Загружаем статистику
+    loadStatistics(category, dateRange);
+    
+    // Загружаем графики
+    loadCharts(category, dateRange);
+    
+    // Загружаем таблицу новостей
+    loadNewsTable(category, dateRange);
+}
+
+function showLoadingSpinners() {
+    document.getElementById('tensionChart').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="sr-only">Загрузка...</span>
+            </div>
+            <p class="mt-2">Загрузка данных...</p>
+        </div>`;
+    
+    document.getElementById('categoryChart').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="sr-only">Загрузка...</span>
+            </div>
+            <p class="mt-2">Загрузка данных...</p>
+        </div>`;
+    
+    document.getElementById('sourcesChart').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="sr-only">Загрузка...</span>
+            </div>
+            <p class="mt-2">Загрузка данных...</p>
+        </div>`;
+}
+
+function loadStatistics(category, dateRange) {
+    fetch(`/api/ukraine_analytics/statistics?category=${category}&days=${dateRange}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('totalNews').textContent = data.total_news || '0';
+                document.getElementById('avgTension').textContent = 
+                    data.avg_tension ? (data.avg_tension * 100).toFixed(1) + '%' : '0%';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading statistics:', error);
+            document.getElementById('totalNews').textContent = 'Ошибка';
+            document.getElementById('avgTension').textContent = 'Ошибка';
+        });
+}
+
+function loadCharts(category, dateRange) {
+    // Загружаем график напряженности
+    fetch(`/api/ukraine_analytics/tension_chart?category=${category}&days=${dateRange}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.chart_url) {
+                document.getElementById('tensionChart').innerHTML = 
+                    `<img src="${data.chart_url}" class="img-fluid" alt="График напряженности">`;
+            } else {
+                document.getElementById('tensionChart').innerHTML = 
+                    '<p class="text-muted">Нет данных для отображения</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading tension chart:', error);
+            document.getElementById('tensionChart').innerHTML = 
+                '<p class="text-danger">Ошибка загрузки графика</p>';
+        });
+    
+    // Загружаем график категорий
+    fetch(`/api/ukraine_analytics/category_chart?category=${category}&days=${dateRange}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.chart_url) {
+                document.getElementById('categoryChart').innerHTML = 
+                    `<img src="${data.chart_url}" class="img-fluid" alt="График категорий">`;
+            } else {
+                document.getElementById('categoryChart').innerHTML = 
+                    '<p class="text-muted">Нет данных для отображения</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading category chart:', error);
+            document.getElementById('categoryChart').innerHTML = 
+                '<p class="text-danger">Ошибка загрузки графика</p>';
+        });
+    
+    // Загружаем график источников
+    fetch(`/api/ukraine_analytics/sources_chart?category=${category}&days=${dateRange}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.chart_url) {
+                document.getElementById('sourcesChart').innerHTML = 
+                    `<img src="${data.chart_url}" class="img-fluid" alt="График источников">`;
+            } else {
+                document.getElementById('sourcesChart').innerHTML = 
+                    '<p class="text-muted">Нет данных для отображения</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading sources chart:', error);
+            document.getElementById('sourcesChart').innerHTML = 
+                '<p class="text-danger">Ошибка загрузки графика</p>';
+        });
+}
+
+function loadNewsTable(category, dateRange) {
+    fetch(`/api/ukraine_analytics/recent_news?category=${category}&days=${dateRange}&limit=20`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.news) {
+                const tbody = document.querySelector('#newsTable tbody');
+                tbody.innerHTML = '';
+                
+                data.news.forEach(news => {
+                    const row = document.createElement('tr');
+                    const tensionColor = getTensionColor(news.tension_score);
+                    
+                    row.innerHTML = `
+                        <td>${formatDate(news.date)}</td>
+                        <td><a href="${news.url}" target="_blank" class="text-decoration-none">${news.title}</a></td>
+                        <td><span class="badge badge-secondary">${news.source}</span></td>
+                        <td><span class="badge badge-info">${getCategoryName(news.category)}</span></td>
+                        <td><span class="badge" style="background-color: ${tensionColor}">${(news.tension_score * 100).toFixed(1)}%</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                document.querySelector('#newsTable tbody').innerHTML = 
+                    '<tr><td colspan="5" class="text-center text-muted">Нет данных для отображения</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading news table:', error);
+            document.querySelector('#newsTable tbody').innerHTML = 
+                '<tr><td colspan="5" class="text-center text-danger">Ошибка загрузки данных</td></tr>';
+        });
+}
+
+function getTensionColor(score) {
+    if (score < 0.3) return '#28a745'; // Зеленый
+    if (score < 0.6) return '#ffc107'; // Желтый
+    return '#dc3545'; // Красный
+}
+
+function getCategoryName(category) {
+    const names = {
+        'military_operations': 'Военные операции',
+        'humanitarian_crisis': 'Гуманитарный кризис',
+        'economic_consequences': 'Экономические последствия',
+        'political_decisions': 'Политические решения',
+        'information_social': 'Информационно-социальные аспекты',
+        'other': 'Прочее'
+    };
+    return names[category] || category;
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Загружаем данные при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    updateAnalytics();
+});
+</script>
 {% endblock %}

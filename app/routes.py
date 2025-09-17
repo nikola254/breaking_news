@@ -51,7 +51,7 @@ def get_news():
     offset = request.args.get('offset', 0, type=int)
     
     # Проверка валидности категории
-    valid_categories = ['ukraine', 'middle_east', 'fake_news', 'info_war', 'europe', 'usa', 'other']
+    valid_categories = ['military_operations', 'humanitarian_crisis', 'economic_consequences', 'political_decisions', 'information_social']
     if category not in valid_categories and category != 'all':
         return jsonify({'status': 'error', 'message': f'Недопустимая категория. Допустимые категории: {valid_categories}'}), 400
     
@@ -147,6 +147,31 @@ def get_news():
                     
                     SELECT id, title, '' as link, content, source, category, parsed_date, '' as source_links, message_link, channel
                     FROM news.telegram_headlines
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_military_operations
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_humanitarian_crisis
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_economic_consequences
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_political_decisions
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_information_social
                 )
                 ORDER BY parsed_date DESC
                 LIMIT {limit} OFFSET {offset}
@@ -254,6 +279,36 @@ def get_news():
                     
                     SELECT id, title, '' as link, content, source, category, parsed_date, '' as source_links, message_link, channel
                     FROM news.telegram_headlines
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_military_operations
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_humanitarian_crisis
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_economic_consequences
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_political_decisions
+                    WHERE category = '{category}'
+                    
+                    UNION ALL
+                    
+                    SELECT id, title, link, content, source, category, parsed_date, '' as source_links, '' as message_link, '' as channel
+                    FROM news.ukraine_conflict_information_social
                     WHERE category = '{category}'
                 )
                 ORDER BY parsed_date DESC

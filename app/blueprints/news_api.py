@@ -28,14 +28,20 @@ def get_news():
     Returns:
         JSON: Список новостей с метаданными или сообщение об ошибке
     """
-    source = request.args.get('source', 'all')
+    source = request.args.get('source', 'universal_military_operations')
     category = request.args.get('category', 'all')
     limit = request.args.get('limit', 100, type=int)
     offset = request.args.get('offset', 0, type=int)
     search = request.args.get('search', '')
     
+    # Проверка валидности источников
+    valid_sources = ['all', 'ria', 'israil', 'telegram', 'lenta', 'rbc', 'cnn', 'aljazeera', 'tsn', 'unian', 'rt', 'euronews', 'reuters', 'france24', 'dw', 'bbc', 'gazeta', 'kommersant', 'universal_military_operations', 'universal_humanitarian_crisis', 'universal_economic_consequences', 'universal_political_decisions', 'universal_information_social']
+    
+    if source not in valid_sources:
+        return jsonify({'status': 'error', 'message': f'Недопустимый источник. Допустимые источники: {valid_sources}'}), 400
+    
     # Проверка валидности категории (включая пользовательские таблицы)
-    valid_categories = ['ukraine', 'middle_east', 'fake_news', 'info_war', 'europe', 'usa', 'other']
+    valid_categories = ['military_operations', 'humanitarian_crisis', 'economic_consequences', 'political_decisions', 'information_social']
     
     # Проверяем, является ли категория пользовательской таблицей
     is_custom_table = category.startswith('custom_') and category.endswith('_headlines')
@@ -66,7 +72,19 @@ def get_news():
             custom_tables_unions.append(union_query)
         
         # Формируем запрос в зависимости от источника и категории
-        if source == 'all' and category == 'all':
+        if source.startswith('universal_'):
+            # Работа с universal таблицами
+            table_name = source
+            query = f'''
+                SELECT 
+                    id, title, content, source, category, parsed_date, '' as link,
+                    '' as telegram_channel
+                FROM news.{table_name}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                ORDER BY parsed_date DESC
+                LIMIT {limit} OFFSET {offset}
+            '''
+        elif source == 'all' and category == 'all':
             # Все источники, все категории
             query = f'''
                 SELECT 
@@ -899,58 +917,45 @@ def get_statistics():
         categories_stats = {}
         
         categories = {
-            'ukraine': 'Украина',
-            'middle_east': 'Ближний Восток', 
-            'fake_news': 'Фейки',
-            'info_war': 'Инфовойна',
-            'europe': 'Европа',
-            'usa': 'США',
-            'other': 'Другое'
+            'military_operations': 'Военные операции',
+            'humanitarian_crisis': 'Гуманитарный кризис',
+            'economic_consequences': 'Экономические последствия',
+            'political_decisions': 'Политические решения',
+            'information_social': 'Информационно-социальные аспекты'
         }
         
+        # Получаем список всех существующих таблиц в схеме news
+        existing_tables_query = """
+            SELECT name FROM system.tables 
+            WHERE database = 'news'
+            ORDER BY name
+        """
+        existing_tables_result = client.query(existing_tables_query)
+        existing_tables = {row[0] for row in existing_tables_result.result_rows}
+        
         for category_key, category_name in categories.items():
-            category_query = f"""
-                SELECT COUNT(*) as count FROM (
-                    SELECT id FROM news.ria_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.lenta_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.rbc_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.gazeta_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.kommersant_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.tsn_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.unian_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.rt_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.cnn_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.aljazeera_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.reuters_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.france24_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.dw_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.euronews_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.bbc_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.israil_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.telegram_{category_key}
-                    UNION ALL
-                    SELECT id FROM news.universal_{category_key}
-                )
-            """
+            # Список источников для проверки
+            sources = ['ria', 'lenta', 'rbc', 'gazeta', 'kommersant', 'tsn', 'unian', 'rt', 
+                      'cnn', 'aljazeera', 'reuters', 'france24', 'dw', 'euronews', 'bbc', 'israil']
             
-            category_result = client.query(category_query)
-            category_count = category_result.result_rows[0][0] if category_result.result_rows else 0
+            # Строим запрос только для существующих таблиц
+            union_parts = []
+            for source in sources:
+                table_name = f"{source}_{category_key}"
+                if table_name in existing_tables:
+                    union_parts.append(f"SELECT id FROM news.{table_name}")
+            
+            if union_parts:
+                category_query = f"""
+                    SELECT COUNT(*) as count FROM (
+                        {' UNION ALL '.join(union_parts)}
+                    )
+                """
+                category_result = client.query(category_query)
+                category_count = category_result.result_rows[0][0] if category_result.result_rows else 0
+            else:
+                category_count = 0
+                
             categories_stats[category_key] = {
                 'name': category_name,
                 'count': category_count
@@ -1009,13 +1014,11 @@ def get_categories():
         # Базовые категории
         base_categories = [
             {'id': 'all', 'name': 'Все категории', 'type': 'base'},
-            {'id': 'ukraine', 'name': 'Украина', 'type': 'base'},
-            {'id': 'middle_east', 'name': 'Ближний восток', 'type': 'base'},
-            {'id': 'fake_news', 'name': 'Фейки', 'type': 'base'},
-            {'id': 'info_war', 'name': 'Инфовойна', 'type': 'base'},
-            {'id': 'europe', 'name': 'Европа', 'type': 'base'},
-            {'id': 'usa', 'name': 'США', 'type': 'base'},
-            {'id': 'other', 'name': 'Другое', 'type': 'base'}
+            {'id': 'military_operations', 'name': 'Военные операции', 'type': 'base'},
+        {'id': 'humanitarian_crisis', 'name': 'Гуманитарный кризис', 'type': 'base'},
+        {'id': 'economic_consequences', 'name': 'Экономические последствия', 'type': 'base'},
+        {'id': 'political_decisions', 'name': 'Политические решения', 'type': 'base'},
+        {'id': 'information_social', 'name': 'Информационно-социальные аспекты', 'type': 'base'}
         ]
         
         # Получаем пользовательские таблицы

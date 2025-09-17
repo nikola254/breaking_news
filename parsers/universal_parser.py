@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from ai_news_classifier import classify_news_ai
 from news_categories import classify_news
+from ukraine_relevance_filter import filter_ukraine_relevance
 """
 Универсальный адаптивный парсер новостей с краулером
 
@@ -272,16 +273,21 @@ class UniversalParser:
                 logger.warning(f"Недостаточно контента для {url}")
                 return None
                 
-            # Определяем категорию
-            try:
-
-                category = classify_news_ai(title, content[:500])
-
-            except Exception as e:
-
-                print(f"AI классификация не удалась: {e}")
-
-                category = classify_news(title, content[:500])
+            # Проверяем релевантность к украинскому конфликту
+            logger.info("Проверка релевантности к украинскому конфликту...")
+            relevance_result = filter_ukraine_relevance(title, content[:500])
+            
+            if not relevance_result['is_relevant']:
+                logger.info(f"Статья не релевантна украинскому конфликту (score: {relevance_result['relevance_score']:.2f})")
+                logger.info("Пропускаем статью...")
+                return None
+            
+            logger.info(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f})")
+            logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
+            
+            # Используем категорию из результата релевантности
+            category = relevance_result.get('category', 'other')
+            logger.info(f"Категория: {category}")
             
             # Определяем язык (простая эвристика)
             language = 'en'  # По умолчанию английский

@@ -3,6 +3,10 @@ import logging
 import requests
 import json
 from typing import Optional
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env файла
+load_dotenv()
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -26,15 +30,14 @@ class AINewsClassifier:
         }
         self.api_url = f"{self.base_url}/chat/completions"
         
-        # Определяем возможные категории
+        # Определяем новые категории украинского конфликта
         self.categories = [
-            'ukraine',      # Украина
-            'middle_east',  # Ближний Восток
-            'fake_news',    # Фейковые новости
-            'info_war',     # Информационная война
-            'europe',       # Европа
-            'usa',          # США
-            'other'         # Прочее
+            'ukraine_conflict_military',      # Военные операции
+            'ukraine_conflict_humanitarian',  # Гуманитарный кризис
+            'ukraine_conflict_economic',      # Экономические последствия
+            'ukraine_conflict_political',     # Политические решения
+            'ukraine_conflict_information',   # Информационно-социальные аспекты
+            'other'                           # Прочее (для нерелевантных новостей)
         ]
         
         logger.info("AINewsClassifier инициализирован")
@@ -89,10 +92,10 @@ class AINewsClassifier:
             response_data = response.json()
             raw_classification = response_data['choices'][0]['message']['content']
             
-            # Проверяем на None и обрабатываем
-            if raw_classification is None:
-                logger.warning("API вернул None в качестве ответа")
-                return 'other'
+            # Проверяем на None и пустые ответы
+            if raw_classification is None or raw_classification.strip() == "":
+                logger.warning("API вернул пустой ответ, используем fallback классификацию")
+                return self._fallback_classification(title, content)
             
             classification = raw_classification.strip().lower()
             
@@ -135,16 +138,25 @@ class AINewsClassifier:
         if len(content) > max_content_length:
             content = content[:max_content_length] + "..."
         
-        prompt = f"""Классифицируй следующую новость по одной из категорий:
+        prompt = f"""Классифицируй следующую новость о украинском конфликте по одной из категорий:
 
 Категории:
-- ukraine: новости о Украине, украинском конфликте, украинской политике
-- middle_east: новости о Ближнем Востоке, Израиле, Палестине, Сирии, Иране
-- fake_news: фейковые новости, дезинформация, пропаганда
-- info_war: информационная война, кибератаки, влияние на общественное мнение
-- europe: новости о Европе, ЕС, европейских странах
-- usa: новости о США, американской политике
-- other: все остальные новости
+- ukraine_conflict_military: Военные действия, боевые операции, потери, военная техника, оружие, тактические манёвры
+  Примеры: "Атака на Харьков", "Операция в Донбассе", "Потери в Запорожской области", "Поставки HIMARS"
+
+- ukraine_conflict_humanitarian: Гуманитарная катастрофа, разрушение инфраструктуры, беженцы, гуманитарная помощь
+  Примеры: "Отключение воды в Херсоне", "Разрушение больниц в Мариуполе", "Эвакуация из Луганска"
+
+- ukraine_conflict_economic: Экономические последствия, санкции, инфляция, цены, энергетический кризис
+  Примеры: "Рост цен на продовольствие", "Санкции против российских банков", "Дефицит топлива"
+
+- ukraine_conflict_political: Политические решения, дипломатия, международные соглашения, мобилизация
+  Примеры: "Законопроект о частичной мобилизации", "Решение ЕС о новых санкциях", "Переговоры в Турции"
+
+- ukraine_conflict_information: Информационная война, пропаганда, дезинформация, общественные настроения
+  Примеры: "Фейк о бомбардировке Киева", "Митинги против мобилизации", "Пропагандистские видео в Telegram"
+
+- other: новости, не относящиеся к украинскому конфликту
 
 Заголовок: {title}
 
@@ -153,6 +165,25 @@ class AINewsClassifier:
 Ответь только названием категории (одним словом):"""
         
         return prompt
+    
+    def _fallback_classification(self, title: str, content: str) -> str:
+        """Fallback классификация по ключевым словам когда AI не отвечает
+        
+        Args:
+            title (str): Заголовок новости
+            content (str): Содержание новости
+            
+        Returns:
+            str: Категория новости
+        """
+        try:
+            # Используем существующий классификатор по ключевым словам
+            from .news_categories import classify_news
+            logger.info("Используем fallback к классификации по ключевым словам")
+            return classify_news(title, content)
+        except Exception as e:
+            logger.error(f"Ошибка в fallback классификации: {e}")
+            return 'other'
 
 # Функция для обратной совместимости с существующим кодом
 def classify_news_ai(title: str, content: str) -> str:

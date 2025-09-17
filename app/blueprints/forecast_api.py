@@ -22,6 +22,7 @@ from config import Config
 from textblob import TextBlob
 import re
 from collections import Counter
+from app.utils.ukraine_sentiment_analyzer import get_ukraine_sentiment_analyzer
 
 # Создаем Blueprint для API прогнозов
 forecast_api_bp = Blueprint('forecast_api', __name__, url_prefix='/api')
@@ -66,17 +67,14 @@ def get_military_keywords():
     }
 
 def analyze_sentiment(text):
-    """Анализ тональности текста"""
+    """Анализ тональности текста с использованием украинского анализатора"""
     try:
-        blob = TextBlob(text)
-        polarity = blob.sentiment.polarity
-        if polarity > 0.1:
-            return 'positive'
-        elif polarity < -0.1:
-            return 'negative'
-        else:
-            return 'neutral'
-    except:
+        # Используем специализированный анализатор для украинских новостей
+        analyzer = get_ukraine_sentiment_analyzer()
+        result = analyzer.analyze_sentiment(text)
+        return analyzer.get_sentiment_category(result['sentiment_score'])
+    except Exception as e:
+        print(f"Ошибка анализа тональности: {e}")
         return 'neutral'
 
 def calculate_tension_index(news_data, military_keywords):
@@ -315,20 +313,35 @@ def perform_real_analysis(category, analysis_period, forecast_period):
 def generate_fallback_topics(category):
     """Генерация тем по умолчанию для категории"""
     topics_by_category = {
-        'ukraine': [
-            {'topic': 'военные действия', 'weight': 0.8},
-            {'topic': 'дипломатия', 'weight': 0.6},
-            {'topic': 'гуманитарная помощь', 'weight': 0.4}
+        'military_operations': [
+            {'topic': 'боевые действия', 'weight': 0.9},
+            {'topic': 'военная техника', 'weight': 0.7},
+            {'topic': 'потери', 'weight': 0.6}
         ],
-        'middle_east': [
-            {'topic': 'конфликт', 'weight': 0.9},
-            {'topic': 'переговоры', 'weight': 0.5},
-            {'topic': 'беженцы', 'weight': 0.7}
+        'political_decisions': [
+            {'topic': 'переговоры', 'weight': 0.8},
+            {'topic': 'дипломатия', 'weight': 0.7},
+            {'topic': 'санкции', 'weight': 0.6}
+        ],
+        'economic_consequences': [
+            {'topic': 'экономические потери', 'weight': 0.8},
+            {'topic': 'энергетика', 'weight': 0.7},
+            {'topic': 'торговля', 'weight': 0.5}
+        ],
+        'humanitarian_crisis': [
+            {'topic': 'беженцы', 'weight': 0.9},
+            {'topic': 'гуманитарная помощь', 'weight': 0.8},
+            {'topic': 'жертвы среди мирного населения', 'weight': 0.7}
+        ],
+        'information_social': [
+            {'topic': 'информационная война', 'weight': 0.8},
+            {'topic': 'пропаганда', 'weight': 0.7},
+            {'topic': 'общественное мнение', 'weight': 0.6}
         ],
         'all': [
-            {'topic': 'политика', 'weight': 0.7},
-            {'topic': 'экономика', 'weight': 0.6},
-            {'topic': 'международные отношения', 'weight': 0.5}
+            {'topic': 'военные действия', 'weight': 0.8},
+            {'topic': 'политические события', 'weight': 0.7},
+            {'topic': 'гуманитарная ситуация', 'weight': 0.6}
         ]
     }
     
@@ -373,13 +386,11 @@ def generate_forecast():
             # Базовый уровень напряженности в зависимости от категории
             base_tension = {
                 'all': 0.5,
-                'ukraine': 0.7,
-                'middle_east': 0.8,
-                'fake_news': 0.4,
-                'info_war': 0.6,
-                'europe': 0.5,
-                'usa': 0.55,
-                'other': 0.3
+                'military_operations': 0.8,
+                'political_decisions': 0.7,
+                'economic_consequences': 0.6,
+                'humanitarian_crisis': 0.75,
+                'information_social': 0.65
             }.get(category, 0.5)
             
             # Генерируем значения с трендом
@@ -552,12 +563,10 @@ def generate_topics_chart(topics, category):
 def get_category_name(category):
     categories = {
         'all': 'Все категории',
-        'ukraine': 'Украина',
-        'middle_east': 'Ближний восток',
-        'fake_news': 'Фейки',
-        'info_war': 'Инфовойна',
-        'europe': 'Европа',
-        'usa': 'США',
-        'other': 'Другое'
+        'military_operations': 'Военные операции',
+        'humanitarian_crisis': 'Гуманитарный кризис',
+        'economic_consequences': 'Экономические последствия',
+        'political_decisions': 'Политические решения',
+        'information_social': 'Информационно-социальные аспекты'
     }
     return categories.get(category, category)

@@ -47,3 +47,10 @@ ultimate_generated_dataset.json
 advanced_generated_dataset.json
 generated_questions_dataset.json
 new_generated_dataset.json
+ukraine_tables_creation.log
+
+# Backup files
+*.backup
+*.backup_*
+parsers/*.backup
+parsers/*.backup_*

@@ -610,13 +610,11 @@ function extractForecastFromText(text, category, forecastPeriod) {
 function getReadableCategoryName(category) {
     const categories = {
         'all': 'Все категории',
-        'ukraine': 'Украина',
-        'middle_east': 'Ближний восток',
-        'fake_news': 'Фейки',
-        'info_war': 'Инфовойна',
-        'europe': 'Европа',
-        'usa': 'США',
-        'other': 'Другое'
+        'military_operations': 'Военные операции',
+    'humanitarian_crisis': 'Гуманитарный кризис',
+    'economic_consequences': 'Экономические последствия',
+    'political_decisions': 'Политические решения',
+    'information_social': 'Информационно-социальные аспекты'
     };
     return categories[category] || category;
 }

@@ -18,6 +18,7 @@ import time
 import random
 from ai_news_classifier import classify_news_ai
 from news_categories import classify_news, create_category_tables
+from ukraine_relevance_filter import filter_ukraine_relevance
 import sys
 import os
 import logging
@@ -37,7 +38,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def create_table_if_not_exists():
+def create_ukraine_tables_if_not_exists():
     """Создание таблицы в ClickHouse для хранения новостей Kommersant.ru"""
     client = Client(
         host=Config.CLICKHOUSE_HOST,
@@ -192,16 +193,19 @@ def parse_kommersant_news():
             # Получение полного содержимого статьи
             content = get_article_content(link, headers)
             
-            # Классификация новости
-            try:
-
-                category = classify_news_ai(title, content)
-
-            except Exception as e:
-
-                print(f"AI классификация не удалась: {e}")
-
-                category = classify_news(title, content)
+            # Проверяем релевантность к украинскому конфликту
+            logger.info("Проверка релевантности к украинскому конфликту...")
+            relevance_result = filter_ukraine_relevance(title, content)
+            
+            if not relevance_result['is_relevant']:
+                logger.info(f"Статья не релевантна украинскому конфликту (score: {relevance_result['relevance_score']:.2f})")
+                continue
+            
+            logger.info(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f}, категория: {relevance_result['category']})")
+            logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
+            
+            # Используем категорию из фильтра релевантности
+            category = relevance_result['category']
             
             # Сохранение в основную таблицу
             client.execute(
@@ -236,7 +240,7 @@ def main():
     logger.info("Запуск парсера Kommersant.ru")
     
     # Создание таблиц
-    create_table_if_not_exists()
+    create_ukraine_tables_if_not_exists()
     
     # Парсинг новостей
     parse_kommersant_news()

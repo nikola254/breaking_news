@@ -19,6 +19,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__)))
 
 from ai_news_classifier import classify_news_ai
 from news_categories import classify_news, create_category_tables
+from ukraine_relevance_filter import filter_ukraine_relevance
 
 # Добавляем корневую директорию проекта в sys.path для импорта config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -35,7 +36,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def create_table_if_not_exists():
+def create_ukraine_tables_if_not_exists():
     client = Client(
         host=Config.CLICKHOUSE_HOST,
         port=Config.CLICKHOUSE_NATIVE_PORT,
@@ -86,148 +87,16 @@ def get_page_content(driver, url, wait_for_class=None, timeout=20):
     try:
         driver.get(url)
         
-        # Wait for the body to be present
-        WebDriverWait(driver, timeout).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-        
-        # If a specific class is provided, wait for it
         if wait_for_class:
-            try:
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
-                )
-                logger.info(f"Found element with class '{wait_for_class}'")
-            except:
-                logger.warning(f"Element with class '{wait_for_class}' not found, but continuing")
-        
-        # Short delay to ensure JavaScript execution
-        time.sleep(2)
+            WebDriverWait(driver, timeout).until(
+                EC.presence_of_element_located((By.CLASS_NAME, wait_for_class))
+            )
         
         return driver.page_source
     except Exception as e:
-        logger.error(f"Error loading page {url}: {e}")
+        logger.error(f"Error getting page content: {e}")
         return None
 
-def extract_article_content(soup):
-    """Extract content and source links from article soup"""
-    # Try different selectors for article content
-    content_selectors = [
-        "div.article-content", 
-        "div.article-body",
-        "div.content",
-        "article"
-    ]
-    
-    content_element = None
-    for selector in content_selectors:
-        tag, class_name = selector.split(".")
-        content_element = soup.find(tag, class_=class_name)
-        if content_element:
-            logger.info(f"Found content using selector: {selector}")
-            break
-    
-    if not content_element:
-        logger.warning("Could not find article content with any selector")
-        return "Не удалось найти содержимое статьи", []
-    
-    # Extract paragraphs
-    paragraphs = content_element.find_all("p")
-    if not paragraphs:
-        # If no paragraphs found, try to get all text
-        content = content_element.get_text(strip=True)
-    else:
-        content = "\n\n".join([p.get_text(strip=True) for p in paragraphs])
-    
-    # Extract source links
-    source_links = []
-    links = content_element.find_all("a", href=True)
-    for link in links:
-        href = link.get("href")
-        # Check if link is external
-        if href and not href.startswith("#") and not "7kanal.co.il" in href:
-            if href.startswith("http"):
-                source_links.append(href)
-            else:
-                # Handle relative URLs
-                source_links.append(f"https://www.7kanal.co.il{href}")
-    
-    return content, source_links
-
-# Add this function to view database data
-def view_database_data(limit=None):
-    """View data from the ClickHouse database to check for duplicates"""
-    try:
-        client = Client(
-            host=Config.CLICKHOUSE_HOST,
-            port=Config.CLICKHOUSE_NATIVE_PORT,
-            user=Config.CLICKHOUSE_USER,
-            password=Config.CLICKHOUSE_PASSWORD
-        )
-        
-        # Get total count
-        count = client.execute("SELECT COUNT(*) FROM news.israil_headlines")[0][0]
-        logger.info(f"Total records in database: {count}")
-        
-        # Query to find potential duplicates
-        query = """
-        SELECT 
-            link,
-            count(*) as count,
-            groupArray(title) as titles,
-            groupArray(id) as ids
-        FROM news.israil_headlines
-        GROUP BY link
-        HAVING count > 1
-        ORDER BY count DESC
-        """
-        
-        duplicates = client.execute(query)
-        
-        if duplicates:
-            logger.warning(f"Found {len(duplicates)} links with duplicates")
-            print("\n=== DUPLICATE ENTRIES ===")
-            for link, count, titles, ids in duplicates:
-                print(f"\nLink: {link}")
-                print(f"Count: {count}")
-                print("Titles:")
-                for i, title in enumerate(titles):
-                    print(f"  {i+1}. ID: {ids[i]}, Title: {title[:100]}")
-                print("-" * 80)
-        else:
-            logger.info("No duplicate links found")
-        
-        # Get sample data
-        limit_clause = f"LIMIT {limit}" if limit is not None else ""
-        sample_query = f"""
-        SELECT 
-            id,
-            title,
-            link,
-            length(content) as content_length,
-            parsed_date
-        FROM news.israil_headlines
-        ORDER BY parsed_date DESC
-        {limit_clause}
-        """
-        
-        results = client.execute(sample_query)
-        
-        print("\n=== SAMPLE DATA ===")
-        for row in results:
-            print(f"\nID: {row[0]}")
-            print(f"Title: {row[1]}")
-            print(f"Link: {row[2]}")
-            print(f"Content Length: {row[3]}")
-            print(f"Date: {row[4]}")
-            print("-" * 80)
-        
-        return True
-    except Exception as e:
-        logger.error(f"Error querying database: {e}")
-        return False
-
-# Fix the duplicate checking in parse_israil_news function
 def parse_israil_news(driver=None):
     """Parse news from 7kanal.co.il"""
     create_driver = driver is None
@@ -254,108 +123,101 @@ def parse_israil_news(driver=None):
             password=Config.CLICKHOUSE_PASSWORD
         )
         
-        # Get existing links to avoid duplicates - use DISTINCT to ensure no duplicates
-        existing_links = set(row[0] for row in client.execute('SELECT DISTINCT link FROM news.israil_headlines'))
+        # Get existing links to avoid duplicates
+        existing_links = set()
+        try:
+            result = client.execute('SELECT DISTINCT link FROM news.israil_headlines')
+            existing_links = {row[0] for row in result}
+            logger.info(f"Found {len(existing_links)} existing articles")
+        except Exception as e:
+            logger.warning(f"Could not fetch existing links: {e}")
         
-        # Prepare data for batch insert
         headlines_data = []
         skipped_count = 0
         
-        # Find articles using multiple methods
-        articles = []
-        
-        # Method 1: Look for the container
-        container = soup.find("div", class_="category-container")
-        if container:
-            logger.info("Found category container")
-            section = container.find("section")
-            if section:
-                articles = section.find_all("a", class_="article article-sub-pages category-article")
-        
-        # Method 2: Alternative selectors if container not found or no articles
-        if not articles:
-            logger.info("Using alternative article selectors")
-            articles = soup.find_all("a", class_=lambda c: c and "article" in c)
-            
-        if not articles:
-            articles = soup.find_all("div", class_=lambda c: c and "article" in c)
-        
-        if not articles:
-            logger.warning("No articles found with any method")
-            with open("debug_page.html", "w", encoding="utf-8") as f:
-                f.write(html)
-            logger.info("Saved HTML to debug_page.html")
-            return 0
-        
+        # Find all article links
+        articles = soup.find_all('article', class_='category-item')
         logger.info(f"Found {len(articles)} articles")
         
-        # Process articles
         for article in articles:
-            # Extract title
-            title_tag = article.find("h2")
-            if not title_tag:
-                title_tag = article.find(["h1", "h3", "h4", "div"], class_=lambda c: c and ("title" in c or "header" in c))
-            
-            title = title_tag.get_text(strip=True) if title_tag else article.get_text(strip=True)
-            
-            # Extract link
-            if article.name == "a":
-                link = article.get("href")
-            else:
-                link_tag = article.find("a")
-                link = link_tag.get("href") if link_tag else None
-            
-            if not link:
-                logger.info("Skipping article without link")
-                continue
-                
-            # Handle relative URLs
-            if link.startswith("/"):
-                link = "https://www.7kanal.co.il" + link
-                
-            logger.info(f"Processing article: {title[:50]}...")
-            
-            # Skip duplicates
-            if link in existing_links:
-                logger.info(f"Skipping duplicate: {title[:50]}...")
-                skipped_count += 1
-                continue
-            
-            # Get article content
-            article_html = get_page_content(driver, link, wait_for_class="article-content")
-            if not article_html:
-                logger.warning(f"Failed to get content for {link}")
-                continue
-                
-            article_soup = BeautifulSoup(article_html, "html.parser")
-            content, source_links = extract_article_content(article_soup)
-            
-            # Convert source links to string
-            source_links_str = ", ".join(source_links) if source_links else ""
-            
-            logger.info(f"Content length: {len(content)} chars, Sources: {len(source_links)}")
-            
-            # Классифицируем новость по категориям
             try:
-
-                category = classify_news_ai(title, content)
-
+                # Extract title and link
+                title_element = article.find('h2')
+                if not title_element:
+                    continue
+                    
+                link_element = title_element.find('a')
+                if not link_element:
+                    continue
+                    
+                title = title_element.get_text(strip=True)
+                link = link_element.get('href')
+                
+                if not link.startswith('http'):
+                    link = 'https://www.7kanal.co.il' + link
+                
+                # Skip if already exists
+                if link in existing_links:
+                    skipped_count += 1
+                    continue
+                
+                logger.info(f"Processing: {title}")
+                
+                # Get article content
+                content = ""
+                source_links = []
+                
+                try:
+                    article_html = get_page_content(driver, link)
+                    if article_html:
+                        article_soup = BeautifulSoup(article_html, 'html.parser')
+                        
+                        # Extract content
+                        content_div = article_soup.find('div', class_='article-content')
+                        if content_div:
+                            paragraphs = content_div.find_all('p')
+                            content = ' '.join([p.get_text(strip=True) for p in paragraphs])
+                        
+                        # Extract source links
+                        source_link_elements = article_soup.find_all('a', href=True)
+                        for link_elem in source_link_elements:
+                            href = link_elem.get('href')
+                            if href and ('http' in href) and ('7kanal.co.il' not in href):
+                                source_links.append(href)
+                
+                except Exception as e:
+                    logger.warning(f"Could not extract content for {link}: {e}")
+                
+                source_links_str = ', '.join(source_links[:5])  # Limit to 5 links
+                
+                # Проверяем релевантность к украинскому конфликту
+                logger.info("Проверка релевантности к украинскому конфликту...")
+                relevance_result = filter_ukraine_relevance(title, content)
+                
+                if not relevance_result['is_relevant']:
+                    logger.info(f"Статья не релевантна украинскому конфликту (score: {relevance_result['relevance_score']:.2f})")
+                    continue
+                
+                logger.info(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f}, категория: {relevance_result['category']})")
+                logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
+                
+                # Используем категорию из фильтра релевантности
+                category = relevance_result['category']
+                logger.info(f"Категория: {category}")
+                
+                # Add to data for insertion
+                headlines_data.append({
+                    'title': title,
+                    'link': link,
+                    'content': content,
+                    'source_links': source_links_str,
+                    'category': category,
+                    'parsed_date': datetime.now()
+                })
+                
             except Exception as e:
-
-                print(f"AI классификация не удалась: {e}")
-
-                category = classify_news(title, content)
-            logger.info(f"Категория: {category}")
-            
-            # Add to data for insertion
-            headlines_data.append({
-                'title': title,
-                'link': link,
-                'content': content,
-                'source_links': source_links_str,
-                'category': category,
-                'parsed_date': datetime.now()
-            })
+                logger.error(f"Error processing article: {e}")
+                continue
         
         # Insert data into ClickHouse
         if headlines_data:
@@ -406,7 +268,7 @@ def continuous_monitoring(interval_minutes=15):
     logger.info(f"Starting continuous monitoring. Checking every {interval_minutes} minutes")
     
     # Create table if it doesn't exist
-    create_table_if_not_exists()
+    create_ukraine_tables_if_not_exists()
     
     # Create a single WebDriver instance to reuse
     driver = setup_webdriver()
@@ -539,5 +401,5 @@ if __name__ == "__main__":
         continuous_monitoring(args.interval)
     else:
         # Run once
-        create_table_if_not_exists()
+        create_ukraine_tables_if_not_exists()
         parse_israil_news()

@@ -259,6 +259,11 @@ function updateTable(data) {
             } else if (header.key === 'category') {
                 // Для категории переводим на русский язык
                 const categoryTranslations = {
+                    'military_operations': 'Военные операции',
+                    'humanitarian_crisis': 'Гуманитарный кризис',
+                    'economic_consequences': 'Экономические последствия',
+                    'political_decisions': 'Политические решения',
+                    'information_social': 'Информационно-социальные аспекты',
                     'ukraine': 'Украина',
                     'middle_east': 'Ближний восток',
                     'fake_news': 'Фейки',

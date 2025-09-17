@@ -1,7 +1,7 @@
 // Основной JavaScript файл для приложения NewsAnalytics
 
 // Глобальные переменные
-let currentCategory = 'ukraine';
+let currentCategory = 'military_operations';
 let currentPage = 1;
 let availableCategories = [];
 

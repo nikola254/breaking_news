@@ -229,12 +229,10 @@ def get_category_name(category):
     """
     categories = {
         'all': 'Все категории',
-        'ukraine': 'Украина',
-        'middle_east': 'Ближний восток',
-        'fake_news': 'Фейковые новости',
-        'info_war': 'Информационная война',
-        'europe': 'Европа',
-        'usa': 'США',
-        'other': 'Другое'
+        'military_operations': 'Военные операции',
+        'humanitarian_crisis': 'Гуманитарный кризис',
+        'economic_consequences': 'Экономические последствия',
+        'political_decisions': 'Политические решения',
+        'information_social': 'Информационно-социальные аспекты'
     }
     return categories.get(category, category.title())

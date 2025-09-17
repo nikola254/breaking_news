@@ -41,7 +41,7 @@ TELEGRAM_CHANNELS = [
     # Add more channels as needed
 ]
 
-def create_table_if_not_exists():
+def create_ukraine_tables_if_not_exists():
     """Создание таблицы в ClickHouse для хранения Telegram новостей.
     
     Создает базу данных 'news' и таблицу 'telegram_headlines'
@@ -141,7 +141,7 @@ async def parse_telegram_channels():
     обрабатывает их и сохраняет в ClickHouse.
     """
     # Create table if not exists
-    create_table_if_not_exists()
+    create_ukraine_tables_if_not_exists()
     
     # Initialize Telegram client with session file
     session_file = os.path.join(os.path.dirname(__file__), 'telegram_session')

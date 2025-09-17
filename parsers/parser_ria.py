@@ -6,6 +6,7 @@ import time
 import random
 from ai_news_classifier import classify_news_ai
 from news_categories import classify_news, create_category_tables
+from ukraine_relevance_filter import filter_ukraine_relevance
 import sys
 import os
 
@@ -20,7 +21,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 
 
-def create_table_if_not_exists():
+def create_ukraine_tables_if_not_exists():
+    """Создает таблицы для украинских категорий"""
     client = Client(
         host=Config.CLICKHOUSE_HOST,
         port=Config.CLICKHOUSE_NATIVE_PORT,
@@ -31,22 +33,34 @@ def create_table_if_not_exists():
     # Create database if not exists
     client.execute('CREATE DATABASE IF NOT EXISTS news')
     
-    # Create table if not exists - adding content field
-    client.execute('''
-        CREATE TABLE IF NOT EXISTS news.ria_headlines (
-            id UUID DEFAULT generateUUIDv4(),
-            title String,
-            link String,
-            content String,
-            source String DEFAULT 'ria.ru',
-            category String DEFAULT 'world',
-            parsed_date DateTime DEFAULT now()
-        ) ENGINE = MergeTree()
-        ORDER BY (parsed_date, id)
-    ''')
+    # Создаем таблицы для украинских категорий
+    ukraine_categories = [
+        'military_operations',      # Военные операции
+        'humanitarian_crisis',      # Гуманитарный кризис
+        'economic_consequences',    # Экономические последствия
+        'political_decisions',      # Политические решения
+        'information_social',       # Информационно-социальные аспекты
+        'other'                     # Прочее
+    ]
     
-    # Создаем таблицы для каждой категории
-    create_category_tables(client)
+    for category in ukraine_categories:
+        client.execute(f'''
+            CREATE TABLE IF NOT EXISTS news.ria_{category} (
+                id UUID DEFAULT generateUUIDv4(),
+                title String,
+                link String,
+                content String,
+                source String DEFAULT 'ria.ru',
+                category String DEFAULT '{category}',
+                relevance_score Float32 DEFAULT 0.0,
+                ai_confidence Float32 DEFAULT 0.0,
+                keywords_found Array(String) DEFAULT [],
+                sentiment_score Float32 DEFAULT 0.0,
+                parsed_date DateTime DEFAULT now(),
+                published_date DateTime DEFAULT now()
+            ) ENGINE = MergeTree()
+            ORDER BY (parsed_date, id)
+        ''')
 
 
 def get_article_content(url, headers):
@@ -103,8 +117,17 @@ def parse_politics_headlines():
         password=Config.CLICKHOUSE_PASSWORD
     )
     
-    # Get existing links to avoid duplicates
-    existing_links = set(row[0] for row in client.execute('SELECT link FROM news.ria_headlines'))
+    # Get existing links to avoid duplicates from all ukraine category tables
+    existing_links = set()
+    ukraine_categories = ['military_operations', 'humanitarian_crisis', 'economic_consequences', 
+                         'political_decisions', 'information_social', 'other']
+    
+    for category in ukraine_categories:
+        try:
+            links = client.execute(f'SELECT link FROM news.ria_{category}')
+            existing_links.update(row[0] for row in links)
+        except Exception as e:
+            print(f"Ошибка при получении существующих ссылок из ria_{category}: {e}")
     
     # Prepare data for batch insert
     headlines_data = []
@@ -133,26 +156,40 @@ def parse_politics_headlines():
             print(f"Получено {len(content)} символов содержимого")
             print("-" * 40)
             
-            # Классифицируем новость по категориям
+            # Проверяем релевантность к украинскому конфликту
+            print("Проверка релевантности к украинскому конфликту...")
+            relevance_result = filter_ukraine_relevance(title, content)
+            
+            if not relevance_result['is_relevant']:
+                print(f"Статья не релевантна украинскому конфликту (score: {relevance_result['relevance_score']:.2f})")
+                print("Пропускаем статью...")
+                continue
+            
+            print(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f})")
+            print(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
+            
+            # Классифицируем новость по украинским категориям
             try:
-
                 category = classify_news_ai(title, content)
-
             except Exception as e:
-
                 print(f"AI классификация не удалась: {e}")
-
-                category = classify_news(title, content)
+                category = 'other'  # Fallback категория
+            
             print(f"Категория: {category}")
             
-            # Add to data for insertion
+            # Add to data for insertion with ukraine relevance data
             headlines_data.append({
                 'title': title,
                 'link': link,
                 'content': content,
                 'source': 'ria.ru',
                 'category': category,
-                'parsed_date': datetime.now()
+                'relevance_score': relevance_result['relevance_score'],
+                'ai_confidence': relevance_result.get('ai_confidence', 0.0),
+                'keywords_found': relevance_result['keywords_found'],
+                'sentiment_score': 0.0,  # Будет добавлено позже
+                'parsed_date': datetime.now(),
+                'published_date': datetime.now()
             })
             
             new_count += 1
@@ -164,13 +201,7 @@ def parse_politics_headlines():
     
     # Insert data into ClickHouse if we have any
     if headlines_data:
-        # Вставляем в общую таблицу
-        client.execute(
-            'INSERT INTO news.ria_headlines (title, link, content, source, category, parsed_date) VALUES',
-            headlines_data
-        )
-        
-        # Группируем данные по категориям
+        # Группируем данные по украинским категориям
         categorized_data = {}
         for item in headlines_data:
             category = item['category']
@@ -178,15 +209,21 @@ def parse_politics_headlines():
                 categorized_data[category] = []
             categorized_data[category].append(item)
         
-        # Вставляем данные в соответствующие таблицы категорий
+        # Вставляем данные в соответствующие таблицы украинских категорий
         for category, data in categorized_data.items():
             if data:
-                client.execute(
-                    f'INSERT INTO news.ria_{category} (title, link, content, source, category, parsed_date) VALUES',
-                    data
-                )
+                try:
+                    client.execute(
+                        f'''INSERT INTO news.ria_{category} 
+                        (title, link, content, source, category, relevance_score, ai_confidence, 
+                         keywords_found, sentiment_score, parsed_date, published_date) VALUES''',
+                        data
+                    )
+                    print(f"Добавлено {len(data)} записей в таблицу ria_{category}")
+                except Exception as e:
+                    print(f"Ошибка при вставке в таблицу ria_{category}: {e}")
         
-        print(f"Добавлено {len(headlines_data)} записей в базу данных")
+        print(f"Всего обработано {len(headlines_data)} релевантных украинских новостей")
     
     if skipped_count > 0:
         print(f"Пропущено {skipped_count} дубликатов")
@@ -199,8 +236,8 @@ def continuous_monitoring(interval_minutes=5):
     print(f"Запуск непрерывного мониторинга новостей RIA. Интервал проверки: {interval_minutes} минут")
     
     try:
-        # Create table if it doesn't exist
-        create_table_if_not_exists()
+        # Create ukraine tables if they don't exist
+        create_ukraine_tables_if_not_exists()
         
         while True:
             print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Проверка новых статей...")
