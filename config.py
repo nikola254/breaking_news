@@ -35,6 +35,7 @@ class Config:
     TELEGRAM_API_ID = os.environ.get('TELEGRAM_API_ID')
     TELEGRAM_API_HASH = os.environ.get('TELEGRAM_API_HASH')
     TELEGRAM_PHONE = os.environ.get('TELEGRAM_PHONE')
+    TELEGRAM_PASSWORD = os.environ.get('TELEGRAM_PASSWORD')
     
     # Настройки AI API
     DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
@@ -42,6 +43,11 @@ class Config:
     OPENROUTER_DEEPSEEK_R1_API_KEY = os.environ.get('OPENROUTER_DEEPSEEK_R1_API_KEY')
     AUTH_KEY_GIGA_CHAT = os.environ.get('AUTH_KEY_GIGA_CHAT')
     AI_IO_KEY = os.environ.get('AI_IO_KEY')
+    
+    # Настройки Cloud.ru Foundation Models API
+    CLOUD_RU_API_KEY = os.environ.get('CLOUD_RU_API_KEY') or os.environ.get('API_KEY')
+    CLOUD_MODEL_URL = os.environ.get('CLOUD_MODEL_URL', 'https://foundation-models.api.cloud.ru/v1/chat/completions')
+    CLOUD_MODEL_TOKEN = os.environ.get('CLOUD_MODEL_TOKEN') or os.environ.get('CLOUD_RU_API_KEY') or os.environ.get('API_KEY')
     
     # Настройки для генерации датасета
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')

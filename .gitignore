@@ -42,3 +42,8 @@ remove_cross_duplicates.log
 remove_duplicates.log
 get_fake_news_count.log
 dataset_requirements.txt
+analyzer_session.session
+ultimate_generated_dataset.json
+advanced_generated_dataset.json
+generated_questions_dataset.json
+new_generated_dataset.json

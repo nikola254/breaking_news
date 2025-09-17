@@ -4,10 +4,14 @@
 - Конфигурацию подключения к ClickHouse
 - Функции для создания клиентов базы данных
 - Общие модели данных для работы с новостями
+- Модели для анализа социальных сетей
 """
 
 import clickhouse_connect
 from config import Config
+
+# Модели социальных сетей будут импортированы из отдельного модуля
+# from app.models.social_models import *
 
 # Получаем настройки из конфигурации
 CLICKHOUSE_HOST = Config.CLICKHOUSE_HOST

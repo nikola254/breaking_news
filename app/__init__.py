@@ -24,6 +24,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Импортируем и регистрируем Blueprint-модули для модульной архитектуры
 from app.blueprints import main_bp, news_api_bp, parser_api_bp, forecast_api_bp, external_api_bp
 from app.blueprints.chart_api import chart_api_bp
+from app.blueprints.social_analysis import social_bp
 
 
 # Регистрируем все Blueprint модули
@@ -33,6 +34,7 @@ app.register_blueprint(parser_api_bp)    # API для парсинга ново�
 app.register_blueprint(forecast_api_bp)  # API для прогнозирования
 app.register_blueprint(external_api_bp)   # API для внешних сервисов
 app.register_blueprint(chart_api_bp)       # API для создания графиков
+app.register_blueprint(social_bp)         # API для анализа социальных сетей
 
 
 # Инициализируем SocketIO в parser_api для real-time уведомлений

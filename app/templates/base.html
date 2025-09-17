@@ -20,9 +20,7 @@
             <a href="{{ url_for('main.analytics') }}" {% if request.path == url_for('main.analytics') %}class="active"{% endif %}>Аналитика</a>
             <a href="{{ url_for('main.clickhouse') }}" {% if request.path == url_for('main.clickhouse') %}class="active"{% endif %}>База данных</a>
             <a href="{{ url_for('main.predict') }}" {% if request.path == url_for('main.predict') %}class="active"{% endif %}>Прогнозирование</a>
-            <a href="{{ url_for('main.reports') }}" {% if request.path == url_for('main.reports') %}class="active"{% endif %}>Отчеты</a>
-            <a href="{{ url_for('main.trends') }}" {% if request.path == url_for('main.trends') %}class="active"{% endif %}>Тренды</a>
-            <a href="{{ url_for('main.archive') }}" {% if request.path == url_for('main.archive') %}class="active"{% endif %}>Архив</a>
+            <a href="{{ url_for('main.social_analysis') }}" {% if request.path == url_for('main.social_analysis') %}class="active"{% endif %}>Соц. сети</a>
             <a href="{{ url_for('main.about') }}" {% if request.path == url_for('main.about') %}class="active"{% endif %}>О проекте</a>
         </div>
         <div class="user-actions">

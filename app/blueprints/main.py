@@ -45,15 +45,6 @@ def clickhouse():
     """
     return render_template('database.html')
 
-@main_bp.route('/reports')
-def reports():
-    """Страница отчетов и статистики.
-    
-    Returns:
-        str: Отрендеренный HTML шаблон страницы отчетов
-    """
-    return render_template('reports.html')
-
 @main_bp.route('/predict')
 def predict():
     """Страница прогнозирования трендов.
@@ -63,23 +54,14 @@ def predict():
     """
     return render_template('predict.html')
 
-@main_bp.route('/trends')
-def trends():
-    """Страница анализа трендов новостей.
+@main_bp.route('/social-analysis')
+def social_analysis():
+    """Страница анализа социальных сетей.
     
     Returns:
-        str: Отрендеренный HTML шаблон страницы трендов
+        str: Отрендеренный HTML шаблон страницы анализа социальных сетей
     """
-    return render_template('trends.html')
-
-@main_bp.route('/archive')
-def archive():
-    """Страница архива новостей.
-    
-    Returns:
-        str: Отрендеренный HTML шаблон страницы архива
-    """
-    return render_template('archive.html')
+    return render_template('social_analysis.html')
 
 @main_bp.route('/about')
 def about():
