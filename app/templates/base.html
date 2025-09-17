@@ -21,6 +21,7 @@
             <a href="{{ url_for('main.clickhouse') }}" {% if request.path == url_for('main.clickhouse') %}class="active"{% endif %}>База данных</a>
             <a href="{{ url_for('main.predict') }}" {% if request.path == url_for('main.predict') %}class="active"{% endif %}>Прогнозирование</a>
             <a href="{{ url_for('main.social_analysis') }}" {% if request.path == url_for('main.social_analysis') %}class="active"{% endif %}>Соц. сети</a>
+            <a href="{{ url_for('social_analysis.extremist_content') }}" {% if request.path == url_for('social_analysis.extremist_content') %}class="active"{% endif %}><i class="fas fa-shield-alt text-danger"></i> Экстремизм</a>
             <a href="{{ url_for('main.about') }}" {% if request.path == url_for('main.about') %}class="active"{% endif %}>О проекте</a>
         </div>
         <div class="user-actions">

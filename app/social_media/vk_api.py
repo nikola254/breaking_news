@@ -215,8 +215,11 @@ class VKAnalyzer:
                 analyzed_posts.append(analyzed_post)
                 continue
             
-            # Используем новый метод определения процента экстремизма через облачную модель
-            extremism_analysis = classifier.analyze_extremism_percentage(text)
+            # Используем облачную модель для анализа экстремистского контента
+            cloud_analysis = classifier.analyze_extremism_percentage(text)
+            
+            # Базовый процент экстремизма из облачной модели
+            base_extremism_percentage = cloud_analysis.get('extremism_percentage', 0)
             
             # Дополнительные факторы риска для социальных сетей
             social_risk_bonus = 0
@@ -228,7 +231,7 @@ class VKAnalyzer:
                 social_risk_bonus += 2
             
             # Корректируем процент экстремизма с учетом социальных факторов
-            adjusted_extremism_percentage = min(100, extremism_analysis['extremism_percentage'] + social_risk_bonus)
+            adjusted_extremism_percentage = min(100, base_extremism_percentage + social_risk_bonus)
             
             # Определяем уровень риска на основе процента экстремизма
             if adjusted_extremism_percentage >= 80:
@@ -245,18 +248,21 @@ class VKAnalyzer:
             analyzed_post = post.copy()
             analyzed_post.update({
                 'classification': 'extremist' if adjusted_extremism_percentage >= 40 else ('suspicious' if adjusted_extremism_percentage >= 20 else 'normal'),
-                'confidence': extremism_analysis['confidence'],
+                'confidence': cloud_analysis.get('confidence', 0),
                 'risk_score': adjusted_extremism_percentage,
                 'risk_level': risk_level,
                 'extremism_percentage': adjusted_extremism_percentage,
-                'found_keywords': extremism_analysis.get('detected_keywords', []),
+                'found_keywords': cloud_analysis.get('detected_keywords', []),
                 'highlighted_text': text,  # Можно добавить выделение ключевых слов
                 'threat_color': '#dc3545' if risk_level == 'critical' else ('#fd7e14' if risk_level == 'high' else ('#ffc107' if risk_level == 'medium' else ('#28a745' if risk_level == 'none' else '#6c757d'))),
-                'detected_keywords': extremism_analysis.get('detected_keywords', []),
+                'detected_keywords': cloud_analysis.get('detected_keywords', []),
                 'analysis_date': datetime.now(),
-                'analysis_method': extremism_analysis.get('method', 'unknown'),
-                'explanation': extremism_analysis.get('explanation', ''),
-                'social_risk_bonus': social_risk_bonus
+                'analysis_method': cloud_analysis.get('method', 'cloud_api'),
+                'explanation': cloud_analysis.get('explanation', ''),
+                'social_risk_bonus': social_risk_bonus,
+                # Информация облачного анализа
+                'cloud_percentage': cloud_analysis.get('extremism_percentage', 0),
+                'base_percentage': base_extremism_percentage
             })
             
             analyzed_posts.append(analyzed_post)

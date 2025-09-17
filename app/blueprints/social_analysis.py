@@ -58,6 +58,8 @@ def create_social_analysis_tables():
                 id UUID DEFAULT generateUUIDv4(),
                 platform String,
                 account_url String,
+                author String DEFAULT '',
+                source_url String DEFAULT '',
                 content String,
                 classification String,
                 confidence Float32,
@@ -67,6 +69,13 @@ def create_social_analysis_tables():
             ) ENGINE = MergeTree()
             ORDER BY analysis_date
         """)
+        
+        # Добавляем недостающие колонки если таблица уже существует
+        try:
+            client.command("ALTER TABLE social_analysis_results ADD COLUMN IF NOT EXISTS author String DEFAULT ''")
+            client.command("ALTER TABLE social_analysis_results ADD COLUMN IF NOT EXISTS source_url String DEFAULT ''")
+        except Exception as alter_error:
+            logger.warning(f"Не удалось добавить колонки (возможно, уже существуют): {alter_error}")
         
         # Таблица сессий мониторинга
         client.command("""
@@ -93,10 +102,17 @@ def social_analysis():
     """Отображение страницы анализа социальных сетей"""
     return render_template('social_analysis.html')
 
+# Маршрут для отображения страницы просмотра экстремистского контента
+@social_bp.route('/extremist-content', methods=['GET'])
+def extremist_content():
+    """Отображение страницы просмотра экстремистского контента и аналитики"""
+    return render_template('extremist_content.html')
+
 
 
 def save_analysis_result(platform: str, account_url: str, content: str, 
-                        classification: str, confidence: float, keywords: list, metadata: str):
+                        classification: str, confidence: float, keywords: list, metadata: str,
+                        author: str = '', source_url: str = ''):
     """Сохранение результата анализа в ClickHouse"""
     try:
         client = get_clickhouse_client()
@@ -105,10 +121,12 @@ def save_analysis_result(platform: str, account_url: str, content: str,
             data_row = [
                 platform,
                 account_url,
+                author or '',
+                source_url or account_url,  # Используем account_url как fallback для source_url
                 content,
                 classification,
                 confidence,
-                json.dumps(keywords) if isinstance(keywords, list) else str(keywords),
+                keywords if isinstance(keywords, list) else [str(keywords)] if keywords else [],
                 datetime.now(),
                 metadata
             ]
@@ -116,8 +134,8 @@ def save_analysis_result(platform: str, account_url: str, content: str,
             logger.info(f"Сохранение данных в ClickHouse для {platform}: {account_url}")
             # Указываем явно колонки для вставки (исключая id)
             client.insert('social_analysis_results', [data_row], 
-                         column_names=['platform', 'account_url', 'content', 'classification', 
-                                     'confidence', 'keywords', 'analysis_date', 'metadata'])
+                         column_names=['platform', 'account_url', 'author', 'source_url', 'content', 
+                                     'classification', 'confidence', 'keywords', 'analysis_date', 'metadata'])
             logger.info(f"Результат анализа успешно сохранен для {platform}: {account_url}")
     except Exception as e:
         logger.error(f"Ошибка сохранения в ClickHouse: {e}")
@@ -200,7 +218,9 @@ def analyze_account():
                         classification=classification['label'],
                         confidence=classification['confidence'],
                         keywords=classification.get('keywords', []),
-                        metadata=json.dumps(msg_metadata)
+                        metadata=json.dumps(msg_metadata),
+                        author=msg.get('from_user', {}).get('username', '') if isinstance(msg.get('from_user'), dict) else '',
+                        source_url=account_url
                     )
                     
                     # Преобразуем datetime в строку для JSON сериализации
@@ -330,7 +350,9 @@ def search_keywords():
                                                 'search_keywords': keyword_list,
                                                 'message_id': msg.get('id'),
                                                 'date': msg.get('date').isoformat() if msg.get('date') else None
-                                            })
+                                            }),
+                                            author=channel,
+                                            source_url=f"https://t.me/{channel}"
                                         )
                                         
                                         found_items.append({
@@ -499,7 +521,9 @@ def start_monitoring():
                                                         'monitor_keywords': keyword_list,
                                                         'message_id': msg.get('id'),
                                                         'date': msg.get('date').isoformat() if msg.get('date') else None
-                                                    })
+                                                    }),
+                                                    author=channel,
+                                                    source_url=f"https://t.me/{channel}"
                                                 )
                                                 
                                                 # Логируем найденный контент
@@ -1232,6 +1256,356 @@ def get_analysis_statistics():
         
     except Exception as e:
         logger.error(f"Error getting statistics: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@social_bp.route('/channel-analytics', methods=['GET'])
+def get_channel_analytics():
+    """Получение детальной аналитики по каналам с экстремистским контентом"""
+    try:
+        client = get_clickhouse_client()
+        if not client:
+            return jsonify({
+                'success': False,
+                'error': 'Ошибка подключения к базе данных'
+            }), 500
+        
+        # Параметры фильтрации
+        platform = request.args.get('platform')
+        classification = request.args.get('classification')
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+        limit = int(request.args.get('limit', 50))
+        
+        # Базовые условия для фильтрации
+        conditions = []
+        if platform:
+            conditions.append(f"platform = '{platform}'")
+        if classification:
+            conditions.append(f"classification = '{classification}'")
+        if date_from:
+            conditions.append(f"analysis_date >= '{date_from}'")
+        if date_to:
+            conditions.append(f"analysis_date <= '{date_to}'")
+        
+        where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
+        
+        # 1. Статистика по каналам/источникам
+        channels_query = f"""
+            SELECT 
+                source_url,
+                author,
+                platform,
+                COUNT(*) as total_posts,
+                COUNT(CASE WHEN classification = 'extremist' THEN 1 END) as extremist_posts,
+                COUNT(CASE WHEN classification = 'hate_speech' THEN 1 END) as hate_speech_posts,
+                COUNT(CASE WHEN classification = 'propaganda' THEN 1 END) as propaganda_posts,
+                AVG(confidence) as avg_confidence,
+                MAX(analysis_date) as last_activity
+            FROM social_analysis_results
+            {where_clause}
+            GROUP BY source_url, author, platform
+            HAVING total_posts > 0
+            ORDER BY extremist_posts DESC, total_posts DESC
+            LIMIT {limit}
+        """
+        
+        channels_result = client.query(channels_query)
+        channels_data = []
+        
+        for row in channels_result.result_rows:
+            channels_data.append({
+                'source_url': row[0] or 'Неизвестно',
+                'author': row[1] or 'Неизвестно',
+                'platform': row[2],
+                'total_posts': row[3],
+                'extremist_posts': row[4],
+                'hate_speech_posts': row[5],
+                'propaganda_posts': row[6],
+                'avg_confidence': round(float(row[7]) if row[7] else 0, 2),
+                'last_activity': row[8].isoformat() if row[8] else None,
+                'risk_level': 'Высокий' if row[4] > 5 else 'Средний' if row[4] > 1 else 'Низкий'
+            })
+        
+        # 2. Топ ключевых слов в экстремистском контенте
+        keywords_query = f"""
+            SELECT 
+                arrayJoin(keywords) as keyword,
+                COUNT(*) as frequency,
+                COUNT(CASE WHEN classification = 'extremist' THEN 1 END) as extremist_count
+            FROM social_analysis_results
+            {where_clause}
+            AND length(keywords) > 0
+            GROUP BY keyword
+            HAVING keyword != ''
+            ORDER BY extremist_count DESC, frequency DESC
+            LIMIT 20
+        """
+        
+        keywords_result = client.query(keywords_query)
+        keywords_data = [
+            {
+                'keyword': row[0],
+                'frequency': row[1],
+                'extremist_count': row[2],
+                'extremist_ratio': round((row[2] / row[1]) * 100, 1) if row[1] > 0 else 0
+            }
+            for row in keywords_result.result_rows
+        ]
+        
+        # 3. Временная динамика по дням
+        time_query = f"""
+            SELECT 
+                toDate(analysis_date) as date,
+                COUNT(*) as total_posts,
+                COUNT(CASE WHEN classification = 'extremist' THEN 1 END) as extremist_posts,
+                COUNT(CASE WHEN classification = 'hate_speech' THEN 1 END) as hate_speech_posts,
+                COUNT(CASE WHEN classification = 'propaganda' THEN 1 END) as propaganda_posts
+            FROM social_analysis_results
+            {where_clause}
+            GROUP BY toDate(analysis_date)
+            ORDER BY date DESC
+            LIMIT 30
+        """
+        
+        time_result = client.query(time_query)
+        time_data = [
+            {
+                'date': row[0].strftime('%Y-%m-%d'),
+                'total_posts': row[1],
+                'extremist_posts': row[2],
+                'hate_speech_posts': row[3],
+                'propaganda_posts': row[4]
+            }
+            for row in time_result.result_rows
+        ]
+        
+        # 4. Самый опасный контент (высокая уверенность + экстремизм)
+        dangerous_query = f"""
+            SELECT 
+                content,
+                source_url,
+                author,
+                platform,
+                confidence,
+                analysis_date,
+                keywords
+            FROM social_analysis_results
+            {where_clause}
+            AND classification = 'extremist'
+            AND confidence > 0.8
+            ORDER BY confidence DESC, analysis_date DESC
+            LIMIT 10
+        """
+        
+        dangerous_result = client.query(dangerous_query)
+        dangerous_content = [
+            {
+                'content': row[0][:200] + '...' if len(row[0]) > 200 else row[0],
+                'source_url': row[1],
+                'author': row[2],
+                'platform': row[3],
+                'confidence': round(float(row[4]), 3),
+                'analysis_date': row[5].isoformat() if row[5] else None,
+                'keywords': row[6]
+            }
+            for row in dangerous_result.result_rows
+        ]
+        
+        # 5. Общая статистика
+        summary_query = f"""
+            SELECT 
+                COUNT(*) as total_analyzed,
+                COUNT(CASE WHEN classification = 'extremist' THEN 1 END) as total_extremist,
+                COUNT(CASE WHEN classification = 'hate_speech' THEN 1 END) as total_hate_speech,
+                COUNT(CASE WHEN classification = 'propaganda' THEN 1 END) as total_propaganda,
+                COUNT(DISTINCT source_url) as unique_sources,
+                COUNT(DISTINCT author) as unique_authors,
+                AVG(confidence) as avg_confidence
+            FROM social_analysis_results
+            {where_clause}
+        """
+        
+        summary_result = client.query(summary_query)
+        summary_row = summary_result.result_rows[0] if summary_result.result_rows else [0] * 7
+        
+        summary_stats = {
+            'total_analyzed': summary_row[0],
+            'total_extremist': summary_row[1],
+            'total_hate_speech': summary_row[2],
+            'total_propaganda': summary_row[3],
+            'unique_sources': summary_row[4],
+            'unique_authors': summary_row[5],
+            'avg_confidence': round(float(summary_row[6]) if summary_row[6] else 0, 3),
+            'extremist_percentage': round((summary_row[1] / summary_row[0]) * 100, 1) if summary_row[0] > 0 else 0
+        }
+        
+        return jsonify({
+            'success': True,
+            'analytics': {
+                'summary': summary_stats,
+                'channels': channels_data,
+                'keywords': keywords_data,
+                'time_dynamics': time_data,
+                'dangerous_content': dangerous_content
+            },
+            'filters_applied': {
+                'platform': platform,
+                'classification': classification,
+                'date_from': date_from,
+                'date_to': date_to,
+                'limit': limit
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting channel analytics: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@social_bp.route('/available-sources', methods=['GET'])
+def get_available_sources():
+    """Получение списка доступных источников (каналов/пользователей) для анализа"""
+    try:
+        client = get_clickhouse_client()
+        if not client:
+            return jsonify({
+                'success': False,
+                'error': 'Database connection failed'
+            }), 500
+        
+        # Получаем уникальные источники из базы данных
+        query = """
+        SELECT 
+            platform,
+            account_url,
+            author,
+            COUNT(*) as total_posts,
+            SUM(CASE WHEN classification = 'extremist' THEN 1 ELSE 0 END) as extremist_posts,
+            SUM(CASE WHEN classification = 'hate_speech' THEN 1 ELSE 0 END) as hate_speech_posts,
+            SUM(CASE WHEN classification = 'propaganda' THEN 1 ELSE 0 END) as propaganda_posts,
+            MAX(analysis_date) as last_activity,
+            AVG(confidence) as avg_confidence
+        FROM social_analysis_results 
+        WHERE account_url != '' AND account_url IS NOT NULL
+        GROUP BY platform, account_url, author
+        ORDER BY total_posts DESC, last_activity DESC
+        LIMIT 1000
+        """
+        
+        result = client.query(query)
+        sources = []
+        
+        for row in result.result_rows:
+            platform, account_url, author, total_posts, extremist_posts, hate_speech_posts, propaganda_posts, last_activity, avg_confidence = row
+            
+            # Определяем уровень риска источника
+            extremist_ratio = extremist_posts / total_posts if total_posts > 0 else 0
+            if extremist_ratio > 0.5:
+                risk_level = 'critical'
+            elif extremist_ratio > 0.3:
+                risk_level = 'high'
+            elif extremist_ratio > 0.1:
+                risk_level = 'medium'
+            elif extremist_posts > 0:
+                risk_level = 'low'
+            else:
+                risk_level = 'none'
+            
+            sources.append({
+                'platform': platform,
+                'account_url': account_url,
+                'author': author or 'Неизвестно',
+                'total_posts': total_posts,
+                'extremist_posts': extremist_posts,
+                'hate_speech_posts': hate_speech_posts,
+                'propaganda_posts': propaganda_posts,
+                'last_activity': last_activity.isoformat() if last_activity else None,
+                'avg_confidence': round(avg_confidence, 3) if avg_confidence else 0,
+                'risk_level': risk_level,
+                'extremist_ratio': round(extremist_ratio, 3)
+            })
+        
+        return jsonify({
+            'success': True,
+            'sources': sources,
+            'total_sources': len(sources)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting available sources: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@social_bp.route('/analyze-source', methods=['POST'])
+def analyze_specific_source():
+    """Анализ конкретного источника (канала/пользователя)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+        
+        platform = data.get('platform')
+        account_url = data.get('account_url')
+        
+        if not platform or not account_url:
+            return jsonify({
+                'success': False,
+                'error': 'Platform and account_url are required'
+            }), 400
+        
+        # Получаем анализатор для платформы
+        analyzer = None
+        if platform == 'vk':
+            analyzer = vk_analyzer
+        elif platform == 'telegram':
+            analyzer = telegram_analyzer
+        elif platform == 'ok':
+            analyzer = ok_analyzer
+        
+        if not analyzer:
+            return jsonify({
+                'success': False,
+                'error': f'Unsupported platform: {platform}'
+            }), 400
+        
+        # Запускаем анализ в отдельном потоке
+        def run_analysis():
+            try:
+                if platform == 'vk':
+                    analyzer.analyze_user_posts(account_url, max_posts=50)
+                elif platform == 'telegram':
+                    analyzer.analyze_channel_posts(account_url, max_posts=50)
+                elif platform == 'ok':
+                    analyzer.analyze_user_posts(account_url, max_posts=50)
+                
+                logger.info(f"Analysis completed for {platform} source: {account_url}")
+            except Exception as e:
+                logger.error(f"Analysis failed for {platform} source {account_url}: {e}")
+        
+        # Запускаем анализ асинхронно
+        analysis_thread = threading.Thread(target=run_analysis)
+        analysis_thread.daemon = True
+        analysis_thread.start()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Analysis started for {platform} source: {account_url}',
+            'platform': platform,
+            'account_url': account_url
+        })
+        
+    except Exception as e:
+        logger.error(f"Error analyzing specific source: {e}")
         return jsonify({
             'success': False,
             'error': str(e)

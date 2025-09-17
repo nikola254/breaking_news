@@ -35,7 +35,7 @@ app.register_blueprint(parser_api_bp)    # API для парсинга ново�
 app.register_blueprint(forecast_api_bp)  # API для прогнозирования
 app.register_blueprint(external_api_bp)   # API для внешних сервисов
 app.register_blueprint(chart_api_bp)       # API для создания графиков
-app.register_blueprint(social_bp)         # API для анализа социальных сетей
+app.register_blueprint(social_bp, url_prefix='/social-analysis')         # API для анализа социальных сетей
 app.register_blueprint(ukraine_analytics_bp)  # API для украинской аналитики
 
 

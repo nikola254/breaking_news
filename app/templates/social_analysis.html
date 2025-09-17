@@ -417,7 +417,7 @@ function formatAccountResults(results) {
         if (results.analysis_results.detailed_results && results.analysis_results.detailed_results.length > 0) {
             html += '<div class="table-responsive">';
             html += '<table class="table table-striped">';
-            html += '<thead><tr><th>Контент</th><th>Классификация</th><th>Уверенность</th><th>Ключевые слова</th><th>Дата</th></tr></thead>';
+            html += '<thead><tr><th>Контент</th><th>Классификация</th><th>Облачный анализ</th><th>Ключевые слова</th><th>Дата</th></tr></thead>';
             html += '<tbody>';
             
             results.analysis_results.detailed_results.forEach(item => {
@@ -435,7 +435,24 @@ function formatAccountResults(results) {
                 html += '</td>';
                 
                 html += `<td><span class="badge ${badgeClass}">${item.classification}</span></td>`;
-                html += `<td>${(item.confidence * 100).toFixed(1)}%</td>`;
+                
+                // Колонка с облачным анализом
+                html += '<td>';
+                html += `<div class="small">`;
+                html += `<strong>Базовый:</strong> ${item.base_percentage || 0}%<br>`;
+                html += `<strong>Итоговый:</strong> ${item.cloud_percentage || 0}%<br>`;
+                html += `<strong>Метод:</strong> ${item.analysis_method || 'cloud_api'}<br>`;
+                html += `<strong>Уверенность:</strong> ${((item.confidence || 0) * 100).toFixed(1)}%<br>`;
+                
+                if (item.social_risk_bonus && item.social_risk_bonus > 0) {
+                    html += `<span class="text-info"><strong>Соц. бонус:</strong> +${item.social_risk_bonus}%</span><br>`;
+                }
+                
+                if (item.explanation) {
+                    html += `<small class="text-muted">${item.explanation}</small>`;
+                }
+                html += '</div>';
+                html += '</td>';
                 
                 // Показываем ключевые слова, которые привели к классификации
                 html += '<td>';

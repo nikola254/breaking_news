@@ -72,54 +72,152 @@ class ExtremistContentClassifier:
         ]
     
     def _load_extremist_keywords(self) -> Dict[str, List[str]]:
-        """Загрузка ключевых слов экстремистского контента с улучшенной точностью"""
+        """
+        Загрузка ключевых слов экстремистского контента согласно ФЗ-114 
+        "О противодействии экстремистской деятельности"
+        
+        Экстремистская деятельность включает:
+        1. Пропаганду или публичное оправдание терроризма
+        2. Призывы к свержению конституционного строя
+        3. Возбуждение ненависти по признакам расы, национальности, религии, социальной группы
+        4. Оправдание преступлений экстремистов
+        5. Создание запрещённых экстремистских организаций
+        """
         return {
-            'terrorism': [
-                'терроризм', 'террорист', 'теракт', 'смертник', 'джихад', 
-                'шахид', 'мученик', 'священная война', 'взрывчатка', 'самоподрыв'
+            # 1. Пропаганда и оправдание терроризма (ст. 1 п. 1 ФЗ-114)
+            'terrorism_propaganda': [
+                'терроризм оправдан', 'террористы правы', 'теракт необходим', 'смертники герои',
+                'джихад священный', 'шахиды мученики', 'террор справедлив', 'взрывы оправданы',
+                'террористические методы', 'поддержка террористов', 'финансирование терроризма',
+                'вербовка террористов', 'подготовка терактов', 'обучение терроризму'
             ],
-            'extremism': [
-                'экстремизм', 'экстремист', 'радикализм', 'фанатик',
-                'фундаментализм', 'сепаратизм', 'сепаратист', 'радикализация'
+            
+            # 2. Призывы к свержению конституционного строя (ст. 1 п. 2 ФЗ-114)
+            'constitutional_overthrow': [
+                'свержение власти', 'свергнуть правительство', 'захват власти', 'смена строя силой',
+                'государственный переворот', 'вооруженное восстание', 'революция силой',
+                'уничтожение государства', 'разрушение конституции', 'ликвидация власти',
+                'насильственная смена власти', 'антиконституционная деятельность'
             ],
-            'hate_speech': [
-                'фашизм', 'фашист', 'нацизм', 'нацист', 'расизм', 'расист',
-                'ксенофобия', 'антисемитизм', 'шовинизм', 'геноцид', 'этническая чистка'
+            
+            # 3. Возбуждение ненависти по социальным признакам (ст. 1 п. 3 ФЗ-114)
+            'hate_incitement': [
+                # По расовому признаку
+                'расовая ненависть', 'расовое превосходство', 'расовая чистота', 'низшая раса',
+                'расовые враги', 'расовая война', 'этническая чистка', 'геноцид расы',
+                
+                # По национальному признаку  
+                'национальная ненависть', 'враждебная нация', 'нация врагов', 'национальные предатели',
+                'уничтожить нацию', 'национальная месть', 'межнациональная рознь',
+                
+                # По религиозному признаку
+                'религиозная ненависть', 'религиозные враги', 'неверные должны умереть', 'религиозная война',
+                'уничтожить веру', 'религиозная месть', 'межрелигиозная рознь',
+                
+                # По социальному признаку
+                'социальная ненависть', 'классовые враги', 'социальные паразиты', 'уничтожить класс',
+                'социальная месть', 'классовая война', 'социальная чистка'
             ],
-            'violence': [
-                'убийство', 'убить', 'убью', 'расстрел', 'расстрелять',
-                'казнь', 'казнить', 'пытка', 'пытать', 'зарезать', 'зарежу'
+            
+            # 4. Оправдание экстремистских преступлений (ст. 1 п. 4 ФЗ-114)
+            'extremist_justification': [
+                'экстремисты правы', 'экстремизм оправдан', 'радикалы герои', 'фанатики правильно',
+                'сепаратисты справедливы', 'националисты правы', 'шовинисты верны',
+                'оправдание экстремизма', 'поддержка радикалов', 'героизация экстремистов'
             ],
-            'weapons': [
-                'автомат калашникова', 'ак-47', 'пистолет', 'винтовка', 'граната',
-                'взрывчатое вещество', 'тротил', 'самодельная бомба', 'снайперская винтовка'
+            
+            # 5. Запрещённые экстремистские организации (ст. 1 п. 5 ФЗ-114)
+            'banned_organizations': [
+                'запрещенная организация', 'экстремистская группировка', 'террористическая ячейка',
+                'радикальная организация', 'подпольная группа', 'экстремистское движение',
+                'запрещенное объединение', 'нелегальная организация'
             ],
-            'calls_to_action': [
-                'свержение власти', 'свергнуть правительство', 'захват власти', 
-                'государственный переворот', 'вооруженное восстание', 'призыв к насилию'
+            
+            # Прямые призывы к насилию и угрозы
+            'violence_calls': [
+                'убить всех', 'расстрелять врагов', 'уничтожить противников', 'смерть предателям',
+                'кровавая месть', 'физическая расправа', 'насильственная расправа',
+                'призыв к убийству', 'призыв к насилию', 'угроза расправы',
+                'подготовка к насилию', 'планирование убийств'
+            ],
+            
+            # Нарушение территориальной целостности РФ
+            'territorial_integrity': [
+                'отделение региона', 'сепаратизм', 'независимость региона', 'выход из состава РФ',
+                'раздел России', 'распад государства', 'территориальный сепаратизм',
+                'нарушение границ', 'отторжение территории', 'отделить регион',
+                'создать независимое государство', 'выйти из России', 'отделиться от РФ',
+                'автономия региона', 'суверенитет региона', 'независимое государство'
             ]
         }
     
     def _load_hate_speech_patterns(self) -> List[str]:
-        """Загрузка паттернов языка вражды"""
+        """
+        Загрузка паттернов языка вражды согласно ФЗ-114
+        Возбуждение ненависти либо вражды по признакам пола, расы, национальности, 
+        языка, происхождения, отношения к религии, социальной группы
+        """
         return [
-            r'\b(?:убить|убью|убьем)\s+(?:всех|их)\b',
-            r'\b(?:смерть|смерти)\s+(?:врагам|предателям|изменникам)\b',
-            r'\b(?:уничтожить|уничтожим)\s+(?:всех|их)\b',
-            r'\b(?:кровь|кровью)\s+(?:за|отомстим)\b',
-            r'\b(?:месть|мщение)\s+(?:за|будет)\b',
-            r'\b(?:война|войну)\s+(?:до|победного)\b',
-            r'\b(?:враг|враги)\s+(?:должны|будут)\s+(?:умереть|погибнуть)\b'
+            # Призывы к насилию по национальному признаку
+            r'\b(?:убить|убью|убьем|уничтожить)\s+(?:всех|этих)\s+(?:[а-яё]+ов|[а-яё]+ев|[а-яё]+цев)\b',
+            r'\b(?:смерть|смерти)\s+(?:[а-яё]+ам|[а-яё]+цам|неверным|иноверцам)\b',
+            
+            # Призывы к насилию по религиозному признаку  
+            r'\b(?:убить|уничтожить)\s+(?:всех|этих)\s+(?:мусульман|христиан|иудеев|буддистов|неверных)\b',
+            r'\b(?:смерть|война)\s+(?:религии|вере|церкви|мечети|синагоге)\b',
+            
+            # Призывы к насилию по расовому признаку
+            r'\b(?:расовая|этническая)\s+(?:чистка|война|месть)\b',
+            r'\b(?:низшая|грязная|паразитическая)\s+раса\b',
+            
+            # Призывы к насилию по социальному признаку
+            r'\b(?:классовые|социальные)\s+(?:враги|паразиты)\s+(?:должны|будут)\s+(?:умереть|исчезнуть)\b',
+            r'\b(?:уничтожить|ликвидировать)\s+(?:класс|социальную группу)\b',
+            
+            # Общие паттерны экстремистских призывов
+            r'\b(?:кровь|кровью)\s+(?:за|отомстим|смоем)\b',
+            r'\b(?:месть|мщение|расправа)\s+(?:за|будет|неизбежна)\b',
+            r'\b(?:война|джихад|крестовый поход)\s+(?:до|победного|священная)\b',
+            r'\b(?:враг|враги|предатели)\s+(?:должны|будут)\s+(?:умереть|погибнуть|исчезнуть)\b',
+            
+            # Территориальная целостность
+            r'\b(?:отделение|независимость|выход)\s+(?:региона|области|республики)\s+(?:от|из)\s+(?:России|РФ)\b',
+            r'\b(?:раздел|распад|разрушение)\s+(?:России|государства|страны)\b'
         ]
     
     def _load_threat_patterns(self) -> List[str]:
-        """Загрузка паттернов угроз"""
+        """
+        Загрузка паттернов угроз согласно ФЗ-114
+        Публичные призывы к осуществлению экстремистской деятельности
+        """
         return [
-            r'\b(?:я|мы)\s+(?:убью|убьем|взорву|взорвем)\b',
-            r'\b(?:готовлю|готовим)\s+(?:теракт|взрыв|атаку)\b',
-            r'\b(?:скоро|завтра|сегодня)\s+(?:будет|произойдет)\s+(?:взрыв|теракт)\b',
-            r'\b(?:заложу|заложим)\s+(?:бомбу|взрывчатку)\b',
-            r'\b(?:расстреляю|расстреляем)\s+(?:всех|их)\b'
+            # Прямые угрозы терроризма
+            r'\b(?:я|мы)\s+(?:убью|убьем|взорву|взорвем|устрою теракт)\b',
+            r'\b(?:готовлю|готовим|планирую|планируем)\s+(?:теракт|взрыв|атаку|убийство)\b',
+            r'\b(?:скоро|завтра|сегодня|на днях)\s+(?:будет|произойдет|устрою)\s+(?:взрыв|теракт|расстрел)\b',
+            r'\b(?:заложу|заложим|установлю)\s+(?:бомбу|взрывчатку|мину)\b',
+            
+            # Угрозы свержения власти
+            r'\b(?:свергну|свергнем|уничтожу|уничтожим)\s+(?:власть|правительство|государство)\b',
+            r'\b(?:захвачу|захватим|возьму|возьмем)\s+(?:власть|контроль|управление)\b',
+            r'\b(?:устрою|устроим|организую)\s+(?:переворот|революцию|восстание)\b',
+            
+            # Угрозы по национальному/религиозному признаку
+            r'\b(?:убью|убьем|уничтожу|уничтожим)\s+(?:всех|этих)\s+(?:[а-яё]+ов|[а-яё]+ев|мусульман|христиан|иудеев)\b',
+            r'\b(?:расстреляю|расстреляем|зарежу|зарежем)\s+(?:всех|их|врагов)\b',
+            r'\b(?:отомщу|отомстим|накажу|накажем)\s+(?:за|всех|предателей)\b',
+            
+            # Угрозы территориальной целостности
+            r'\b(?:отделю|отделим|выведу|выведем)\s+(?:регион|область|республику)\s+(?:от|из)\s+(?:России|РФ)\b',
+            r'\b(?:разрушу|разрушим|уничтожу)\s+(?:единство|целостность)\s+(?:страны|государства)\b',
+            
+            # Угрозы создания экстремистских организаций
+            r'\b(?:создам|создадим|организую)\s+(?:ячейку|группировку|организацию)\s+(?:для|против)\b',
+            r'\b(?:вербую|вербуем|набираю)\s+(?:людей|бойцов|сторонников)\s+(?:для|в)\b',
+            
+            # Конкретные угрозы с указанием времени/места
+            r'\b(?:завтра|послезавтра|в\s+\d+)\s+(?:взорву|убью|нападу|атакую)\b',
+            r'\b(?:в|на)\s+(?:школе|больнице|метро|вокзале|площади)\s+(?:взорву|устрою|нападу)\b'
         ]
     
     def extract_features(self, text: str) -> Dict[str, float]:
@@ -328,14 +426,35 @@ class ExtremistContentClassifier:
                 'Content-Type': 'application/json'
             }
             
+            # Улучшенный промпт для более точного анализа
+            prompt = f"""Ты эксперт по анализу экстремистского контента согласно российскому законодательству (ФЗ-114).
+
+Проанализируй следующий текст и определи:
+1. Содержит ли он призывы к экстремизму, терроризму, свержению власти
+2. Есть ли разжигание межнациональной, религиозной ненависти
+3. Присутствуют ли угрозы насилия или оправдание терроризма
+
+ВАЖНО: Будь строгим в оценке. Обычные политические мнения, критика власти, новости НЕ являются экстремизмом.
+
+Верни ТОЛЬКО JSON в формате:
+{{
+  "extremism_percentage": число от 0 до 100,
+  "risk_level": "none" | "low" | "medium" | "high" | "critical",
+  "detected_keywords": ["ключевое слово 1", "ключевое слово 2"],
+  "explanation": "краткое объяснение решения",
+  "is_extremist": true/false
+}}
+
+Текст для анализа: "{text[:500]}" """
+            
             payload = {
                 'model': 'Qwen/Qwen3-Coder-480B-A35B-Instruct',
-                'max_tokens': 1000,
-                'temperature': 0.3,
+                'max_tokens': 500,
+                'temperature': 0.1,  # Снижаем температуру для более консистентных результатов
                 'messages': [
                     {
                         'role': 'user',
-                        'content': f'Проанализируй следующий текст на наличие экстремистского контента и верни только JSON с полями: extremism_percentage (число от 0 до 100), risk_level (none/low/medium/high/critical), detected_keywords (массив найденных ключевых слов), explanation (краткое объяснение). Текст: {text}'
+                        'content': prompt
                     }
                 ]
             }
@@ -349,15 +468,46 @@ class ExtremistContentClassifier:
             # Парсим JSON ответ
             try:
                 import json
+                # Извлекаем JSON из ответа (может быть обернут в markdown)
+                if '```json' in content:
+                    content = content.split('```json')[1].split('```')[0].strip()
+                elif '```' in content:
+                    content = content.split('```')[1].split('```')[0].strip()
+                
                 analysis = json.loads(content)
+                
+                # Валидация результата
+                if not isinstance(analysis.get('extremism_percentage'), (int, float)):
+                    analysis['extremism_percentage'] = 0
+                if analysis['extremism_percentage'] > 100:
+                    analysis['extremism_percentage'] = 100
+                if analysis['extremism_percentage'] < 0:
+                    analysis['extremism_percentage'] = 0
+                    
+                # Проверяем соответствие процента и уровня риска
+                percentage = analysis['extremism_percentage']
+                if percentage < 10:
+                    analysis['risk_level'] = 'none'
+                elif percentage < 25:
+                    analysis['risk_level'] = 'low'
+                elif percentage < 50:
+                    analysis['risk_level'] = 'medium'
+                elif percentage < 75:
+                    analysis['risk_level'] = 'high'
+                else:
+                    analysis['risk_level'] = 'critical'
+                
                 return analysis
-            except json.JSONDecodeError:
+                
+            except json.JSONDecodeError as e:
+                self.logger.error(f"JSON decode error: {e}, content: {content}")
                 # Если не удалось распарсить JSON, создаем базовый ответ
                 return {
                     'extremism_percentage': 0,
                     'risk_level': 'none',
                     'detected_keywords': [],
-                    'explanation': 'Ошибка парсинга ответа модели'
+                    'explanation': 'Ошибка парсинга ответа модели',
+                    'is_extremist': False
                 }
             
         except requests.RequestException as e:
@@ -366,6 +516,153 @@ class ExtremistContentClassifier:
         except Exception as e:
             self.logger.error(f"Cloud model error: {e}")
             return None
+
+    def analyze_extremism_fz114(self, text: str) -> Dict:
+        """
+        Анализ экстремистского контента согласно ФЗ-114 
+        "О противодействии экстремистской деятельности"
+        
+        Возвращает детальный анализ по всем категориям экстремистской деятельности
+        """
+        text_lower = text.lower()
+        analysis_result = {
+            'is_extremist': False,
+            'extremism_percentage': 0,
+            'risk_level': 'none',
+            'fz114_violations': [],
+            'detected_categories': {},
+            'detected_keywords': [],
+            'threat_patterns_found': [],
+            'hate_speech_patterns_found': [],
+            'explanation': '',
+            'legal_basis': []
+        }
+        
+        total_score = 0
+        max_category_score = 0
+        
+        # Анализ по категориям ФЗ-114
+        for category, keywords in self.extremist_keywords.items():
+            category_score = 0
+            found_keywords = []
+            
+            for keyword in keywords:
+                pattern = r'\b' + re.escape(keyword) + r'\b'
+                if re.search(pattern, text_lower):
+                    found_keywords.append(keyword)
+                    category_score += 1
+            
+            if found_keywords:
+                analysis_result['detected_categories'][category] = {
+                    'keywords': found_keywords,
+                    'score': category_score,
+                    'severity': self._get_category_severity(category)
+                }
+                
+                # Определяем нарушения ФЗ-114
+                violation = self._map_category_to_fz114(category)
+                if violation and violation not in analysis_result['fz114_violations']:
+                    analysis_result['fz114_violations'].append(violation)
+                
+                analysis_result['detected_keywords'].extend(found_keywords)
+                
+                # Взвешиваем баллы по серьезности категории
+                weighted_score = category_score * self._get_category_weight(category)
+                total_score += weighted_score
+                max_category_score = max(max_category_score, weighted_score)
+        
+        # Анализ паттернов угроз
+        for pattern in self.threat_patterns:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                analysis_result['threat_patterns_found'].append(pattern)
+                total_score += 15  # Высокий вес для прямых угроз
+        
+        # Анализ паттернов языка вражды
+        for pattern in self.hate_speech_patterns:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                analysis_result['hate_speech_patterns_found'].append(pattern)
+                total_score += 10  # Средний вес для языка вражды
+        
+        # Рассчитываем итоговый процент экстремизма
+        analysis_result['extremism_percentage'] = min(100, total_score)
+        
+        # Определяем уровень риска (более строгие пороги для ФЗ-114)
+        if total_score >= 20:
+            analysis_result['risk_level'] = 'critical'
+            analysis_result['is_extremist'] = True
+        elif total_score >= 10:
+            analysis_result['risk_level'] = 'high'
+            analysis_result['is_extremist'] = True
+        elif total_score >= 5:
+            analysis_result['risk_level'] = 'medium'
+        elif total_score >= 2:
+            analysis_result['risk_level'] = 'low'
+        
+        # Формируем объяснение
+        analysis_result['explanation'] = self._generate_fz114_explanation(analysis_result)
+        
+        return analysis_result
+    
+    def _get_category_severity(self, category: str) -> str:
+        """Определение серьезности категории"""
+        severity_map = {
+            'terrorism_propaganda': 'critical',
+            'constitutional_overthrow': 'critical', 
+            'violence_calls': 'critical',
+            'hate_incitement': 'high',
+            'territorial_integrity': 'high',
+            'extremist_justification': 'medium',
+            'banned_organizations': 'medium'
+        }
+        return severity_map.get(category, 'low')
+    
+    def _get_category_weight(self, category: str) -> float:
+        """Получение веса категории для расчета"""
+        weight_map = {
+            'terrorism_propaganda': 8.0,      # Критично - пропаганда терроризма
+            'constitutional_overthrow': 8.0,  # Критично - свержение строя
+            'violence_calls': 6.0,            # Высоко - прямые призывы к насилию
+            'hate_incitement': 5.0,           # Высоко - возбуждение ненависти
+            'territorial_integrity': 5.0,     # Высоко - нарушение целостности
+            'extremist_justification': 3.0,   # Средне - оправдание экстремизма
+            'banned_organizations': 3.0       # Средне - запрещенные организации
+        }
+        return weight_map.get(category, 1.0)
+    
+    def _map_category_to_fz114(self, category: str) -> str:
+        """Сопоставление категории со статьями ФЗ-114"""
+        mapping = {
+            'terrorism_propaganda': 'ст. 1 п. 1 ФЗ-114 (пропаганда терроризма)',
+            'constitutional_overthrow': 'ст. 1 п. 2 ФЗ-114 (призывы к свержению конституционного строя)',
+            'hate_incitement': 'ст. 1 п. 3 ФЗ-114 (возбуждение ненависти по социальным признакам)',
+            'extremist_justification': 'ст. 1 п. 4 ФЗ-114 (оправдание экстремистских преступлений)',
+            'banned_organizations': 'ст. 1 п. 5 ФЗ-114 (создание запрещённых организаций)',
+            'violence_calls': 'ст. 1 п. 1 ФЗ-114 (призывы к насилию)',
+            'territorial_integrity': 'ст. 1 п. 2 ФЗ-114 (нарушение территориальной целостности)'
+        }
+        return mapping.get(category)
+    
+    def _generate_fz114_explanation(self, analysis: Dict) -> str:
+        """Генерация объяснения на основе анализа ФЗ-114"""
+        if not analysis['is_extremist'] and analysis['extremism_percentage'] < 5:
+            return "Экстремистский контент не обнаружен"
+        
+        explanation_parts = []
+        
+        if analysis['fz114_violations']:
+            explanation_parts.append(f"Обнаружены нарушения: {', '.join(analysis['fz114_violations'])}")
+        
+        if analysis['detected_categories']:
+            categories = list(analysis['detected_categories'].keys())
+            explanation_parts.append(f"Категории: {', '.join(categories)}")
+        
+        if analysis['threat_patterns_found']:
+            explanation_parts.append(f"Найдено {len(analysis['threat_patterns_found'])} паттернов угроз")
+        
+        if analysis['hate_speech_patterns_found']:
+            explanation_parts.append(f"Найдено {len(analysis['hate_speech_patterns_found'])} паттернов языка вражды")
+        
+        return "; ".join(explanation_parts) if explanation_parts else "Обнаружены признаки экстремистского контента"
 
     def analyze_extremism_percentage(self, text: str) -> Dict:
         """
@@ -402,59 +699,83 @@ class ExtremistContentClassifier:
 
     def analyze_text_combined(self, text: str) -> Dict[str, any]:
         """Комбинированный анализ (правила + ML + Облачная модель)"""
-        # Сначала пробуем облачную модель
-        cloud_result = self.predict_cloud_model(text)
-        if cloud_result and cloud_result.get('label') == 'extremist':
-            return {
-                'risk_score': cloud_result.get('confidence', 0.9) * 30,  # Приводим к шкале risk_score
-                'risk_level': 'high' if cloud_result.get('confidence', 0.9) > 0.7 else 'critical',
-                'rule_based_result': None,
-                'ml_result': None,
-                'cloud_result': cloud_result,
-                'analysis_method': 'cloud_model',
-                'analysis_date': datetime.now()
-            }
-
-        # Если облачная модель недоступна или не дала результат, используем локальные методы
+        # Начинаем с анализа на основе правил (самый надежный)
         rule_based_result = self.analyze_text_rule_based(text)
+        
+        # Инициализируем базовые значения
+        combined_risk_score = rule_based_result['risk_score']
+        final_risk_level = rule_based_result['risk_level']
+        analysis_methods = ['rule_based']
+        
+        # Пробуем облачную модель как дополнительную проверку
+        cloud_result = self.predict_cloud_model(text)
+        if cloud_result:
+            analysis_methods.append('cloud_model')
+            
+            # Используем облачную модель только как дополнительный фактор
+            cloud_percentage = cloud_result.get('extremism_percentage', 0)
+            cloud_is_extremist = cloud_result.get('is_extremist', False)
+            
+            # Если облачная модель уверена в экстремизме (>50%) И есть подтверждение правилами
+            if cloud_percentage > 50 and cloud_is_extremist and combined_risk_score > 0:
+                # Добавляем бонус к risk_score, но не делаем его основным
+                cloud_bonus = min(cloud_percentage / 10, 10)  # Максимум +10 к risk_score
+                combined_risk_score += cloud_bonus
+            
+            # Если облачная модель показывает низкий риск (<20%), но правила нашли проблемы
+            elif cloud_percentage < 20 and not cloud_is_extremist and combined_risk_score > 15:
+                # Снижаем уверенность, но не убираем полностью
+                combined_risk_score = combined_risk_score * 0.8
         
         # Если модель обучена, используем и ML
         if self.best_model is not None:
             try:
                 ml_result = self.predict_ml(text)
+                analysis_methods.append('ml')
                 
-                # Комбинируем результаты
-                combined_risk_score = rule_based_result['risk_score']
-                
+                # ML как дополнительный фактор
                 if ml_result['prediction'] == 1:
-                    combined_risk_score += 10 * (ml_result['probability'] or 0.5)
-                
-                # Определяем финальный уровень риска
-                if combined_risk_score >= 25 or ml_result['risk_level'] == 'high':
-                    final_risk_level = 'critical'
-                elif combined_risk_score >= 15 or ml_result['risk_level'] == 'medium':
-                    final_risk_level = 'high'
-                elif combined_risk_score >= 8 or ml_result['risk_level'] == 'low':
-                    final_risk_level = 'medium'
-                elif combined_risk_score >= 3:
-                    final_risk_level = 'low'
-                else:
-                    final_risk_level = 'none'
-                
-                return {
-                    'risk_score': combined_risk_score,
-                    'risk_level': final_risk_level,
-                    'rule_based_result': rule_based_result,
-                    'ml_result': ml_result,
-                    'analysis_method': 'combined',
-                    'analysis_date': datetime.now()
-                }
+                    ml_bonus = 5 * (ml_result['probability'] or 0.5)
+                    combined_risk_score += ml_bonus
                 
             except Exception as e:
                 self.logger.error(f"ML prediction failed: {e}")
-                return rule_based_result
+                ml_result = None
+        else:
+            ml_result = None
         
-        return rule_based_result
+        # Определяем финальный уровень риска на основе комбинированного score
+        if combined_risk_score >= 30:
+            final_risk_level = 'critical'
+        elif combined_risk_score >= 20:
+            final_risk_level = 'high'
+        elif combined_risk_score >= 10:
+            final_risk_level = 'medium'
+        elif combined_risk_score >= 3:
+            final_risk_level = 'low'
+        else:
+            final_risk_level = 'none'
+        
+        # Собираем все найденные ключевые слова
+        all_keywords = rule_based_result.get('found_keywords', [])
+        if cloud_result and cloud_result.get('detected_keywords'):
+            all_keywords.extend(cloud_result['detected_keywords'])
+        if ml_result and ml_result.get('keywords'):
+            all_keywords.extend(ml_result['keywords'])
+        
+        # Убираем дубликаты
+        all_keywords = list(set(all_keywords))
+        
+        return {
+            'risk_score': round(combined_risk_score, 2),
+            'risk_level': final_risk_level,
+            'found_keywords': all_keywords,
+            'rule_based_result': rule_based_result,
+            'ml_result': ml_result,
+            'cloud_result': cloud_result,
+            'analysis_method': '+'.join(analysis_methods),
+            'analysis_date': datetime.now()
+        }
     
     def classify_content(self, text: str) -> Dict[str, any]:
         """Классификация контента для совместимости с существующим кодом"""

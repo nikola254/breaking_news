@@ -321,7 +321,7 @@ def ai_classify_ukraine_news(title, content):
    - humanitarian_crisis (гуманитарный кризис)
    - economic_consequences (экономические последствия)
    - political_decisions (политические решения)
-   - info_social_aspects (информационно-социальные аспекты)
+   - information_social (информационно-социальные аспекты)
 
 Заголовок: {title}
 Текст: {content[:1000]}...

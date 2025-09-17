@@ -1,0 +1,1186 @@
+{% extends "base.html" %}
+
+{% block title %}Экстремистский контент - Аналитика{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Стили для карточек контента */
+.content-card {
+    border-left: 4px solid #6c757d;
+    transition: all 0.3s ease;
+}
+
+.content-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.threat-critical { border-left-color: #dc3545 !important; }
+.threat-high { border-left-color: #fd7e14 !important; }
+.threat-medium { border-left-color: #ffc107 !important; }
+.threat-low { border-left-color: #28a745 !important; }
+
+/* Стили для фильтров */
+.filter-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* Стили для статистики */
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.stats-item {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    margin: 5px;
+}
+
+/* Стили для графиков */
+.chart-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+/* Стили для таблицы */
+.content-table {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.table th {
+    background-color: #495057;
+    color: white;
+    border: none;
+}
+
+/* Стили для пагинации */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* Анимация загрузки */
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 40px;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Стили для модального окна */
+.modal-content {
+    border-radius: 10px;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+}
+
+/* Стили для бейджей */
+.badge-extremist { background-color: #dc3545; }
+.badge-hate-speech { background-color: #fd7e14; }
+.badge-propaganda { background-color: #ffc107; color: #000; }
+.badge-normal { background-color: #28a745; }
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .filter-section {
+        padding: 15px;
+    }
+    
+    .stats-item {
+        margin: 2px;
+        padding: 10px;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-shield-alt text-danger"></i>
+                Экстремистский контент - Аналитика
+            </h1>
+            
+            <!-- Навигационные вкладки -->
+            <ul class="nav nav-tabs" id="contentTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+                        <i class="fas fa-chart-bar"></i> Аналитика каналов
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab">
+                        <i class="fas fa-list"></i> Просмотр контента
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="sources-tab" data-bs-toggle="tab" data-bs-target="#sources" type="button" role="tab">
+                        <i class="fas fa-users"></i> Источники
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
+                        <i class="fas fa-tachometer-alt"></i> Дашборд
+                    </button>
+                </li>
+            </ul>
+            
+            <!-- Содержимое вкладок -->
+            <div class="tab-content" id="contentTabContent">
+                
+                <!-- Вкладка аналитики каналов -->
+                <div class="tab-pane fade show active" id="analytics" role="tabpanel">
+                    <div class="mt-3">
+                        
+                        <!-- Фильтры для аналитики -->
+                        <div class="filter-section">
+                            <h5><i class="fas fa-filter"></i> Фильтры аналитики</h5>
+                            <form id="analyticsFiltersForm">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label for="analyticsPlatform" class="form-label">Платформа</label>
+                                        <select class="form-select" id="analyticsPlatform" name="platform">
+                                            <option value="">Все платформы</option>
+                                            <option value="vk">VKontakte</option>
+                                            <option value="telegram">Telegram</option>
+                                            <option value="ok">Одноклассники</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="analyticsClassification" class="form-label">Тип контента</label>
+                                        <select class="form-select" id="analyticsClassification" name="classification">
+                                            <option value="">Все типы</option>
+                                            <option value="extremist">Экстремистский</option>
+                                            <option value="hate_speech">Язык вражды</option>
+                                            <option value="propaganda">Пропаганда</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="analyticsDateFrom" class="form-label">Дата от</label>
+                                        <input type="date" class="form-control" id="analyticsDateFrom" name="date_from">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="analyticsDateTo" class="form-label">Дата до</label>
+                                        <input type="date" class="form-control" id="analyticsDateTo" name="date_to">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="submit" class="btn btn-primary d-block w-100">
+                                            <i class="fas fa-search"></i> Применить
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Общая статистика -->
+                        <div class="stats-card">
+                            <h5><i class="fas fa-chart-pie"></i> Общая статистика</h5>
+                            <div class="row" id="summaryStats">
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="totalAnalyzed">-</h4>
+                                        <small>Всего проанализировано</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="totalExtremist">-</h4>
+                                        <small>Экстремистский</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="totalHateSpeech">-</h4>
+                                        <small>Язык вражды</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="totalPropaganda">-</h4>
+                                        <small>Пропаганда</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="uniqueSources">-</h4>
+                                        <small>Уникальных источников</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="extremistPercentage">-</h4>
+                                        <small>% экстремизма</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Графики -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h6><i class="fas fa-chart-line"></i> Динамика по времени</h6>
+                                    <canvas id="timeChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h6><i class="fas fa-tags"></i> Топ ключевых слов</h6>
+                                    <div id="keywordsChart"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Таблица каналов -->
+                        <div class="content-table">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Канал/Источник</th>
+                                            <th>Платформа</th>
+                                            <th>Всего постов</th>
+                                            <th>Экстремистский</th>
+                                            <th>Язык вражды</th>
+                                            <th>Пропаганда</th>
+                                            <th>Уровень риска</th>
+                                            <th>Последняя активность</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="channelsTableBody">
+                                        <!-- Данные загружаются через JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Вкладка просмотра контента -->
+                <div class="tab-pane fade" id="content" role="tabpanel">
+                    <div class="mt-3">
+                        
+                        <!-- Фильтры для контента -->
+                        <div class="filter-section">
+                            <h5><i class="fas fa-filter"></i> Фильтры контента</h5>
+                            <form id="contentFiltersForm">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <label for="contentPlatform" class="form-label">Платформа</label>
+                                        <select class="form-select" id="contentPlatform" name="platform">
+                                            <option value="">Все</option>
+                                            <option value="vk">VKontakte</option>
+                                            <option value="telegram">Telegram</option>
+                                            <option value="ok">Одноклассники</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="contentClassification" class="form-label">Классификация</label>
+                                        <select class="form-select" id="contentClassification" name="classification">
+                                            <option value="">Все</option>
+                                            <option value="extremist">Экстремистский</option>
+                                            <option value="hate_speech">Язык вражды</option>
+                                            <option value="propaganda">Пропаганда</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="contentKeywords" class="form-label">Ключевые слова</label>
+                                        <input type="text" class="form-control" id="contentKeywords" name="keywords" placeholder="Поиск...">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="contentDateFrom" class="form-label">Дата от</label>
+                                        <input type="date" class="form-control" id="contentDateFrom" name="date_from">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="contentDateTo" class="form-label">Дата до</label>
+                                        <input type="date" class="form-control" id="contentDateTo" name="date_to">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="submit" class="btn btn-primary d-block w-100">
+                                            <i class="fas fa-search"></i> Поиск
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Результаты поиска контента -->
+                        <div id="contentResults">
+                            <!-- Данные загружаются через JavaScript -->
+                        </div>
+                        
+                        <!-- Пагинация -->
+                        <div class="pagination-container">
+                            <nav>
+                                <ul class="pagination" id="contentPagination">
+                                    <!-- Пагинация генерируется через JavaScript -->
+                                </ul>
+                            </nav>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Вкладка источников -->
+                <div class="tab-pane fade" id="sources" role="tabpanel">
+                    <div class="mt-3">
+                        
+                        <!-- Поиск и добавление новых источников -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5><i class="fas fa-plus"></i> Добавить новый источник для анализа</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="addSourceForm">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <label for="newSourcePlatform" class="form-label">Платформа</label>
+                                            <select class="form-select" id="newSourcePlatform" name="platform" required>
+                                                <option value="">Выберите платформу</option>
+                                                <option value="vk">VKontakte</option>
+                                                <option value="telegram">Telegram</option>
+                                                <option value="ok">Одноклассники</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="newSourceUrl" class="form-label">URL канала/пользователя</label>
+                                            <input type="url" class="form-control" id="newSourceUrl" name="account_url" 
+                                                   placeholder="https://vk.com/username или @telegram_channel" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="submit" class="btn btn-primary d-block w-100">
+                                                <i class="fas fa-search"></i> Анализировать
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Фильтры для источников -->
+                        <div class="filter-section">
+                            <h5><i class="fas fa-filter"></i> Фильтры источников</h5>
+                            <form id="sourcesFiltersForm">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <label for="sourcesPlatform" class="form-label">Платформа</label>
+                                        <select class="form-select" id="sourcesPlatform" name="platform">
+                                            <option value="">Все</option>
+                                            <option value="vk">VKontakte</option>
+                                            <option value="telegram">Telegram</option>
+                                            <option value="ok">Одноклассники</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="sourcesRiskLevel" class="form-label">Уровень риска</label>
+                                        <select class="form-select" id="sourcesRiskLevel" name="risk_level">
+                                            <option value="">Все</option>
+                                            <option value="critical">Критический</option>
+                                            <option value="high">Высокий</option>
+                                            <option value="medium">Средний</option>
+                                            <option value="low">Низкий</option>
+                                            <option value="none">Безопасный</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="sourcesSearch" class="form-label">Поиск по автору/URL</label>
+                                        <input type="text" class="form-control" id="sourcesSearch" name="search" placeholder="Поиск...">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="sourcesMinPosts" class="form-label">Мин. постов</label>
+                                        <input type="number" class="form-control" id="sourcesMinPosts" name="min_posts" min="1" placeholder="1">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="sourcesSort" class="form-label">Сортировка</label>
+                                        <select class="form-select" id="sourcesSort" name="sort">
+                                            <option value="total_posts">По постам</option>
+                                            <option value="extremist_ratio">По % экстремизма</option>
+                                            <option value="last_activity">По активности</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="submit" class="btn btn-secondary d-block w-100">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Таблица источников -->
+                        <div class="content-table">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Источник</th>
+                                            <th>Платформа</th>
+                                            <th>Всего постов</th>
+                                            <th>Экстремистский</th>
+                                            <th>% экстремизма</th>
+                                            <th>Уровень риска</th>
+                                            <th>Последняя активность</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sourcesTableBody">
+                                        <!-- Данные загружаются через JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Пагинация источников -->
+                        <div class="pagination-container">
+                            <nav>
+                                <ul class="pagination" id="sourcesPagination">
+                                    <!-- Пагинация генерируется через JavaScript -->
+                                </ul>
+                            </nav>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Вкладка дашборда -->
+                <div class="tab-pane fade" id="dashboard" role="tabpanel">
+                    <div class="mt-3">
+                        
+                        <!-- Быстрая статистика -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card text-white bg-danger">
+                                    <div class="card-body text-center">
+                                        <h2 id="dashExtremistCount">-</h2>
+                                        <p class="card-text">Экстремистский контент</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-white bg-warning">
+                                    <div class="card-body text-center">
+                                        <h2 id="dashHateSpeechCount">-</h2>
+                                        <p class="card-text">Язык вражды</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-white bg-info">
+                                    <div class="card-body text-center">
+                                        <h2 id="dashPropagandaCount">-</h2>
+                                        <p class="card-text">Пропаганда</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-white bg-success">
+                                    <div class="card-body text-center">
+                                        <h2 id="dashTotalCount">-</h2>
+                                        <p class="card-text">Всего проанализировано</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Самый опасный контент -->
+                        <div class="card">
+                            <div class="card-header bg-danger text-white">
+                                <h5><i class="fas fa-exclamation-triangle"></i> Самый опасный контент</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="dangerousContent">
+                                    <!-- Данные загружаются через JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра полного контента -->
+<div class="modal fade" id="contentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Детали контента</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalContent">
+                    <!-- Содержимое загружается через JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Спиннер загрузки -->
+<div class="loading-spinner" id="loadingSpinner">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Загрузка...</span>
+    </div>
+    <p class="mt-2">Загрузка данных...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Глобальные переменные
+let currentPage = 1;
+let currentFilters = {};
+let timeChart = null;
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Загружаем аналитику по умолчанию
+    loadChannelAnalytics();
+    
+    // Обработчики форм
+    document.getElementById('analyticsFiltersForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadChannelAnalytics();
+    });
+    
+    document.getElementById('contentFiltersForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        currentPage = 1;
+        loadContentResults();
+    });
+    
+    // Обработчик переключения вкладок
+    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(e) {
+            const target = e.target.getAttribute('data-bs-target');
+            if (target === '#content') {
+                loadContentResults();
+            } else if (target === '#dashboard') {
+                loadDashboardData();
+            } else if (target === '#sources') {
+                loadAvailableSources();
+            }
+        });
+    });
+    
+    // Обработчик добавления нового источника
+    document.getElementById('addSourceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addNewSource();
+    });
+    
+    // Обработчик фильтров источников
+    document.getElementById('sourcesFiltersForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadAvailableSources();
+    });
+});
+
+// Функция загрузки аналитики каналов
+async function loadChannelAnalytics() {
+    showLoading();
+    
+    try {
+        const formData = new FormData(document.getElementById('analyticsFiltersForm'));
+        const params = new URLSearchParams(formData);
+        
+        const response = await fetch(`/social-analysis/channel-analytics?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            updateSummaryStats(data.analytics.summary);
+            updateChannelsTable(data.analytics.channels);
+            updateTimeChart(data.analytics.time_dynamics);
+            updateKeywordsChart(data.analytics.keywords);
+        } else {
+            showError('Ошибка загрузки аналитики: ' + data.error);
+        }
+    } catch (error) {
+        showError('Ошибка сети: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Функция загрузки результатов контента
+async function loadContentResults() {
+    showLoading();
+    
+    try {
+        const formData = new FormData(document.getElementById('contentFiltersForm'));
+        const params = new URLSearchParams(formData);
+        params.append('page', currentPage);
+        params.append('per_page', 20);
+        
+        const response = await fetch(`/social-analysis/results?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            updateContentResults(data.results);
+            updatePagination(data.pagination);
+        } else {
+            showError('Ошибка загрузки контента: ' + data.error);
+        }
+    } catch (error) {
+        showError('Ошибка сети: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Функция загрузки данных дашборда
+async function loadDashboardData() {
+    showLoading();
+    
+    try {
+        const [analyticsResponse, statsResponse] = await Promise.all([
+            fetch('/social-analysis/channel-analytics'),
+            fetch('/social-analysis/statistics')
+        ]);
+        
+        const analyticsData = await analyticsResponse.json();
+        const statsData = await statsResponse.json();
+        
+        if (analyticsData.success && statsData.success) {
+            updateDashboardStats(statsData.statistics);
+            updateDangerousContent(analyticsData.analytics.dangerous_content);
+        } else {
+            showError('Ошибка загрузки дашборда');
+        }
+    } catch (error) {
+        showError('Ошибка сети: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Обновление общей статистики
+function updateSummaryStats(summary) {
+    document.getElementById('totalAnalyzed').textContent = summary.total_analyzed || 0;
+    document.getElementById('totalExtremist').textContent = summary.total_extremist || 0;
+    document.getElementById('totalHateSpeech').textContent = summary.total_hate_speech || 0;
+    document.getElementById('totalPropaganda').textContent = summary.total_propaganda || 0;
+    document.getElementById('uniqueSources').textContent = summary.unique_sources || 0;
+    document.getElementById('extremistPercentage').textContent = (summary.extremist_percentage || 0) + '%';
+}
+
+// Обновление таблицы каналов
+function updateChannelsTable(channels) {
+    const tbody = document.getElementById('channelsTableBody');
+    tbody.innerHTML = '';
+    
+    channels.forEach(channel => {
+        const row = document.createElement('tr');
+        
+        const riskClass = channel.risk_level === 'Высокий' ? 'text-danger' : 
+                         channel.risk_level === 'Средний' ? 'text-warning' : 'text-success';
+        
+        row.innerHTML = `
+            <td>
+                <div><strong>${channel.author || 'Неизвестно'}</strong></div>
+                <small class="text-muted">${channel.source_url || 'Нет URL'}</small>
+            </td>
+            <td><span class="badge bg-secondary">${channel.platform}</span></td>
+            <td>${channel.total_posts}</td>
+            <td><span class="badge bg-danger">${channel.extremist_posts}</span></td>
+            <td><span class="badge bg-warning">${channel.hate_speech_posts}</span></td>
+            <td><span class="badge bg-info">${channel.propaganda_posts}</span></td>
+            <td><span class="${riskClass}">${channel.risk_level}</span></td>
+            <td>${channel.last_activity ? new Date(channel.last_activity).toLocaleDateString() : 'Неизвестно'}</td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Обновление графика времени
+function updateTimeChart(timeData) {
+    const ctx = document.getElementById('timeChart').getContext('2d');
+    
+    if (timeChart) {
+        timeChart.destroy();
+    }
+    
+    timeChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: timeData.map(item => item.date),
+            datasets: [
+                {
+                    label: 'Экстремистский',
+                    data: timeData.map(item => item.extremist_posts),
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4
+                },
+                {
+                    label: 'Язык вражды',
+                    data: timeData.map(item => item.hate_speech_posts),
+                    borderColor: '#fd7e14',
+                    backgroundColor: 'rgba(253, 126, 20, 0.1)',
+                    tension: 0.4
+                },
+                {
+                    label: 'Пропаганда',
+                    data: timeData.map(item => item.propaganda_posts),
+                    borderColor: '#ffc107',
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Обновление графика ключевых слов
+function updateKeywordsChart(keywords) {
+    const container = document.getElementById('keywordsChart');
+    container.innerHTML = '';
+    
+    keywords.slice(0, 10).forEach(keyword => {
+        const item = document.createElement('div');
+        item.className = 'd-flex justify-content-between align-items-center mb-2';
+        item.innerHTML = `
+            <span>${keyword.keyword}</span>
+            <div>
+                <span class="badge bg-danger me-1">${keyword.extremist_count}</span>
+                <span class="badge bg-secondary">${keyword.frequency}</span>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Обновление результатов контента
+function updateContentResults(results) {
+    const container = document.getElementById('contentResults');
+    container.innerHTML = '';
+    
+    results.forEach(result => {
+        const card = document.createElement('div');
+        card.className = 'card content-card mb-3';
+        
+        const threatClass = result.classification === 'extremist' ? 'threat-critical' : 
+                           result.classification === 'hate_speech' ? 'threat-high' : 'threat-medium';
+        card.classList.add(threatClass);
+        
+        const badgeClass = result.classification === 'extremist' ? 'badge-extremist' : 
+                          result.classification === 'hate_speech' ? 'badge-hate-speech' : 'badge-propaganda';
+        
+        card.innerHTML = `
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge ${badgeClass}">${getClassificationText(result.classification)}</span>
+                    <small class="text-muted">${new Date(result.analysis_date).toLocaleString()}</small>
+                </div>
+                <p class="card-text">${result.content.substring(0, 200)}${result.content.length > 200 ? '...' : ''}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted">
+                            <i class="fas fa-globe"></i> ${result.platform} | 
+                            <i class="fas fa-user"></i> ${result.author || 'Неизвестно'} | 
+                            <i class="fas fa-percentage"></i> ${(result.confidence * 100).toFixed(1)}%
+                        </small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="showContentDetails('${result.id}')">
+                        Подробнее
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+// Обновление пагинации
+function updatePagination(pagination) {
+    const container = document.getElementById('contentPagination');
+    container.innerHTML = '';
+    
+    // Предыдущая страница
+    if (pagination.has_prev) {
+        const prevItem = document.createElement('li');
+        prevItem.className = 'page-item';
+        prevItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${pagination.prev_num})">Предыдущая</a>`;
+        container.appendChild(prevItem);
+    }
+    
+    // Номера страниц
+    for (let i = Math.max(1, pagination.page - 2); i <= Math.min(pagination.pages, pagination.page + 2); i++) {
+        const pageItem = document.createElement('li');
+        pageItem.className = `page-item ${i === pagination.page ? 'active' : ''}`;
+        pageItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
+        container.appendChild(pageItem);
+    }
+    
+    // Следующая страница
+    if (pagination.has_next) {
+        const nextItem = document.createElement('li');
+        nextItem.className = 'page-item';
+        nextItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${pagination.next_num})">Следующая</a>`;
+        container.appendChild(nextItem);
+    }
+}
+
+// Обновление статистики дашборда
+function updateDashboardStats(stats) {
+    document.getElementById('dashExtremistCount').textContent = stats.classification_distribution.extremist || 0;
+    document.getElementById('dashHateSpeechCount').textContent = stats.classification_distribution.hate_speech || 0;
+    document.getElementById('dashPropagandaCount').textContent = stats.classification_distribution.propaganda || 0;
+    document.getElementById('dashTotalCount').textContent = stats.total_results || 0;
+}
+
+// Обновление опасного контента
+function updateDangerousContent(dangerousContent) {
+    const container = document.getElementById('dangerousContent');
+    container.innerHTML = '';
+    
+    if (dangerousContent.length === 0) {
+        container.innerHTML = '<p class="text-muted">Нет данных об особо опасном контенте</p>';
+        return;
+    }
+    
+    dangerousContent.forEach(content => {
+        const item = document.createElement('div');
+        item.className = 'border-start border-danger border-3 ps-3 mb-3';
+        item.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <p class="mb-1">${content.content}</p>
+                    <small class="text-muted">
+                        <i class="fas fa-globe"></i> ${content.platform} | 
+                        <i class="fas fa-user"></i> ${content.author || 'Неизвестно'} | 
+                        <i class="fas fa-percentage"></i> ${(content.confidence * 100).toFixed(1)}%
+                    </small>
+                </div>
+                <span class="badge bg-danger">${content.confidence.toFixed(3)}</span>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Вспомогательные функции
+function getClassificationText(classification) {
+    const texts = {
+        'extremist': 'Экстремистский',
+        'hate_speech': 'Язык вражды',
+        'propaganda': 'Пропаганда',
+        'normal': 'Обычный'
+    };
+    return texts[classification] || classification;
+}
+
+function changePage(page) {
+    currentPage = page;
+    loadContentResults();
+}
+
+function showContentDetails(contentId) {
+    // Здесь можно загрузить детальную информацию о контенте
+    // и показать в модальном окне
+    const modal = new bootstrap.Modal(document.getElementById('contentModal'));
+    document.getElementById('modalContent').innerHTML = `
+        <p>Загрузка деталей контента с ID: ${contentId}</p>
+        <p>Здесь будет детальная информация о контенте, включая полный текст, метаданные, историю анализа и т.д.</p>
+    `;
+    modal.show();
+}
+
+function showLoading() {
+    document.getElementById('loadingSpinner').style.display = 'block';
+}
+
+function hideLoading() {
+    document.getElementById('loadingSpinner').style.display = 'none';
+}
+
+// Функция загрузки доступных источников
+async function loadAvailableSources() {
+    showLoading();
+    
+    try {
+        const response = await fetch('/social-analysis/available-sources');
+        const data = await response.json();
+        
+        if (data.success) {
+            updateSourcesTable(data.sources);
+        } else {
+            showError('Ошибка загрузки источников: ' + data.error);
+        }
+    } catch (error) {
+        showError('Ошибка сети: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Функция добавления нового источника для анализа
+async function addNewSource() {
+    const form = document.getElementById('addSourceForm');
+    const formData = new FormData(form);
+    
+    const platform = formData.get('platform');
+    const account_url = formData.get('account_url');
+    
+    if (!platform || !account_url) {
+        showError('Пожалуйста, заполните все поля');
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await fetch('/social-analysis/analyze-source', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                platform: platform,
+                account_url: account_url
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess('Анализ источника запущен: ' + data.message);
+            form.reset();
+            // Обновляем список источников через несколько секунд
+            setTimeout(() => {
+                loadAvailableSources();
+            }, 3000);
+        } else {
+            showError('Ошибка запуска анализа: ' + data.error);
+        }
+    } catch (error) {
+        showError('Ошибка сети: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Функция обновления таблицы источников
+function updateSourcesTable(sources) {
+    const tbody = document.getElementById('sourcesTableBody');
+    tbody.innerHTML = '';
+    
+    // Применяем фильтры
+    const filters = getSourcesFilters();
+    const filteredSources = filterSources(sources, filters);
+    
+    filteredSources.forEach(source => {
+        const row = document.createElement('tr');
+        
+        const riskClass = source.risk_level === 'critical' ? 'text-danger' : 
+                         source.risk_level === 'high' ? 'text-warning' : 
+                         source.risk_level === 'medium' ? 'text-info' : 
+                         source.risk_level === 'low' ? 'text-secondary' : 'text-success';
+        
+        const extremistPercentage = (source.extremist_ratio * 100).toFixed(1);
+        
+        row.innerHTML = `
+            <td>
+                <div><strong>${source.author}</strong></div>
+                <small class="text-muted">${source.account_url}</small>
+            </td>
+            <td><span class="badge bg-secondary">${source.platform}</span></td>
+            <td>${source.total_posts}</td>
+            <td><span class="badge bg-danger">${source.extremist_posts}</span></td>
+            <td><strong class="${riskClass}">${extremistPercentage}%</strong></td>
+            <td><span class="${riskClass}">${getRiskLevelText(source.risk_level)}</span></td>
+            <td>${source.last_activity ? new Date(source.last_activity).toLocaleDateString() : 'Неизвестно'}</td>
+            <td>
+                <button class="btn btn-sm btn-primary me-1" onclick="reanalyzeSource('${source.platform}', '${source.account_url}')">
+                    <i class="fas fa-sync"></i> Переанализировать
+                </button>
+                <button class="btn btn-sm btn-info" onclick="viewSourceDetails('${source.platform}', '${source.account_url}')">
+                    <i class="fas fa-eye"></i> Детали
+                </button>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+    
+    if (filteredSources.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="8" class="text-center text-muted">Источники не найдены</td>';
+        tbody.appendChild(row);
+    }
+}
+
+// Функция получения фильтров источников
+function getSourcesFilters() {
+    const form = document.getElementById('sourcesFiltersForm');
+    const formData = new FormData(form);
+    
+    return {
+        platform: formData.get('platform'),
+        risk_level: formData.get('risk_level'),
+        search: formData.get('search'),
+        min_posts: parseInt(formData.get('min_posts')) || 0,
+        sort: formData.get('sort') || 'total_posts'
+    };
+}
+
+// Функция фильтрации источников
+function filterSources(sources, filters) {
+    let filtered = sources.filter(source => {
+        if (filters.platform && source.platform !== filters.platform) return false;
+        if (filters.risk_level && source.risk_level !== filters.risk_level) return false;
+        if (filters.min_posts && source.total_posts < filters.min_posts) return false;
+        if (filters.search) {
+            const searchLower = filters.search.toLowerCase();
+            if (!source.author.toLowerCase().includes(searchLower) && 
+                !source.account_url.toLowerCase().includes(searchLower)) {
+                return false;
+            }
+        }
+        return true;
+    });
+    
+    // Сортировка
+    filtered.sort((a, b) => {
+        switch (filters.sort) {
+            case 'extremist_ratio':
+                return b.extremist_ratio - a.extremist_ratio;
+            case 'last_activity':
+                return new Date(b.last_activity || 0) - new Date(a.last_activity || 0);
+            case 'total_posts':
+            default:
+                return b.total_posts - a.total_posts;
+        }
+    });
+    
+    return filtered;
+}
+
+// Функция переанализа источника
+async function reanalyzeSource(platform, account_url) {
+    if (!confirm('Запустить повторный анализ этого источника?')) {
+        return;
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await fetch('/social-analysis/analyze-source', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                platform: platform,
+                account_url: account_url
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showSuccess('Повторный анализ запущен');
+            setTimeout(() => {
+                loadAvailableSources();
+            }, 3000);
+        } else {
+            showError('Ошибка запуска анализа: ' + data.error);
+        }
+    } catch (error) {
+        showError('Ошибка сети: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Функция просмотра деталей источника
+function viewSourceDetails(platform, account_url) {
+    // Переключаемся на вкладку контента с фильтром по источнику
+    document.getElementById('content-tab').click();
+    
+    // Устанавливаем фильтры
+    document.getElementById('contentPlatform').value = platform;
+    
+    // Ищем по URL в ключевых словах (временное решение)
+    const urlParts = account_url.split('/');
+    const username = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2];
+    document.getElementById('contentKeywords').value = username;
+    
+    // Запускаем поиск
+    currentPage = 1;
+    loadContentResults();
+}
+
+// Вспомогательные функции
+function getRiskLevelText(level) {
+    const texts = {
+        'critical': 'Критический',
+        'high': 'Высокий',
+        'medium': 'Средний',
+        'low': 'Низкий',
+        'none': 'Безопасный'
+    };
+    return texts[level] || level;
+}
+
+function showSuccess(message) {
+    // Можно добавить toast уведомления
+    console.log('Success:', message);
+    alert('✅ ' + message);
+}
+
+function showError(message) {
+    // Можно добавить toast уведомления или другой способ показа ошибок
+    console.error(message);
+    alert('❌ ' + message);
+}
+</script>
+{% endblock %}

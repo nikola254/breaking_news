@@ -149,7 +149,7 @@ class UkraineRelevanceFilter:
             
             # Комбинируем результаты
             final_confidence = max(keyword_result['confidence'], ai_result['confidence'])
-            is_relevant = final_confidence >= 0.5
+            is_relevant = final_confidence >= 0.7  # Повышаем порог для более строгой фильтрации
             
             # Определяем категорию
             category = None
@@ -209,7 +209,7 @@ class UkraineRelevanceFilter:
         category = None
         
         if found_keywords:
-            # Географические названия обязательны для высокой релевантности
+            # Географические названия обязательны для релевантности
             has_geographic = 'geographic' in category_scores
             
             # Определяем основную категорию по наибольшему количеству совпадений
@@ -224,20 +224,18 @@ class UkraineRelevanceFilter:
                     best_score = category_scores[cat]
                     best_category = cat
             
-            if has_geographic and best_category:
+            # СТРОГАЯ ПРОВЕРКА: Географические названия ОБЯЗАТЕЛЬНЫ
+            if has_geographic and best_category and best_score >= 0.1:
                 confidence = min(0.9, 0.6 + best_score + category_scores['geographic'] * 0.3)
                 category = best_category
                 reason = f"Найдены географические названия и термины категории '{best_category}'"
-            elif has_geographic:
+            elif has_geographic and category_scores['geographic'] >= 0.05:
                 confidence = min(0.7, 0.4 + category_scores['geographic'] * 0.5)
                 reason = "Найдены географические названия, связанные с украинским конфликтом"
-            elif best_category and best_score >= 0.3:
-                confidence = min(0.6, 0.3 + best_score)
-                category = best_category
-                reason = f"Найдены термины категории '{best_category}'"
             else:
-                confidence = 0.3
-                reason = "Найдены косвенные упоминания"
+                # БЕЗ географических названий - НЕ релевантно
+                confidence = 0.0
+                reason = "Отсутствуют географические названия, связанные с Украиной"
         
         return {
             'is_relevant': confidence >= 0.5,
