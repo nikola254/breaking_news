@@ -339,7 +339,10 @@ def run_parser():
             'dw': 'parser_dw.py',
             'euronews': 'parser_euronews.py',
             'israil': 'parser_israil.py',
-            'telegram': 'parser_telegram.py'
+            'telegram': 'parser_telegram.py',
+            'twitter': 'parser_twitter.py',
+            'vk': 'parser_vk.py',
+            'ok': 'parser_ok.py'
         }
         
         # Определяем, какие парсеры запустить

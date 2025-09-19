@@ -35,7 +35,25 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPage = 1;
             currentFilter = null;
             currentFilterValue = null;
-            loadData();
+            
+            // Проверяем, является ли это кнопкой социальной сети
+            if (btn.classList.contains('social-btn')) {
+                loadSocialMediaData();
+            } else {
+                loadData();
+            }
+        });
+    });
+    
+    // Обработчики для чекбоксов социальных сетей в модальном окне
+    document.querySelectorAll('#twitter-parser, #vk-parser, #ok-parser').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const configDiv = document.getElementById(this.id.replace('-parser', '-config'));
+            if (this.checked) {
+                configDiv.style.display = 'block';
+            } else {
+                configDiv.style.display = 'none';
+            }
         });
     });
     
@@ -975,4 +993,251 @@ function displayStatistics(stats) {
     }
     
     container.innerHTML = html;
+}
+
+// Функции для работы с социальными сетями
+function loadSocialMediaData() {
+    showLoading(true);
+    clearError();
+    
+    const url = `/api/social_media/${currentSource}?page=${currentPage}&days=${currentDays}`;
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            updateSocialMediaTable(data);
+            updatePagination(data.total_pages || 1, currentPage);
+            showLoading(false);
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки данных социальных сетей:', error);
+            showError('Ошибка загрузки данных: ' + error.message);
+            showLoading(false);
+        });
+}
+
+function updateSocialMediaTable(data) {
+    // Обновляем заголовки таблицы для социальных сетей
+    const headers = getSocialMediaHeaders(currentSource);
+    tableHeader.innerHTML = headers.map(header => `<th>${header}</th>`).join('');
+    
+    // Очищаем тело таблицы
+    tableBody.innerHTML = '';
+    
+    if (!data.posts || data.posts.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="100%" class="no-data">Нет данных для отображения</td></tr>';
+        return;
+    }
+    
+    // Заполняем таблицу данными
+    data.posts.forEach(post => {
+        const row = createSocialMediaRow(post, currentSource);
+        tableBody.appendChild(row);
+    });
+    
+    // Подсвечиваем результаты поиска если есть поисковый запрос
+    if (currentSearchQuery) {
+        highlightAllArticles();
+    }
+}
+
+function getSocialMediaHeaders(source) {
+    const commonHeaders = ['ID', 'Платформа', 'Автор', 'Текст', 'Дата', 'Экстремизм %', 'Уровень риска'];
+    
+    switch(source) {
+        case 'twitter':
+            return ['ID', 'Автор', 'Текст', 'Дата', 'Лайки', 'Ретвиты', 'Экстремизм %', 'Уровень риска'];
+        case 'vk':
+            return ['ID', 'Автор', 'Текст', 'Дата', 'Лайки', 'Репосты', 'Экстремизм %', 'Уровень риска'];
+        case 'ok':
+            return ['ID', 'Автор', 'Текст', 'Дата', 'Лайки', 'Экстремизм %', 'Уровень риска'];
+        case 'telegram':
+            return ['ID', 'Канал', 'Текст', 'Дата', 'Просмотры', 'Экстремизм %', 'Уровень риска'];
+        default:
+            return commonHeaders;
+    }
+}
+
+function createSocialMediaRow(post, source) {
+    const row = document.createElement('tr');
+    row.className = 'table-row';
+    
+    // Определяем цвет строки в зависимости от уровня риска
+    const riskClass = getRiskClass(post.risk_level);
+    if (riskClass) {
+        row.classList.add(riskClass);
+    }
+    
+    let cells = '';
+    
+    switch(source) {
+        case 'twitter':
+            cells = `
+                <td>${post.id || 'N/A'}</td>
+                <td>${post.author_username || 'N/A'}</td>
+                <td class="text-cell" onclick="openSocialPostModal(${JSON.stringify(post).replace(/"/g, '&quot;')})">${truncateText(post.text || '', 100)}</td>
+                <td>${formatDate(post.created_at)}</td>
+                <td>${post.public_metrics_like_count || 0}</td>
+                <td>${post.public_metrics_retweet_count || 0}</td>
+                <td>${(post.extremism_percentage || 0).toFixed(1)}%</td>
+                <td><span class="risk-badge ${getRiskClass(post.risk_level)}">${post.risk_level || 'Низкий'}</span></td>
+            `;
+            break;
+        case 'vk':
+            cells = `
+                <td>${post.id || 'N/A'}</td>
+                <td>${post.from_id || 'N/A'}</td>
+                <td class="text-cell" onclick="openSocialPostModal(${JSON.stringify(post).replace(/"/g, '&quot;')})">${truncateText(post.text || '', 100)}</td>
+                <td>${formatDate(post.date)}</td>
+                <td>${post.likes_count || 0}</td>
+                <td>${post.reposts_count || 0}</td>
+                <td>${(post.extremism_percentage || 0).toFixed(1)}%</td>
+                <td><span class="risk-badge ${getRiskClass(post.risk_level)}">${post.risk_level || 'Низкий'}</span></td>
+            `;
+            break;
+        case 'ok':
+            cells = `
+                <td>${post.id || 'N/A'}</td>
+                <td>${post.author_name || 'N/A'}</td>
+                <td class="text-cell" onclick="openSocialPostModal(${JSON.stringify(post).replace(/"/g, '&quot;')})">${truncateText(post.text || '', 100)}</td>
+                <td>${formatDate(post.created_time)}</td>
+                <td>${post.likes_count || 0}</td>
+                <td>${(post.extremism_percentage || 0).toFixed(1)}%</td>
+                <td><span class="risk-badge ${getRiskClass(post.risk_level)}">${post.risk_level || 'Низкий'}</span></td>
+            `;
+            break;
+        default:
+            cells = `
+                <td>${post.id || 'N/A'}</td>
+                <td>${post.platform || 'N/A'}</td>
+                <td>${post.author_name || 'N/A'}</td>
+                <td class="text-cell" onclick="openSocialPostModal(${JSON.stringify(post).replace(/"/g, '&quot;')})">${truncateText(post.text || '', 100)}</td>
+                <td>${formatDate(post.created_at)}</td>
+                <td>${(post.extremism_percentage || 0).toFixed(1)}%</td>
+                <td><span class="risk-badge ${getRiskClass(post.risk_level)}">${post.risk_level || 'Низкий'}</span></td>
+            `;
+    }
+    
+    row.innerHTML = cells;
+    return row;
+}
+
+function getRiskClass(riskLevel) {
+    switch(riskLevel?.toLowerCase()) {
+        case 'высокий':
+        case 'high':
+            return 'risk-high';
+        case 'средний':
+        case 'medium':
+            return 'risk-medium';
+        case 'низкий':
+        case 'low':
+        default:
+            return 'risk-low';
+    }
+}
+
+function openSocialPostModal(post) {
+    const modal = document.getElementById('article-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+    const modalSource = document.getElementById('modal-source');
+    const modalDate = document.getElementById('modal-date');
+    const modalLink = document.getElementById('modal-link');
+    
+    modalTitle.textContent = `Пост ${post.platform || 'социальной сети'}`;
+    modalContent.textContent = post.text || 'Нет текста';
+    modalSource.textContent = `${post.platform || 'Неизвестно'} | ${post.author_name || post.author_username || 'Неизвестный автор'}`;
+    modalDate.textContent = formatDate(post.created_at || post.date || post.created_time);
+    
+    // Скрываем ссылку для социальных сетей
+    modalLink.style.display = 'none';
+    
+    modal.style.display = 'block';
+}
+
+function runSocialMediaParsers() {
+    const selectedParsers = [];
+    
+    // Проверяем выбранные социальные сети
+    if (document.getElementById('twitter-parser').checked) {
+        const config = {
+            platform: 'twitter',
+            keywords: document.getElementById('twitter-keywords').value,
+            hashtags: document.getElementById('twitter-hashtags').value,
+            count: parseInt(document.getElementById('twitter-count').value) || 100
+        };
+        selectedParsers.push(config);
+    }
+    
+    if (document.getElementById('vk-parser').checked) {
+        const config = {
+            platform: 'vk',
+            groups: document.getElementById('vk-groups').value,
+            keywords: document.getElementById('vk-keywords').value,
+            count: parseInt(document.getElementById('vk-count').value) || 100
+        };
+        selectedParsers.push(config);
+    }
+    
+    if (document.getElementById('ok-parser').checked) {
+        const config = {
+            platform: 'ok',
+            groups: document.getElementById('ok-groups').value,
+            keywords: document.getElementById('ok-keywords').value,
+            count: parseInt(document.getElementById('ok-count').value) || 100
+        };
+        selectedParsers.push(config);
+    }
+    
+    if (selectedParsers.length === 0) {
+        alert('Выберите хотя бы одну социальную сеть для парсинга');
+        return;
+    }
+    
+    // Запускаем парсинг
+    fetch('/api/social_media/parse', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            parsers: selectedParsers
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addLogEntry('Парсинг социальных сетей запущен', 'success');
+            document.getElementById('parser-modal').style.display = 'none';
+            showParserLog();
+        } else {
+            addLogEntry('Ошибка запуска парсинга: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        addLogEntry('Ошибка запуска парсинга: ' + error.message, 'error');
+    });
+}
+
+// Вспомогательные функции
+function truncateText(text, maxLength) {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleString('ru-RU');
+    } catch (e) {
+        return dateString;
+    }
 }

@@ -274,17 +274,20 @@ class ExtremistContentClassifier:
         
         # Проверка ключевых слов с разными весами для разных категорий
         category_weights = {
-            'terrorism': 8,      # Самый высокий вес
-            'threat_patterns': 10,
-            'violence': 6,
-            'weapons': 5,
-            'extremism': 4,
-            'hate_speech': 3,
-            'calls_to_action': 3
+            'terrorism': 12,      # Самый высокий вес
+            'threat_patterns': 15,
+            'violence': 8,
+            'weapons': 7,
+            'extremism': 6,
+            'hate_speech': 4,
+            'calls_to_action': 5
         }
         
+        # Исключаем только технические признаки, но оставляем счетчики ключевых слов по категориям
+        excluded_features = ['word_count', 'exclamation_count', 'question_count', 'text_length', 'caps_ratio', 'emotional_words']
+        
         for category, count in features.items():
-            if category.endswith('_count') and count > 0:
+            if category.endswith('_count') and count > 0 and category not in excluded_features:
                 category_name = category.replace('_count', '')
                 weight = category_weights.get(category_name, 2)
                 risk_score += count * weight
@@ -785,29 +788,38 @@ class ExtremistContentClassifier:
         risk_level = result.get('risk_level', 'none')
         risk_score = result.get('risk_score', 0)
         
-        # Вычисляем confidence на основе risk_score с улучшенной логикой
-        if risk_score >= 20:
-            confidence = 0.9  # Критический уровень - высокая уверенность
+        # Улучшенная логика классификации с более строгими пороговыми значениями
+        if risk_score >= 25:
+            confidence = 0.95  # Критический уровень - очень высокая уверенность
             label = 'extremist'
-        elif risk_score >= 10:
-            confidence = 0.75  # Высокий уровень
+        elif risk_score >= 15:
+            confidence = 0.85  # Высокий уровень - высокая уверенность
+            label = 'extremist'
+        elif risk_score >= 8:
+            confidence = 0.7   # Средне-высокий уровень - экстремистский
             label = 'extremist'
         elif risk_score >= 5:
-            confidence = 0.6   # Средний уровень
+            confidence = 0.6   # Средний уровень - подозрительный
             label = 'suspicious'
-        elif risk_score >= 1:
-            confidence = 0.3   # Низкий уровень - подозрительный
+        elif risk_score >= 2:
+            confidence = 0.4   # Низко-средний уровень - подозрительный
             label = 'suspicious'
         else:
-            confidence = 0.1   # Нет риска
+            confidence = 0.1   # Нет риска - нормальный
             label = 'normal'
         
-        # Дополнительная градация для уверенности менее 50%
-        if confidence < 0.5:
-            if risk_score >= 3:
-                label = 'suspicious'  # Подозрительный контент
-            else:
-                label = 'normal'      # Обычный контент
+        # Дополнительная проверка на основе количества найденных ключевых слов
+        found_keywords_count = 0
+        if 'rule_based_result' in result:
+            found_keywords_count = len(result['rule_based_result'].get('found_keywords', []))
+        
+        # Если найдено много ключевых слов, повышаем уровень угрозы
+        if found_keywords_count >= 3 and label == 'normal':
+            label = 'suspicious'
+            confidence = max(confidence, 0.5)
+        elif found_keywords_count >= 5 and label == 'suspicious':
+            label = 'extremist'
+            confidence = max(confidence, 0.7)
         
         # Извлекаем ключевые слова из результата анализа
         keywords = []
@@ -820,10 +832,18 @@ class ExtremistContentClassifier:
         if not keywords:
             if 'rule_based_result' in result:
                 risk_factors = result['rule_based_result'].get('risk_factors', [])
-                keywords = [factor.split(':')[0] for factor in risk_factors if isinstance(factor, str) and ':' in factor]
+                # Исключаем технические названия признаков
+                excluded_terms = ['word', 'exclamation', 'caps', 'emotional', 'text', 'question', 'count', 'ratio', 'density', 'patterns']
+                keywords = [factor.split(':')[0] for factor in risk_factors 
+                           if isinstance(factor, str) and ':' in factor 
+                           and factor.split(':')[0].lower() not in excluded_terms]
             elif 'risk_factors' in result:
                 risk_factors = result.get('risk_factors', [])
-                keywords = [factor.split(':')[0] for factor in risk_factors if isinstance(factor, str) and ':' in factor]
+                # Исключаем технические названия признаков
+                excluded_terms = ['word', 'exclamation', 'caps', 'emotional', 'text', 'question', 'count', 'ratio', 'density', 'patterns']
+                keywords = [factor.split(':')[0] for factor in risk_factors 
+                           if isinstance(factor, str) and ':' in factor 
+                           and factor.split(':')[0].lower() not in excluded_terms]
         
         # Добавляем выделенный текст с маркерами
         highlighted_text = self._highlight_keywords(text, keywords)

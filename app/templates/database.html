@@ -47,6 +47,15 @@
             <button class="db-btn" data-source="unian">УНИАН</button>
         </div>
         
+        <div class="source-buttons social-media-buttons">
+            <h4>Социальные сети</h4>
+            <button class="db-btn social-btn" data-source="twitter">Twitter</button>
+            <button class="db-btn social-btn" data-source="vk">ВКонтакте</button>
+            <button class="db-btn social-btn" data-source="ok">Одноклассники</button>
+            <button class="db-btn social-btn" data-source="telegram">Telegram</button>
+            <button class="db-btn social-btn" data-source="all_social">Все соцсети</button>
+        </div>
+        
         <div class="filter-controls">
             <div id="filter-container">
                 <!-- Динамически заполняется в зависимости от выбранной таблицы -->
@@ -137,6 +146,33 @@
                     <label><input type="checkbox" name="parser" value="france24" checked><span>France 24</span></label>
                     <label><input type="checkbox" name="parser" value="dw" checked><span>Deutsche Welle</span></label>
                     <label><input type="checkbox" name="parser" value="euronews" checked><span>Euronews</span></label>
+                </div>
+                <div class="parser-group social-media-group">
+                    <h4>Социальные сети</h4>
+                    <div class="social-platform">
+                        <label><input type="checkbox" name="parser" value="twitter" id="twitter-parser"><span>Twitter</span></label>
+                        <div class="social-config" id="twitter-config" style="display: none;">
+                            <input type="text" placeholder="Ключевые слова (через запятую)" id="twitter-keywords">
+                            <input type="text" placeholder="Хэштеги (через запятую)" id="twitter-hashtags">
+                            <input type="number" placeholder="Количество постов" value="100" id="twitter-count">
+                        </div>
+                    </div>
+                    <div class="social-platform">
+                        <label><input type="checkbox" name="parser" value="vk" id="vk-parser"><span>ВКонтакте</span></label>
+                        <div class="social-config" id="vk-config" style="display: none;">
+                            <input type="text" placeholder="ID групп (через запятую)" id="vk-groups">
+                            <input type="text" placeholder="Ключевые слова (через запятую)" id="vk-keywords">
+                            <input type="number" placeholder="Количество постов" value="100" id="vk-count">
+                        </div>
+                    </div>
+                    <div class="social-platform">
+                        <label><input type="checkbox" name="parser" value="ok" id="ok-parser"><span>Одноклассники</span></label>
+                        <div class="social-config" id="ok-config" style="display: none;">
+                            <input type="text" placeholder="ID групп (через запятую)" id="ok-groups">
+                            <input type="text" placeholder="Ключевые слова (через запятую)" id="ok-keywords">
+                            <input type="number" placeholder="Количество постов" value="100" id="ok-count">
+                        </div>
+                    </div>
                 </div>
                 <div class="parser-group">
                     <h4>Другие источники</h4>

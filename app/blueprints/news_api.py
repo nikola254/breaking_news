@@ -832,6 +832,142 @@ def get_news():
         if 'client' in locals():
             client.close()
 
+@news_api_bp.route('/social_media', methods=['GET'])
+def get_social_media_data():
+    """Получение данных из социальных сетей.
+    
+    Query Parameters:
+        source (str): Источник ('twitter', 'vk', 'ok', 'all')
+        page (int): Номер страницы (по умолчанию 1)
+        days (int): Количество дней для выборки (по умолчанию 7)
+        search (str): Поисковый запрос
+    
+    Returns:
+        JSON: Данные из социальных сетей
+    """
+    try:
+        source = request.args.get('source', 'all')
+        page = int(request.args.get('page', 1))
+        days = int(request.args.get('days', 7))
+        search = request.args.get('search', '')
+        page_size = 20
+        
+        client = get_clickhouse_client()
+        
+        # Определяем таблицы для запроса
+        tables = []
+        if source == 'all':
+            tables = ['twitter_posts', 'vk_posts', 'ok_posts']
+        elif source == 'twitter':
+            tables = ['twitter_posts']
+        elif source == 'vk':
+            tables = ['vk_posts']
+        elif source == 'ok':
+            tables = ['ok_posts']
+        else:
+            return jsonify({'status': 'error', 'message': 'Неподдерживаемый источник'}), 400
+        
+        # Формируем UNION запрос для всех таблиц
+        union_queries = []
+        start_date = datetime.datetime.now() - datetime.timedelta(days=days)
+        
+        for table in tables:
+            # Проверяем существование таблицы
+            check_table_query = f"""
+                SELECT count() FROM system.tables 
+                WHERE database = 'news' AND name = '{table}'
+            """
+            table_exists = client.query(check_table_query).result_rows[0][0] > 0
+            
+            if table_exists:
+                search_condition = ""
+                if search:
+                    search_condition = f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')"
+                
+                union_query = f"""
+                    SELECT 
+                        id, title, content, source, parsed_date,
+                        CASE 
+                            WHEN source = 'twitter' THEN post_url
+                            WHEN source = 'vk' THEN post_url
+                            WHEN source = 'ok' THEN post_url
+                            ELSE ''
+                        END as post_url,
+                        CASE 
+                            WHEN source = 'twitter' THEN author
+                            WHEN source = 'vk' THEN group_name
+                            WHEN source = 'ok' THEN group_name
+                            ELSE ''
+                        END as author_or_group,
+                        CASE 
+                            WHEN source = 'twitter' THEN likes_count
+                            WHEN source = 'vk' THEN likes_count
+                            WHEN source = 'ok' THEN likes_count
+                            ELSE 0
+                        END as engagement
+                    FROM news.{table}
+                    WHERE parsed_date >= '{start_date.strftime('%Y-%m-%d %H:%M:%S')}'
+                    {search_condition}
+                """
+                union_queries.append(union_query)
+        
+        if not union_queries:
+            return jsonify({
+                'status': 'success',
+                'data': [],
+                'total': 0,
+                'page': page,
+                'total_pages': 0
+            })
+        
+        # Объединяем запросы и добавляем пагинацию
+        full_query = " UNION ALL ".join(union_queries)
+        full_query += f"""
+            ORDER BY parsed_date DESC
+            LIMIT {page_size} OFFSET {(page - 1) * page_size}
+        """
+        
+        result = client.query(full_query)
+        
+        # Получаем общее количество записей для пагинации
+        count_query = " UNION ALL ".join([q.replace("SELECT id, title, content, source, parsed_date, CASE WHEN source = 'twitter' THEN post_url WHEN source = 'vk' THEN post_url WHEN source = 'ok' THEN post_url ELSE '' END as post_url, CASE WHEN source = 'twitter' THEN author WHEN source = 'vk' THEN group_name WHEN source = 'ok' THEN group_name ELSE '' END as author_or_group, CASE WHEN source = 'twitter' THEN likes_count WHEN source = 'vk' THEN likes_count WHEN source = 'ok' THEN likes_count ELSE 0 END as engagement", "SELECT count() as total") for q in union_queries])
+        count_result = client.query(f"SELECT sum(total) FROM ({count_query})")
+        total_count = count_result.result_rows[0][0] if count_result.result_rows else 0
+        
+        # Форматируем данные
+        posts = []
+        for row in result.result_rows:
+            posts.append({
+                'id': str(row[0]),
+                'title': row[1] or '',
+                'content': row[2] or '',
+                'source': row[3],
+                'parsed_date': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else '',
+                'post_url': row[5] or '',
+                'author_or_group': row[6] or '',
+                'engagement': row[7] or 0
+            })
+        
+        total_pages = (total_count + page_size - 1) // page_size
+        
+        return jsonify({
+            'status': 'success',
+            'data': posts,
+            'total': total_count,
+            'page': page,
+            'total_pages': total_pages,
+            'source': source
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Ошибка при получении данных социальных сетей: {str(e)}'
+        }), 500
+    finally:
+        if 'client' in locals():
+            client.close()
+
 @news_api_bp.route('/statistics', methods=['GET'])
 def get_statistics():
     """Получение статистики по количеству статей.

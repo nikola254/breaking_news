@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд СВО аналитики - NewsAnalytics Pro{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/svo_dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Заголовок дашборда -->
+    <div class="dashboard-header">
+        <h1>📊 Дашборд аналитики СВО</h1>
+        <p class="subtitle">Анализ трендов интереса и социальной напряженности</p>
+        <div class="period-info">
+            📅 Период анализа: {{ analysis_period }}
+        </div>
+        <div style="margin-top: 15px;">
+            <button class="refresh-btn" onclick="refreshDashboard()">
+                🔄 Обновить данные
+            </button>
+        </div>
+    </div>
+
+    <!-- Основная статистика -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" style="color: #3498db;">{{ (analysis_result.avg_interest_level or 0)|round(1) }}%</div>
+            <div class="stat-label">Средний уровень интереса</div>
+            <div class="trend-indicator trend-{{ analysis_result.trend_direction or 'stable' }}">
+                {% if analysis_result.trend_direction == 'falling' %}
+                    📉 Падающий тренд
+                {% elif analysis_result.trend_direction == 'rising' %}
+                    📈 Растущий тренд
+                {% else %}
+                    ➡️ Стабильный тренд
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value" style="color: #e74c3c;">{{ (analysis_result.avg_social_tension or 0)|round(1) }}%</div>
+            <div class="stat-label">Социальная напряженность</div>
+            <div class="trend-indicator trend-rising">
+                📈 Постоянный рост
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value" style="color: #27ae60;">{{ (analysis_result.total_mentions or 0)|int }}</div>
+            <div class="stat-label">Общее количество упоминаний</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-value" style="color: #f39c12;">{{ total_data_points }}</div>
+            <div class="stat-label">Точек данных</div>
+        </div>
+    </div>
+
+    <!-- Графики -->
+    <div class="charts-section">
+        <!-- График динамики интереса -->
+        {% if charts.interest_dynamics %}
+        <div class="chart-container">
+            <h3 class="chart-title">📉 Динамика интереса к темам СВО (2022-2025)</h3>
+            <img src="data:image/png;base64,{{ charts.interest_dynamics }}" alt="График динамики интереса" class="chart-image">
+        </div>
+        {% endif %}
+
+        <!-- График социальной напряженности -->
+        {% if charts.social_tension %}
+        <div class="chart-container">
+            <h3 class="chart-title">📈 Рост социальной напряженности</h3>
+            <img src="data:image/png;base64,{{ charts.social_tension }}" alt="График социальной напряженности" class="chart-image">
+        </div>
+        {% endif %}
+
+        <!-- Комбинированный график -->
+        {% if charts.combined_trends %}
+        <div class="chart-container">
+            <h3 class="chart-title">🔄 Сравнительная динамика: Интерес vs Напряженность</h3>
+            <img src="data:image/png;base64,{{ charts.combined_trends }}" alt="Комбинированный график" class="chart-image">
+        </div>
+        {% endif %}
+
+        <!-- Корреляционная матрица -->
+        {% if charts.correlation_heatmap %}
+        <div class="chart-container">
+            <h3 class="chart-title">🔗 Корреляционная матрица показателей</h3>
+            <img src="data:image/png;base64,{{ charts.correlation_heatmap }}" alt="Корреляционная матрица" class="chart-image">
+        </div>
+        {% endif %}
+
+        <!-- Сетевой граф связей тем -->
+        <div class="chart-container">
+            <h3 class="chart-title">🌐 Сетевой граф связей тем</h3>
+            <div id="networkGraph" style="height: 400px;"></div>
+        </div>
+
+        <!-- Анализ настроений -->
+        {% if charts.sentiment_analysis %}
+        <div class="chart-container">
+            <h3 class="chart-title">😔 Динамика общественных настроений</h3>
+            <img src="data:image/png;base64,{{ charts.sentiment_analysis }}" alt="График настроений" class="chart-image">
+        </div>
+        {% endif %}
+
+        <!-- Объем упоминаний -->
+        {% if charts.mentions_volume %}
+        <div class="chart-container">
+            <h3 class="chart-title">💬 Объем упоминаний в социальных сетях</h3>
+            <img src="data:image/png;base64,{{ charts.mentions_volume }}" alt="График упоминаний" class="chart-image">
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Анализ и корреляции -->
+    <div class="analysis-grid">
+        <!-- Корреляционный анализ -->
+        <div class="analysis-card">
+            <h3 class="analysis-title">🔗 Корреляционный анализ</h3>
+            {% if correlations %}
+                <div class="correlation-item">
+                    <span>Интерес ↔ Напряженность</span>
+                    <span class="correlation-value correlation-{% if correlations.interest_tension_correlation|abs > 0.7 %}strong{% elif correlations.interest_tension_correlation|abs > 0.3 %}moderate{% else %}weak{% endif %}">
+                        {{ correlations.interest_tension_correlation|round(3) }}
+                    </span>
+                </div>
+                <div class="correlation-item">
+                    <span>Интерес ↔ Настроения</span>
+                    <span class="correlation-value correlation-{% if correlations.interest_sentiment_correlation|abs > 0.7 %}strong{% elif correlations.interest_sentiment_correlation|abs > 0.3 %}moderate{% else %}weak{% endif %}">
+                        {{ correlations.interest_sentiment_correlation|round(3) }}
+                    </span>
+                </div>
+                <div class="correlation-item">
+                    <span>Напряженность ↔ Настроения</span>
+                    <span class="correlation-value correlation-{% if correlations.tension_sentiment_correlation|abs > 0.7 %}strong{% elif correlations.tension_sentiment_correlation|abs > 0.3 %}moderate{% else %}weak{% endif %}">
+                        {{ correlations.tension_sentiment_correlation|round(3) }}
+                    </span>
+                </div>
+                <div class="correlation-item">
+                    <span>Упоминания ↔ Интерес</span>
+                    <span class="correlation-value correlation-{% if correlations.mentions_interest_correlation|abs > 0.7 %}strong{% elif correlations.mentions_interest_correlation|abs > 0.3 %}moderate{% else %}weak{% endif %}">
+                        {{ correlations.mentions_interest_correlation|round(3) }}
+                    </span>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Сравнение периодов -->
+        <div class="analysis-card">
+            <h3 class="analysis-title">📊 Сравнение периодов</h3>
+            {% if period_comparison %}
+                <div class="period-comparison">
+                    {% for period_name, period_data in period_comparison.items() %}
+                    <div class="period-item">
+                        <div class="period-name">
+                            {% if period_name == 'early_2022' %}Начало 2022
+                            {% elif period_name == 'late_2022' %}Конец 2022
+                            {% elif period_name == 'early_2023' %}Начало 2023
+                            {% else %}Недавний период{% endif %}
+                        </div>
+                        <div class="period-stats">
+                            <div>Интерес: {{ (period_data.avg_interest or 0)|round(1) }}%</div>
+                            <div>Напряженность: {{ (period_data.avg_tension or 0)|round(1) }}%</div>
+                            <div>Упоминания: {{ (period_data.total_mentions or 0)|int }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ключевые события -->
+    {% if analysis_result.key_events %}
+    <div class="key-events">
+        <h3 class="analysis-title">🎯 Ключевые события</h3>
+        {% for event in analysis_result.key_events[:5] %}
+        <div class="event-item">
+            <div class="event-date">{{ event.date[:10] }}</div>
+            <div class="event-description">{{ event.description }}</div>
+            <div style="margin-top: 5px; font-size: 0.9rem; color: #7f8c8d;">
+                Интерес: {{ (event.interest_level or 0)|round(1) }}% | 
+                Напряженность: {{ (event.social_tension or 0)|round(1) }}%
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+,{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+// Передача данных в глобальную переменную для использования в внешнем JS файле
+window.networkData = {{ network_data|tojson|safe }};
+</script>
+<script src="{{ url_for('static', filename='js/svo_dashboard.js') }}"></script>
+{% endblock %}

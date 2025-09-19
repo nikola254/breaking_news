@@ -37,6 +37,13 @@ class Config:
     TELEGRAM_PHONE = os.environ.get('TELEGRAM_PHONE')
     TELEGRAM_PASSWORD = os.environ.get('TELEGRAM_PASSWORD')
     
+    # Настройки Twitter API
+    TWITTER_BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
+    TWITTER_API_KEY = os.environ.get('TWITTER_API_KEY')
+    TWITTER_API_SECRET = os.environ.get('TWITTER_API_SECRET')
+    TWITTER_ACCESS_TOKEN = os.environ.get('TWITTER_ACCESS_TOKEN')
+    TWITTER_ACCESS_TOKEN_SECRET = os.environ.get('TWITTER_ACCESS_TOKEN_SECRET')
+    
     # Настройки AI API
     DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
     OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')

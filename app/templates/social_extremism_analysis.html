@@ -1,0 +1,582 @@
+{% extends "base.html" %}
+
+{% block title %}Анализ социальных сетей и экстремизма - NewsAnalytics Pro{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/social_extremism_analysis.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-shield-alt text-danger"></i>
+                Анализ социальных сетей и экстремизма
+            </h1>
+            
+            <!-- Навигационные вкладки -->
+            <ul class="nav nav-tabs" id="mainTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="account-analysis-tab" data-bs-toggle="tab" data-bs-target="#account-analysis" type="button" role="tab">
+                        <i class="fas fa-user-check"></i> Анализ аккаунта
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="keyword-search-tab" data-bs-toggle="tab" data-bs-target="#keyword-search" type="button" role="tab">
+                        <i class="fas fa-search"></i> Поиск по ключевым словам
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="monitoring-tab" data-bs-toggle="tab" data-bs-target="#monitoring" type="button" role="tab">
+                        <i class="fas fa-eye"></i> Мониторинг
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab">
+                        <i class="fas fa-chart-bar"></i> Аналитика
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="content-view-tab" data-bs-toggle="tab" data-bs-target="#content-view" type="button" role="tab">
+                        <i class="fas fa-list"></i> Просмотр контента
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="sources-tab" data-bs-toggle="tab" data-bs-target="#sources" type="button" role="tab">
+                        <i class="fas fa-users"></i> Источники
+                    </button>
+                </li>
+            </ul>
+            
+            <!-- Содержимое вкладок -->
+            <div class="tab-content" id="mainTabContent">
+                
+                <!-- Анализ аккаунта -->
+                <div class="tab-pane fade show active" id="account-analysis" role="tabpanel">
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5>Анализ конкретного аккаунта</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="accountAnalysisForm">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label for="platform" class="form-label">Платформа</label>
+                                            <select class="form-select" id="platform" name="platform" required>
+                                                <option value="">Выберите платформу</option>
+                                                <option value="vk">VKontakte</option>
+                                                <option value="telegram">Telegram</option>
+                                                <option value="ok">Одноклассники</option>
+                                                <option value="twitter">Twitter</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <div class="mb-3">
+                                            <label for="account_url" class="form-label">URL аккаунта/канала</label>
+                                            <input type="url" class="form-control" id="account_url" name="account_url" placeholder="https://..." required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label for="posts_limit" class="form-label">Лимит постов</label>
+                                            <input type="number" class="form-control" id="posts_limit" name="posts_limit" value="50" min="1" max="500">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label for="analysis_type" class="form-label">Тип анализа</label>
+                                            <select class="form-select" id="analysis_type" name="analysis_type">
+                                                <option value="full">Полный</option>
+                                                <option value="extremism">Только экстремизм</option>
+                                                <option value="sentiment">Тональность</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary" id="startAccountAnalysis">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                    Начать анализ
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Результаты анализа аккаунта -->
+                    <div class="card mt-3 d-none" id="accountResults">
+                        <div class="card-header">
+                            <h5>Результаты анализа</h5>
+                        </div>
+                        <div class="card-body" id="accountResultsContent">
+                            <!-- Результаты будут загружены здесь -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Поиск по ключевым словам -->
+                <div class="tab-pane fade" id="keyword-search" role="tabpanel">
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5>Поиск контента по ключевым словам</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="keywordSearchForm">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <label for="keywords" class="form-label">Ключевые слова</label>
+                                            <textarea class="form-control" id="keywords" name="keywords" rows="3" placeholder="Введите ключевые слова через запятую" required></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="searchPlatforms" class="form-label">Платформы</label>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="vk" id="searchVk" name="platforms" checked>
+                                                <label class="form-check-label" for="searchVk">VKontakte</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="telegram" id="searchTelegram" name="platforms" checked>
+                                                <label class="form-check-label" for="searchTelegram">Telegram</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="ok" id="searchOk" name="platforms">
+                                                <label class="form-check-label" for="searchOk">Одноклассники</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="twitter" id="searchTwitter" name="platforms">
+                                                <label class="form-check-label" for="searchTwitter">Twitter</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success" id="startKeywordSearch">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                    Начать поиск
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Результаты поиска -->
+                    <div class="card mt-3 d-none" id="keywordResults">
+                        <div class="card-header">
+                            <h5>Результаты поиска</h5>
+                        </div>
+                        <div class="card-body" id="keywordResultsContent">
+                            <!-- Результаты будут загружены здесь -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Мониторинг -->
+                <div class="tab-pane fade" id="monitoring" role="tabpanel">
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5>Настройка мониторинга</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="monitoringForm">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label for="monitoringPlatform" class="form-label">Платформа</label>
+                                            <select class="form-select" id="monitoringPlatform" name="platform" required>
+                                                <option value="">Выберите платформу</option>
+                                                <option value="vk">VKontakte</option>
+                                                <option value="telegram">Telegram</option>
+                                                <option value="ok">Одноклассники</option>
+                                                <option value="twitter">Twitter</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label for="monitoringName" class="form-label">Название сессии</label>
+                                            <input type="text" class="form-control" id="monitoringName" name="session_name" placeholder="Мониторинг экстремизма" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label for="monitoringInterval" class="form-label">Интервал проверки (минуты)</label>
+                                            <input type="number" class="form-control" id="monitoringInterval" name="interval" value="60" min="5" max="1440">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label for="monitoringType" class="form-label">Тип мониторинга</label>
+                                            <select class="form-select" id="monitoringType" name="monitoring_type">
+                                                <option value="extremism">Экстремизм</option>
+                                                <option value="propaganda">Пропаганда</option>
+                                                <option value="hate_speech">Язык вражды</option>
+                                                <option value="all">Все типы</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="monitoringKeywords" class="form-label">Ключевые слова для мониторинга</label>
+                                    <textarea class="form-control" id="monitoringKeywords" name="monitoring_keywords" rows="3" placeholder="Введите ключевые слова через запятую" required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-warning" id="startMonitoring">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                    Запустить мониторинг
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Активные сессии мониторинга -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5>Активные сессии мониторинга</h5>
+                        </div>
+                        <div class="card-body" id="activeSessions">
+                            <p class="text-muted">Загрузка активных сессий...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Аналитика -->
+                <div class="tab-pane fade" id="analytics" role="tabpanel">
+                    <div class="mt-3">
+                        
+                        <!-- Фильтры для аналитики -->
+                        <div class="filter-section">
+                            <h5><i class="fas fa-filter"></i> Фильтры аналитики</h5>
+                            <form id="analyticsFiltersForm">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <label for="analyticsPlatform" class="form-label">Платформа</label>
+                                        <select class="form-select" id="analyticsPlatform" name="platform">
+                                            <option value="">Все платформы</option>
+                                            <option value="vk">VKontakte</option>
+                                            <option value="telegram">Telegram</option>
+                                            <option value="ok">Одноклассники</option>
+                                            <option value="twitter">Twitter</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="analyticsClassification" class="form-label">Тип контента</label>
+                                        <select class="form-select" id="analyticsClassification" name="classification">
+                                            <option value="">Все типы</option>
+                                            <option value="extremist">Экстремистский</option>
+                                            <option value="hate_speech">Язык вражды</option>
+                                            <option value="propaganda">Пропаганда</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="analyticsDateFrom" class="form-label">Дата от</label>
+                                        <input type="date" class="form-control" id="analyticsDateFrom" name="date_from">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="analyticsDateTo" class="form-label">Дата до</label>
+                                        <input type="date" class="form-control" id="analyticsDateTo" name="date_to">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="analyticsConfidence" class="form-label">Мин. уверенность</label>
+                                        <input type="range" class="form-range" id="analyticsConfidence" name="min_confidence" min="0" max="1" step="0.1" value="0.5">
+                                        <small class="text-muted">50%</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="submit" class="btn btn-primary d-block w-100">
+                                            <i class="fas fa-search"></i> Применить
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Общая статистика -->
+                        <div class="stats-card">
+                            <h5><i class="fas fa-chart-pie"></i> Общая статистика</h5>
+                            <div class="row" id="summaryStats">
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="totalAnalyzed">-</h4>
+                                        <small>Всего проанализировано</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="totalExtremist">-</h4>
+                                        <small>Экстремистский</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="totalHateSpeech">-</h4>
+                                        <small>Язык вражды</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="totalPropaganda">-</h4>
+                                        <small>Пропаганда</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="uniqueSources">-</h4>
+                                        <small>Уникальных источников</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="stats-item">
+                                        <h4 id="extremistPercentage">-</h4>
+                                        <small>% экстремизма</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Графики -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h6><i class="fas fa-chart-line"></i> Динамика по времени</h6>
+                                    <canvas id="timeChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h6><i class="fas fa-chart-pie"></i> Распределение по платформам</h6>
+                                    <canvas id="platformChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h6><i class="fas fa-tags"></i> Топ ключевых слов</h6>
+                                    <div id="keywordsChart"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h6><i class="fas fa-chart-bar"></i> Типы контента</h6>
+                                    <canvas id="contentTypeChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Таблица каналов -->
+                        <div class="content-table">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center">Канал/Источник</th>
+                                        <th class="text-center">Платформа</th>
+                                        <th class="text-center">Всего постов</th>
+                                        <th class="text-center">Экстремистский</th>
+                                        <th class="text-center">Язык вражды</th>
+                                        <th class="text-center">Пропаганда</th>
+                                        <th class="text-center">Уровень риска</th>
+                                        <th class="text-center">Последняя активность</th>
+                                    </tr>
+                                </thead>
+                                    <tbody id="channelsTableBody">
+                                        <!-- Данные загружаются через JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Просмотр контента -->
+                <div class="tab-pane fade" id="content-view" role="tabpanel">
+                    <div class="mt-3">
+                        
+                        <!-- Фильтры для контента -->
+                        <div class="filter-section">
+                            <h5><i class="fas fa-filter"></i> Фильтры контента</h5>
+                            <form id="contentFiltersForm">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <label for="contentPlatform" class="form-label">Платформа</label>
+                                        <select class="form-select" id="contentPlatform" name="platform">
+                                            <option value="">Все платформы</option>
+                                            <option value="vk">VKontakte</option>
+                                            <option value="telegram">Telegram</option>
+                                            <option value="ok">Одноклассники</option>
+                                            <option value="twitter">Twitter</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="contentClassification" class="form-label">Классификация</label>
+                                        <select class="form-select" id="contentClassification" name="classification">
+                                            <option value="">Все типы</option>
+                                            <option value="extremist">Экстремистский</option>
+                                            <option value="hate_speech">Язык вражды</option>
+                                            <option value="propaganda">Пропаганда</option>
+                                            <option value="normal">Нормальный</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="contentDateFrom" class="form-label">Дата от</label>
+                                        <input type="date" class="form-control" id="contentDateFrom" name="date_from">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="contentDateTo" class="form-label">Дата до</label>
+                                        <input type="date" class="form-control" id="contentDateTo" name="date_to">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="contentLimit" class="form-label">Лимит</label>
+                                        <select class="form-select" id="contentLimit" name="limit">
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                            <option value="200">200</option>
+                                            <option value="500">500</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">&nbsp;</label>
+                                        <button type="submit" class="btn btn-primary d-block w-100">
+                                            <i class="fas fa-search"></i> Загрузить
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Список контента -->
+                        <div id="contentList">
+                            <div class="loading-spinner">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Загрузка...</span>
+                                </div>
+                                <p class="mt-2">Загрузка контента...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Пагинация -->
+                        <div class="pagination-container">
+                            <nav>
+                                <ul class="pagination" id="contentPagination">
+                                    <!-- Пагинация генерируется JavaScript -->
+                                </ul>
+                            </nav>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Источники -->
+                <div class="tab-pane fade" id="sources" role="tabpanel">
+                    <div class="mt-3">
+                        
+                        <!-- Управление источниками -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-plus"></i> Добавить источник для мониторинга</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="addSourceForm">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <label for="sourcePlatform" class="form-label">Платформа</label>
+                                            <select class="form-select" id="sourcePlatform" name="platform" required>
+                                                <option value="">Выберите платформу</option>
+                                                <option value="vk">VKontakte</option>
+                                                <option value="telegram">Telegram</option>
+                                                <option value="ok">Одноклассники</option>
+                                                <option value="twitter">Twitter</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="sourceUrl" class="form-label">URL источника</label>
+                                            <input type="url" class="form-control" id="sourceUrl" name="source_url" placeholder="https://..." required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="sourceName" class="form-label">Название</label>
+                                            <input type="text" class="form-control" id="sourceName" name="source_name" placeholder="Название источника" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="submit" class="btn btn-success d-block w-100">
+                                                <i class="fas fa-plus"></i> Добавить
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Список источников -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5><i class="fas fa-list"></i> Отслеживаемые источники</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center">Название</th>
+                                        <th class="text-center">Платформа</th>
+                                        <th class="text-center">URL</th>
+                                        <th class="text-center">Статус</th>
+                                        <th class="text-center">Последняя проверка</th>
+                                        <th class="text-center">Найдено контента</th>
+                                        <th class="text-center">Действия</th>
+                                    </tr>
+                                </thead>
+                                        <tbody id="sourcesTableBody">
+                                            <!-- Данные загружаются через JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для отображения подробных результатов -->
+<div class="modal fade" id="resultsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Подробные результаты</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalResultsContent">
+                <!-- Подробные результаты -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра контента -->
+<div class="modal fade" id="contentModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Просмотр контента</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalContentBody">
+                <!-- Контент -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/social_extremism_analysis.js') }}"></script>
+{% endblock %}
+</html>

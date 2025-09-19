@@ -1,0 +1,248 @@
+/* Стили для ключевых слов */
+.keyword-high { background-color: #dc3545; color: white; }
+.keyword-medium { background-color: #ffc107; color: black; }
+.keyword-low { background-color: #28a745; color: white; }
+
+/* Стили для уровней угрозы */
+.threat-critical { border-left-color: #dc3545 !important; }
+.threat-high { border-left-color: #fd7e14 !important; }
+.threat-medium { border-left-color: #ffc107 !important; }
+.threat-low { border-left-color: #28a745 !important; }
+
+/* Стили для карточек контента */
+.content-card {
+    border-left: 4px solid #6c757d;
+    transition: all 0.3s ease;
+}
+
+.content-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Стили для фильтров */
+.filter-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* Стили для статистики */
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.stats-item {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    margin: 5px;
+}
+
+/* Стили для графиков */
+.chart-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+/* Стили для таблицы */
+.content-table {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.table th {
+    background-color: #495057;
+    color: white;
+    border: none;
+}
+
+/* Стили для бейджей */
+.badge-extremist { background-color: #dc3545; }
+.badge-suspicious { background-color: #ff8c00; color: #fff; }
+.badge-hate-speech { background-color: #fd7e14; }
+.badge-propaganda { background-color: #ffc107; color: #000; }
+.badge-normal { background-color: #28a745; }
+
+/* Цветовое выделение для подозрительного контента */
+.suspicious-content {
+    background-color: #fff3cd;
+    border-left: 4px solid #ff8c00;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+}
+
+.extremist-content {
+    background-color: #f8d7da;
+    border-left: 4px solid #dc3545;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+}
+
+.normal-content {
+    background-color: #d1eddd;
+    border-left: 4px solid #28a745;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+    width: 100%;
+    display: block;
+    box-sizing: border-box;
+}
+
+/* Центрирование текста */
+.content-text-center {
+    text-align: center;
+    width: 100%;
+    display: block;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.classification-center {
+    text-align: center;
+    padding: 10px;
+}
+
+/* Стили для платформ */
+.platform-twitter { color: #1da1f2; }
+.platform-vk { color: #4680c2; }
+.platform-telegram { color: #0088cc; }
+.platform-ok { color: #ee8208; }
+
+/* Анимация загрузки */
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 40px;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Стили для модального окна с полным контентом */
+.modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.modal-body {
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.modal-footer {
+    border-top: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+/* Стили для центрирования данных в таблицах */
+.table.table-sm td,
+.table.table-sm th {
+    text-align: center;
+    vertical-align: middle;
+    padding: 8px;
+}
+
+/* Исключение для первой колонки с контентом - оставляем выравнивание по левому краю */
+.table.table-sm td:first-child {
+    text-align: left;
+}
+
+/* Стили для растягивания карточек по всему полю */
+.card.mt-3 {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Обеспечиваем полную ширину таблицы */
+.table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+/* Стили для контента в модальном окне */
+.modal-body .suspicious-content,
+.modal-body .extremist-content,
+.modal-body .normal-content {
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 8px;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.modal-body .suspicious-content {
+    background-color: #fff3cd;
+    border-left: 4px solid #ff8c00;
+    color: #856404;
+}
+
+.modal-body .extremist-content {
+    background-color: #f8d7da;
+    border-left: 4px solid #dc3545;
+    color: #721c24;
+}
+
+.modal-body .normal-content {
+    background-color: #d1eddd;
+    border-left: 4px solid #28a745;
+    color: #155724;
+}
+
+/* Выделение ключевых слов в модальном окне */
+.modal-body .keyword-high,
+.modal-body .keyword-medium,
+.modal-body .keyword-low {
+    display: inline-block;
+    margin: 2px;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .filter-section {
+        padding: 15px;
+    }
+    
+    .stats-item {
+        margin: 2px;
+        padding: 10px;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+}

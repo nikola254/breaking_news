@@ -11,7 +11,12 @@ import time
 from app.social_media.vk_api import VKAnalyzer
 from app.social_media.ok_api import OKAnalyzer
 from app.social_media.telegram_api import TelegramAnalyzer
+from app.social_media.twitter_api import TwitterAnalyzer
 from app.ai.content_classifier import ExtremistContentClassifier
+
+# Импорты для аналитики СВО
+from app.analytics.svo_trends_analyzer import SVOTrendsAnalyzer
+from app.analytics.svo_visualizer import SVOVisualizer
 
 # ClickHouse для хранения данных
 import clickhouse_connect
@@ -25,8 +30,86 @@ logger = logging.getLogger(__name__)
 # Создание Blueprint
 social_bp = Blueprint('social_analysis', __name__)
 
+@social_bp.route('/unified', methods=['GET'])
+def unified_analysis():
+    """Объединенный интерфейс для анализа социальных сетей и экстремизма"""
+    return render_template('social_extremism_analysis.html')
+
+@social_bp.route('/svo-dashboard', methods=['GET'])
+def svo_dashboard():
+    """Дашборд аналитики СВО - статистика, графики и тренды"""
+    try:
+        # Инициализация анализатора и визуализатора
+        analyzer = SVOTrendsAnalyzer()
+        visualizer = SVOVisualizer()
+        
+        # Генерация данных за период 2022-2025
+        start_date = datetime(2022, 2, 24)  # Начало СВО
+        end_date = datetime(2025, 1, 1)
+        
+        # Получение данных
+        trend_data = analyzer.generate_synthetic_data(start_date, end_date)
+        
+        # Анализ трендов
+        analysis_result = analyzer.analyze_trends(trend_data)
+        
+        # Корреляционный анализ
+        correlations = analyzer.get_correlation_analysis(trend_data)
+        
+        # Сравнение периодов
+        period_comparison = analyzer.get_period_comparison(trend_data)
+        
+        # Создание графиков
+        charts = visualizer.create_dashboard_charts(trend_data)
+        
+        # Создание сетевого графа связей
+        network_data = visualizer.create_network_graph(trend_data)
+        
+        # Подготовка данных для шаблона
+        dashboard_data = {
+            'analysis_result': analysis_result,
+            'correlations': correlations,
+            'period_comparison': period_comparison,
+            'charts': charts,
+            'network_data': network_data,
+            'total_data_points': len(trend_data),
+            'analysis_period': f"{start_date.strftime('%d.%m.%Y')} - {end_date.strftime('%d.%m.%Y')}"
+        }
+        
+        return render_template('social_analysis/svo_dashboard.html', **dashboard_data)
+        
+    except Exception as e:
+        logger.error(f"Ошибка в дашборде СВО: {e}")
+        return """
+        <html>
+        <head><title>Ошибка</title></head>
+        <body>
+            <h1>Ошибка при загрузке дашборда аналитики СВО</h1>
+            <p>Произошла ошибка: """ + str(e) + """</p>
+            <a href="/social-analysis">Вернуться к социальному анализу</a>
+        </body>
+        </html>
+        """, 500
+
 # ClickHouse клиент
 clickhouse_client = None
+
+# Глобальные переменные для анализаторов
+vk_analyzer = None
+ok_analyzer = None
+telegram_analyzer = None
+twitter_analyzer = None
+classifier = None
+
+# Статус анализа
+analysis_status = {
+    'is_running': False,
+    'progress': 0,
+    'current_task': '',
+    'results_count': 0,
+    'start_time': None,
+    'errors': []
+}
 
 def get_clickhouse_client():
     """Получение клиента ClickHouse"""
@@ -44,6 +127,19 @@ def get_clickhouse_client():
         except Exception as e:
             logger.error(f"Ошибка подключения к ClickHouse: {e}")
     return clickhouse_client
+
+def create_new_clickhouse_client():
+    """Создание нового клиента ClickHouse для избежания конфликтов одновременных запросов"""
+    try:
+        return clickhouse_connect.get_client(
+            host=Config.CLICKHOUSE_HOST,
+            port=Config.CLICKHOUSE_PORT,
+            username=Config.CLICKHOUSE_USER,
+            password=Config.CLICKHOUSE_PASSWORD
+        )
+    except Exception as e:
+        logger.error(f"Ошибка создания нового клиента ClickHouse: {e}")
+        return None
 
 def create_social_analysis_tables():
     """Создание таблиц для анализа социальных сетей в ClickHouse"""
@@ -97,7 +193,7 @@ def create_social_analysis_tables():
         logger.error(f"Ошибка создания таблиц ClickHouse: {e}")
 
 # Маршрут для отображения страницы анализа социальных сетей
-@social_bp.route('/social-analysis', methods=['GET'])
+@social_bp.route('/', methods=['GET'])
 def social_analysis():
     """Отображение страницы анализа социальных сетей"""
     return render_template('social_analysis.html')
@@ -115,7 +211,7 @@ def save_analysis_result(platform: str, account_url: str, content: str,
                         author: str = '', source_url: str = ''):
     """Сохранение результата анализа в ClickHouse"""
     try:
-        client = get_clickhouse_client()
+        client = create_new_clickhouse_client()
         if client:
             # Подготавливаем данные как список значений в правильном порядке
             data_row = [
@@ -145,7 +241,7 @@ def save_analysis_result(platform: str, account_url: str, content: str,
         logger.error(f"Трассировка: {traceback.format_exc()}")
 
 # API маршруты для анализа
-@social_bp.route('/social-analysis/analyze-account', methods=['POST'])
+@social_bp.route('/analyze-account', methods=['POST'])
 def analyze_account():
     """Анализ конкретного аккаунта"""
     try:
@@ -165,7 +261,7 @@ def analyze_account():
             'detailed_results': []
         }
         
-        # Реальный анализ для Telegram
+        # Реальный анализ для Telegram и Twitter
         if platform == 'telegram':
             # Извлечение username из URL
             if account_url.startswith('https://t.me/'):
@@ -243,6 +339,89 @@ def analyze_account():
             
             results['posts_analyzed'] = len(messages)
             
+        elif platform == 'twitter':
+            # Анализ Twitter аккаунта
+            try:
+                twitter_analyzer = TwitterAnalyzer()
+                
+                # Извлечение username из URL
+                if account_url.startswith('https://twitter.com/') or account_url.startswith('https://x.com/'):
+                    username = account_url.split('/')[-1]
+                elif account_url.startswith('@'):
+                    username = account_url[1:]
+                else:
+                    username = account_url
+                
+                # Получение твитов
+                tweets = twitter_analyzer.get_user_tweets(username, limit=posts_limit)
+                
+                # Анализ контента с помощью AI
+                classifier = ExtremistContentClassifier()
+                
+                for tweet in tweets:
+                    if tweet.get('text'):
+                        classification = classifier.classify_content(tweet['text'])
+                        
+                        # Подсчет по категориям
+                        if classification['label'] == 'extremist':
+                            results['extremist_content_count'] += 1
+                        elif classification['label'] == 'suspicious':
+                            results['suspicious_content_count'] += 1
+                        else:
+                            results['normal_content_count'] += 1
+                        
+                        # Подготовка metadata для JSON сериализации
+                        tweet_metadata = tweet.copy()
+                        if 'created_at' in tweet_metadata and hasattr(tweet_metadata['created_at'], 'isoformat'):
+                            tweet_metadata['created_at'] = tweet_metadata['created_at'].isoformat()
+                        
+                        # Сохранение в ClickHouse
+                        save_analysis_result(
+                            platform='twitter',
+                            account_url=account_url,
+                            content=tweet['text'],
+                            classification=classification['label'],
+                            confidence=classification['confidence'],
+                            keywords=classification.get('keywords', []),
+                            metadata=json.dumps(tweet_metadata),
+                            author=tweet.get('user', {}).get('username', username) if isinstance(tweet.get('user'), dict) else username,
+                            source_url=f"https://twitter.com/{username}"
+                        )
+                        
+                        # Преобразуем datetime в строку для JSON сериализации
+                        tweet_date = tweet.get('created_at')
+                        if tweet_date and hasattr(tweet_date, 'isoformat'):
+                            tweet_date = tweet_date.isoformat()
+                        elif tweet_date:
+                            tweet_date = str(tweet_date)
+                        
+                        results['detailed_results'].append({
+                            'tweet_id': tweet.get('id'),
+                            'content': tweet['text'][:200] + '...' if len(tweet['text']) > 200 else tweet['text'],
+                            'highlighted_text': classification.get('highlighted_text', tweet['text']),
+                            'threat_color': classification.get('threat_color', '#28a745'),
+                            'classification': classification['label'],
+                            'confidence': classification['confidence'],
+                            'keywords': classification.get('keywords', []),
+                            'date': tweet_date,
+                            'retweets': tweet.get('retweet_count', 0),
+                            'likes': tweet.get('favorite_count', 0)
+                        })
+                
+                results['posts_analyzed'] = len(tweets)
+                
+            except Exception as e:
+                logger.error(f"Ошибка анализа Twitter: {e}")
+                # Возвращаем заглушку при ошибке
+                results.update({
+                    'posts_analyzed': 0,
+                    'extremist_content_count': 0,
+                    'suspicious_content_count': 0,
+                    'normal_content_count': 0,
+                    'detailed_results': [],
+                    'error': f'Ошибка анализа Twitter: {str(e)}'
+                })
+            
         else:
             # Заглушка для других платформ
             results.update({
@@ -272,7 +451,7 @@ def analyze_account():
             'error': str(e)
         })
 
-@social_bp.route('/social-analysis/search-keywords', methods=['POST'])
+@social_bp.route('/search-keywords', methods=['POST'])
 def search_keywords():
     """Поиск контента по ключевым словам с анализом экстремистского контента"""
     try:
@@ -388,6 +567,91 @@ def search_keywords():
                     'error': str(e)
                 }
         
+        # Поиск в Twitter (если выбран)
+        if 'twitter' in platforms:
+            try:
+                twitter_analyzer = TwitterAnalyzer()
+                found_items = []
+                
+                # Поиск твитов по ключевым словам
+                for keyword in keyword_list:
+                    try:
+                        tweets = twitter_analyzer.search_tweets(keyword, limit=10)
+                        
+                        for tweet in tweets:
+                            if tweet.get('text'):
+                                # Анализируем контент
+                                classification = classifier.classify_content(tweet['text'])
+                                
+                                # Подсчитываем по категориям
+                                if classification['label'] == 'extremist':
+                                    results['analysis_summary']['extremist_count'] += 1
+                                elif classification['label'] == 'suspicious':
+                                    results['analysis_summary']['suspicious_count'] += 1
+                                else:
+                                    results['analysis_summary']['normal_count'] += 1
+                                
+                                # Подготовка metadata для JSON сериализации
+                                tweet_metadata = tweet.copy()
+                                if 'created_at' in tweet_metadata and hasattr(tweet_metadata['created_at'], 'isoformat'):
+                                    tweet_metadata['created_at'] = tweet_metadata['created_at'].isoformat()
+                                
+                                # Сохраняем результат
+                                save_analysis_result(
+                                    platform='twitter',
+                                    account_url=f"https://twitter.com/{tweet.get('user', {}).get('username', 'unknown')}",
+                                    content=tweet['text'],
+                                    classification=classification['label'],
+                                    confidence=classification['confidence'],
+                                    keywords=classification.get('keywords', []),
+                                    metadata=json.dumps({
+                                        'search_keywords': keyword_list,
+                                        'tweet_id': tweet.get('id'),
+                                        'retweet_count': tweet.get('retweet_count', 0),
+                                        'favorite_count': tweet.get('favorite_count', 0),
+                                        **tweet_metadata
+                                    }),
+                                    author=tweet.get('user', {}).get('username', 'unknown') if isinstance(tweet.get('user'), dict) else 'unknown',
+                                    source_url=f"https://twitter.com/{tweet.get('user', {}).get('username', 'unknown')}/status/{tweet.get('id', '')}"
+                                )
+                                
+                                # Преобразуем datetime в строку для JSON сериализации
+                                tweet_date = tweet.get('created_at')
+                                if tweet_date and hasattr(tweet_date, 'isoformat'):
+                                    tweet_date = tweet_date.isoformat()
+                                elif tweet_date:
+                                    tweet_date = str(tweet_date)
+                                
+                                found_items.append({
+                                    'content': tweet['text'][:200] + '...' if len(tweet['text']) > 200 else tweet['text'],
+                                    'highlighted_text': classification.get('highlighted_text', tweet['text'][:200]),
+                                    'threat_color': classification.get('threat_color', '#28a745'),
+                                    'classification': classification['label'],
+                                    'confidence': classification['confidence'],
+                                    'author': tweet.get('user', {}).get('username', 'unknown') if isinstance(tweet.get('user'), dict) else 'unknown',
+                                    'date': tweet_date,
+                                    'retweets': tweet.get('retweet_count', 0),
+                                    'likes': tweet.get('favorite_count', 0),
+                                    'url': f"https://twitter.com/{tweet.get('user', {}).get('username', 'unknown')}/status/{tweet.get('id', '')}"
+                                })
+                    except Exception as e:
+                        logger.warning(f"Ошибка поиска по ключевому слову '{keyword}' в Twitter: {e}")
+                        continue
+                
+                results['platform_results']['twitter'] = {
+                    'count': len(found_items),
+                    'items': found_items
+                }
+                results['total_found'] += len(found_items)
+                
+            except Exception as e:
+                logger.error(f"Ошибка поиска в Twitter: {e}")
+                results['platform_results']['twitter'] = {
+                    'count': 0,
+                    'items': [],
+                    'error': str(e)
+                }
+        
         # Заглушки для других платформ (VK, OK)
         if 'vk' in platforms:
             results['platform_results']['vk'] = {
@@ -415,7 +679,7 @@ def search_keywords():
             'error': str(e)
         })
 
-@social_bp.route('/social-analysis/start-monitoring', methods=['POST'])
+@social_bp.route('/start-monitoring', methods=['POST'])
 def start_monitoring():
     """Запуск мониторинга социальных сетей с анализом экстремистского контента"""
     try:
@@ -572,7 +836,7 @@ def start_monitoring():
             'error': str(e)
         })
 
-@social_bp.route('/social-analysis/active-sessions', methods=['GET'])
+@social_bp.route('/active-sessions', methods=['GET'])
 def get_active_sessions():
     """Получение списка активных сессий мониторинга"""
     try:
@@ -641,7 +905,7 @@ def get_active_sessions():
             'error': str(e)
         })
 
-@social_bp.route('/social-analysis/stop-session/<session_id>', methods=['POST'])
+@social_bp.route('/stop-session/<session_id>', methods=['POST'])
 def stop_session(session_id):
     """Остановка сессии мониторинга"""
     try:
@@ -703,7 +967,7 @@ analysis_status = {
 
 def initialize_analyzers():
     """Инициализация анализаторов социальных сетей"""
-    global vk_analyzer, ok_analyzer, telegram_analyzer
+    global vk_analyzer, ok_analyzer, telegram_analyzer, twitter_analyzer, classifier
     
     try:
         # Инициализация VK анализатора (нужен токен доступа)
@@ -727,6 +991,22 @@ def initialize_analyzers():
             )
             logger.info("OK Analyzer initialized")
         
+        # Инициализация Twitter анализатора
+        twitter_bearer_token = Config.TWITTER_BEARER_TOKEN
+        if twitter_bearer_token and twitter_bearer_token != "your_twitter_bearer_token":
+            twitter_analyzer = TwitterAnalyzer(
+                bearer_token=twitter_bearer_token,
+                api_key=Config.TWITTER_API_KEY,
+                api_secret=Config.TWITTER_API_SECRET,
+                access_token=Config.TWITTER_ACCESS_TOKEN,
+                access_token_secret=Config.TWITTER_ACCESS_TOKEN_SECRET
+            )
+            logger.info("Twitter Analyzer initialized")
+        
+        # Инициализация классификатора контента
+        classifier = ExtremistContentClassifier()
+        logger.info("Content classifier initialized")
+        
         # Telegram анализатор инициализируется асинхронно при необходимости
         logger.info("Analyzers initialization completed")
         
@@ -748,7 +1028,12 @@ def configure_apis():
             'ok_session_secret': data.get('ok_session_secret', ''),
             'telegram_api_id': data.get('telegram_api_id', ''),
             'telegram_api_hash': data.get('telegram_api_hash', ''),
-            'telegram_phone': data.get('telegram_phone', '')
+            'telegram_phone': data.get('telegram_phone', ''),
+            'twitter_bearer_token': data.get('twitter_bearer_token', ''),
+            'twitter_api_key': data.get('twitter_api_key', ''),
+            'twitter_api_secret': data.get('twitter_api_secret', ''),
+            'twitter_access_token': data.get('twitter_access_token', ''),
+            'twitter_access_token_secret': data.get('twitter_access_token_secret', '')
         }
         
         return jsonify({
@@ -778,7 +1063,7 @@ def start_analysis():
         data = request.get_json()
         
         # Параметры анализа
-        platforms = data.get('platforms', ['vk', 'ok', 'telegram'])
+        platforms = data.get('platforms', ['vk', 'ok', 'telegram', 'twitter'])
         keywords = data.get('keywords', [])
         time_range = data.get('time_range', 24)  # часы
         analysis_depth = data.get('analysis_depth', 'medium')
@@ -817,7 +1102,7 @@ def start_analysis():
 
 def run_analysis(platforms: List[str], keywords: List[str], time_range: int, analysis_depth: str):
     """Выполнение анализа в отдельном потоке"""
-    global analysis_status, vk_analyzer, ok_analyzer
+    global analysis_status, vk_analyzer, ok_analyzer, twitter_analyzer
     
     try:
         all_results = []
@@ -850,7 +1135,7 @@ def run_analysis(platforms: List[str], keywords: List[str], time_range: int, ana
                 analysis_status['errors'].append(f"OK: {str(e)}")
                 logger.error(f"OK analysis error: {e}")
         
-        analysis_status['progress'] = 70
+        analysis_status['progress'] = 60
         
         # Анализ Telegram
         if 'telegram' in platforms:
@@ -863,6 +1148,20 @@ def run_analysis(platforms: List[str], keywords: List[str], time_range: int, ana
             except Exception as e:
                 analysis_status['errors'].append(f"Telegram: {str(e)}")
                 logger.error(f"Telegram analysis error: {e}")
+        
+        analysis_status['progress'] = 75
+        
+        # Анализ Twitter
+        if 'twitter' in platforms and twitter_analyzer:
+            analysis_status['current_task'] = 'Анализ Twitter'
+            
+            try:
+                twitter_results = analyze_twitter_content(keywords, time_range, analysis_depth)
+                all_results.extend(twitter_results)
+                analysis_status['results_count'] += len(twitter_results)
+            except Exception as e:
+                analysis_status['errors'].append(f"Twitter: {str(e)}")
+                logger.error(f"Twitter analysis error: {e}")
         
         analysis_status['progress'] = 90
         analysis_status['current_task'] = 'Сохранение результатов'
@@ -968,6 +1267,45 @@ async def analyze_telegram_content(keywords: List[str], time_range: int, analysi
     
     return results
 
+def analyze_twitter_content(keywords: List[str], time_range: int, analysis_depth: str) -> List[Dict]:
+    """Анализ контента Twitter"""
+    results = []
+    
+    try:
+        # Поиск маргинальных аккаунтов
+        marginal_accounts = []
+        for keyword in keywords:
+            accounts = twitter_analyzer.find_marginal_accounts(keyword, limit=20)
+            marginal_accounts.extend(accounts)
+        
+        # Извлечение пропагандистского контента
+        propaganda_content = []
+        for account in marginal_accounts:
+            content = twitter_analyzer.extract_propaganda_content(
+                account['username'], 
+                keywords, 
+                time_range_hours=time_range
+            )
+            propaganda_content.extend(content)
+        
+        # Анализ контента с помощью ИИ
+        for content in propaganda_content:
+            if content['risk_level'] in ['medium', 'high', 'critical']:
+                try:
+                    ai_result = classifier.analyze_text_combined(content['text'])
+                    content['ai_analysis'] = ai_result
+                    results.append(content)
+                except Exception as e:
+                    logger.error(f"AI analysis error for Twitter content: {e}")
+                    results.append(content)
+        
+        logger.info(f"Twitter analysis completed. Found {len(results)} suspicious posts")
+        
+    except Exception as e:
+        logger.error(f"Twitter analysis error: {e}")
+    
+    return results
+
 def save_analysis_results(results: List[Dict], keywords: List[str], platforms: List[str]):
     """Сохранение результатов анализа в ClickHouse"""
     try:
@@ -1057,7 +1395,7 @@ def get_analysis_status():
 def get_analysis_results():
     """Получение результатов анализа из ClickHouse"""
     try:
-        client = get_clickhouse_client()
+        client = create_new_clickhouse_client()
         if not client:
             return jsonify({
                 'success': False,
@@ -1337,7 +1675,6 @@ def get_channel_analytics():
                 COUNT(CASE WHEN classification = 'extremist' THEN 1 END) as extremist_count
             FROM social_analysis_results
             {where_clause}
-            AND length(keywords) > 0
             GROUP BY keyword
             HAVING keyword != ''
             ORDER BY extremist_count DESC, frequency DESC
@@ -1383,6 +1720,9 @@ def get_channel_analytics():
         ]
         
         # 4. Самый опасный контент (высокая уверенность + экстремизм)
+        dangerous_conditions = conditions + ["classification = 'extremist'", "confidence > 0.8"]
+        dangerous_where = " WHERE " + " AND ".join(dangerous_conditions) if dangerous_conditions else " WHERE classification = 'extremist' AND confidence > 0.8"
+        
         dangerous_query = f"""
             SELECT 
                 content,
@@ -1393,9 +1733,7 @@ def get_channel_analytics():
                 analysis_date,
                 keywords
             FROM social_analysis_results
-            {where_clause}
-            AND classification = 'extremist'
-            AND confidence > 0.8
+            {dangerous_where}
             ORDER BY confidence DESC, analysis_date DESC
             LIMIT 10
         """
