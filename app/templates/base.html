@@ -68,19 +68,6 @@
                     <li><a class="dropdown-item" href="{{ url_for('social_analysis.svo_dashboard') }}">
                         <i class="fas fa-chart-bar"></i> Дашборд СВО аналитики
                     </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{{ url_for('social_analysis.unified_analysis') }}#vk">
-                        <i class="fab fa-vk"></i> ВКонтакте
-                    </a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('social_analysis.unified_analysis') }}#telegram">
-                        <i class="fab fa-telegram"></i> Telegram
-                    </a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('social_analysis.unified_analysis') }}#twitter">
-                        <i class="fab fa-twitter"></i> Twitter
-                    </a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('social_analysis.unified_analysis') }}#ok">
-                        <i class="fas fa-globe"></i> Одноклассники
-                    </a></li>
                 </ul>
             </div>
             <a href="{{ url_for('main.about') }}" {% if request.path == url_for('main.about') %}class="active"{% endif %}>О проекте</a>

@@ -85,44 +85,7 @@
     padding: 20px;
 }
 
-/* Стили для социальных сетей */
-.social-media-buttons {
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
 
-.social-media-buttons h4 {
-    color: #4fc3f7;
-    font-size: 16px;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-.social-btn {
-    background: linear-gradient(135deg, #e91e63 0%, #ad1457 100%);
-    border: 1px solid #f06292;
-    color: white;
-    padding: 8px 16px;
-    margin: 5px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.social-btn:hover {
-    background: linear-gradient(135deg, #f06292 0%, #e91e63 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
-}
-
-.social-btn.active {
-    background: linear-gradient(135deg, #4fc3f7 0%, #0288d1 100%);
-    border-color: #81d4fa;
-    box-shadow: 0 4px 12px rgba(79, 195, 247, 0.4);
-}
 
 .social-media-section {
     margin-top: 20px;
@@ -219,11 +182,7 @@
         font-size: 28px;
     }
     
-    .social-btn {
-        padding: 6px 12px;
-        font-size: 12px;
-        margin: 3px;
-    }
+
     
     .social-config {
         padding: 8px;
@@ -341,6 +300,16 @@
 .db-btn.active {
     background-color: #0288d1;
     color: white;
+}
+
+/* Стили для разделителей между категориями источников */
+.source-divider {
+    width: 2px;
+    height: 30px;
+    background: linear-gradient(to bottom, transparent, #4fc3f7, transparent);
+    margin: 0 10px;
+    flex-shrink: 0;
+    opacity: 0.6;
 }
 
 .filter-controls {

@@ -56,6 +56,10 @@ class Config:
     CLOUD_MODEL_URL = os.environ.get('CLOUD_MODEL_URL', 'https://foundation-models.api.cloud.ru/v1/chat/completions')
     CLOUD_MODEL_TOKEN = os.environ.get('CLOUD_MODEL_TOKEN') or os.environ.get('CLOUD_RU_API_KEY') or os.environ.get('API_KEY')
     
+    # Настройки API_CLOUD для анализа тональности
+    API_CLOUD_URL = os.environ.get('API_CLOUD_URL')
+    API_CLOUD_KEY = os.environ.get('API_CLOUD_KEY')
+    
     # Настройки для генерации датасета
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
     ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')

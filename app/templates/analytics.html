@@ -68,6 +68,30 @@
         </div>
     </div>
     
+    <!-- Алерты о высокой напряженности -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        Алерты о высокой напряженности
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="tensionAlerts">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="sr-only">Загрузка...</span>
+                            </div>
+                            <p class="mt-2">Загрузка алертов...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Графики -->
     <div class="row">
         <div class="col-12">
@@ -107,7 +131,7 @@
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">Топ источников</h5>
+                    <h5 class="mb-0">Тепловая карта напряженности</h5>
                 </div>
                 <div class="card-body">
                     <div id="sourcesChart" class="text-center">
@@ -204,30 +228,92 @@ function showLoadingSpinners() {
 }
 
 function loadStatistics(category, dateRange) {
+    // Загружаем базовую статистику
     fetch(`/api/ukraine_analytics/statistics?category=${category}&days=${dateRange}`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
                 document.getElementById('totalNews').textContent = data.total_news || '0';
-                document.getElementById('avgTension').textContent = 
-                    data.avg_tension ? (data.avg_tension * 100).toFixed(1) + '%' : '0%';
             }
         })
         .catch(error => {
             console.error('Error loading statistics:', error);
             document.getElementById('totalNews').textContent = 'Ошибка';
+        });
+    
+    // Загружаем статистику социальной напряженности
+    fetch(`/api/ukraine_analytics/social_tension_statistics?category=${category}&days=${dateRange}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('avgTension').textContent = 
+                    data.avg_tension ? (data.avg_tension * 100).toFixed(1) + '%' : '0%';
+                
+                // Обновляем индикатор тренда
+                const trendElement = document.getElementById('tensionTrend');
+                if (trendElement) {
+                    trendElement.textContent = getTrendText(data.trend);
+                    trendElement.className = `trend-indicator ${data.trend}`;
+                }
+                
+                // Обновляем распределение напряженности
+                updateTensionDistribution(data.tension_distribution);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading tension statistics:', error);
             document.getElementById('avgTension').textContent = 'Ошибка';
         });
 }
 
+// Функция для получения текста тренда
+function getTrendText(trend) {
+    switch(trend) {
+        case 'rising': return '↗ Растет';
+        case 'falling': return '↘ Снижается';
+        case 'stable': return '→ Стабильно';
+        default: return '→ Стабильно';
+    }
+}
+
+// Функция для обновления распределения напряженности
+function updateTensionDistribution(distribution) {
+    const container = document.getElementById('tensionDistribution');
+    if (!container || !distribution) return;
+    
+    const categories = {
+        'critical': { name: 'Критическая', color: '#8e44ad' },
+        'high': { name: 'Высокая', color: '#e74c3c' },
+        'medium': { name: 'Средняя', color: '#e67e22' },
+        'low': { name: 'Низкая', color: '#f1c40f' },
+        'minimal': { name: 'Минимальная', color: '#2ecc71' }
+    };
+    
+    let html = '<div class="tension-distribution">';
+    for (const [level, count] of Object.entries(distribution)) {
+        const category = categories[level];
+        if (category && count > 0) {
+            html += `
+                <div class="tension-item">
+                    <span class="tension-color" style="background-color: ${category.color}"></span>
+                    <span class="tension-label">${category.name}</span>
+                    <span class="tension-count">${count}</span>
+                </div>
+            `;
+        }
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
 function loadCharts(category, dateRange) {
-    // Загружаем график напряженности
-    fetch(`/api/ukraine_analytics/tension_chart?category=${category}&days=${dateRange}`)
+    // Загружаем график социальной напряженности (временная динамика)
+    fetch(`/api/ukraine_analytics/social_tension_chart?category=${category}&days=${dateRange}&chart_type=timeline`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success' && data.chart_url) {
                 document.getElementById('tensionChart').innerHTML = 
-                    `<img src="${data.chart_url}" class="img-fluid" alt="График напряженности">`;
+                    `<img src="${data.chart_url}" class="img-fluid" alt="График динамики социальной напряженности">`;
             } else {
                 document.getElementById('tensionChart').innerHTML = 
                     '<p class="text-muted">Нет данных для отображения</p>';
@@ -239,13 +325,13 @@ function loadCharts(category, dateRange) {
                 '<p class="text-danger">Ошибка загрузки графика</p>';
         });
     
-    // Загружаем график категорий
-    fetch(`/api/ukraine_analytics/category_chart?category=${category}&days=${dateRange}`)
+    // Загружаем график распределения напряженности по категориям
+    fetch(`/api/ukraine_analytics/social_tension_chart?category=${category}&days=${dateRange}&chart_type=distribution`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success' && data.chart_url) {
                 document.getElementById('categoryChart').innerHTML = 
-                    `<img src="${data.chart_url}" class="img-fluid" alt="График категорий">`;
+                    `<img src="${data.chart_url}" class="img-fluid" alt="График распределения социальной напряженности">`;
             } else {
                 document.getElementById('categoryChart').innerHTML = 
                     '<p class="text-muted">Нет данных для отображения</p>';
@@ -257,22 +343,22 @@ function loadCharts(category, dateRange) {
                 '<p class="text-danger">Ошибка загрузки графика</p>';
         });
     
-    // Загружаем график источников
-    fetch(`/api/ukraine_analytics/sources_chart?category=${category}&days=${dateRange}`)
+    // Загружаем тепловую карту напряженности
+    fetch(`/api/ukraine_analytics/social_tension_chart?category=${category}&days=${dateRange}&chart_type=heatmap`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success' && data.chart_url) {
                 document.getElementById('sourcesChart').innerHTML = 
-                    `<img src="${data.chart_url}" class="img-fluid" alt="График источников">`;
+                    `<img src="${data.chart_url}" class="img-fluid" alt="Тепловая карта напряженности">`;
             } else {
                 document.getElementById('sourcesChart').innerHTML = 
                     '<p class="text-muted">Нет данных для отображения</p>';
             }
         })
         .catch(error => {
-            console.error('Error loading sources chart:', error);
+            console.error('Error loading heatmap chart:', error);
             document.getElementById('sourcesChart').innerHTML = 
-                '<p class="text-danger">Ошибка загрузки графика</p>';
+                '<p class="text-danger">Ошибка загрузки тепловой карты</p>';
         });
 }
 
@@ -338,9 +424,64 @@ function formatDate(dateString) {
     });
 }
 
+// Функция загрузки алертов о высокой напряженности
+function loadTensionAlerts() {
+    fetch('/api/ukraine_analytics/tension_alerts')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displayTensionAlerts(data.alerts);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading tension alerts:', error);
+        });
+}
+
+// Функция отображения алертов
+function displayTensionAlerts(alerts) {
+    const alertsContainer = document.getElementById('tensionAlerts');
+    if (!alertsContainer) return;
+
+    if (alerts.length === 0) {
+        alertsContainer.innerHTML = '<div class="alert alert-success">Критических уровней напряженности не обнаружено</div>';
+        return;
+    }
+
+    let alertsHtml = '<div class="tension-alerts">';
+    alerts.forEach(alert => {
+        const alertClass = alert.level === 'critical' ? 'alert-danger' : 
+                         alert.level === 'high' ? 'alert-warning' : 'alert-info';
+        
+        alertsHtml += `
+            <div class="alert ${alertClass} mb-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong>${alert.category}</strong>
+                        <div class="small text-muted">${alert.time}</div>
+                        <div class="mt-1">${alert.description}</div>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-${alert.level === 'critical' ? 'danger' : 'warning'}">
+                            ${(alert.tension_score * 100).toFixed(1)}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    alertsHtml += '</div>';
+    
+    alertsContainer.innerHTML = alertsHtml;
+}
+
 // Загружаем данные при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     updateAnalytics();
+    loadTensionAlerts();
+    
+    // Обновляем алерты каждые 5 минут
+    setInterval(loadTensionAlerts, 300000);
 });
 </script>
 {% endblock %}

@@ -21,6 +21,7 @@ import uuid
 from clickhouse_driver import Client
 from config import Config
 from app.utils.ukraine_sentiment_analyzer import get_ukraine_sentiment_analyzer
+from app.utils.social_tension_analyzer import get_tension_analyzer
 
 # Создаем Blueprint для API украинской аналитики
 ukraine_analytics_bp = Blueprint('ukraine_analytics', __name__, url_prefix='/api/ukraine_analytics')
@@ -62,8 +63,8 @@ def get_statistics():
         SELECT 
             COUNT(*) as total_news,
             AVG(sentiment_score) as avg_sentiment
-        FROM ukraine_conflict.all_news 
-        WHERE parsed_date >= today() - {days}
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= today() - {days}
         {category_condition}
         """
         
@@ -112,11 +113,11 @@ def get_tension_chart():
         # Запрос для получения данных по дням
         query = f"""
         SELECT 
-            toDate(parsed_date) as day,
+            toDate(published_date) as day,
             AVG(sentiment_score) as avg_sentiment,
             COUNT(*) as news_count
-        FROM ukraine_conflict.all_news 
-        WHERE parsed_date >= today() - {days}
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= today() - {days}
         {category_condition}
         GROUP BY day
         ORDER BY day
@@ -190,11 +191,11 @@ def get_category_chart():
         query = f"""
         SELECT 
             category,
-            COUNT(*) as news_count,
-            AVG(sentiment_score) as avg_sentiment
-        FROM ukraine_conflict.all_news 
-        WHERE parsed_date >= today() - {days}
-        GROUP BY category
+            count() AS news_count,
+            avg(sentiment_score) AS avg_sentiment
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= today() - {days}
+        GROUP BY category 
         ORDER BY news_count DESC
         """
         
@@ -279,13 +280,13 @@ def get_sources_chart():
         # Запрос для получения топ источников
         query = f"""
         SELECT 
-            site_name as source,
+            source,
             COUNT(*) as news_count,
             AVG(sentiment_score) as avg_sentiment
-        FROM ukraine_conflict.all_news 
-        WHERE parsed_date >= today() - {days}
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= today() - {days}
         {category_condition}
-        GROUP BY site_name
+        GROUP BY source
         ORDER BY news_count DESC
         LIMIT 10
         """
@@ -338,7 +339,7 @@ def get_sources_chart():
 
 @ukraine_analytics_bp.route('/recent_news', methods=['GET'])
 def get_recent_news():
-    """Получение списка последних новостей.
+    """Получение списка последних новостей с анализом социальной напряженности.
     
     Query Parameters:
         category (str): Категория новостей (по умолчанию 'all')
@@ -346,7 +347,7 @@ def get_recent_news():
         limit (int): Максимальное количество новостей (по умолчанию 20)
     
     Returns:
-        JSON: Список последних новостей
+        JSON: Список последних новостей с данными о напряженности
     """
     try:
         category = request.args.get('category', 'all')
@@ -354,6 +355,7 @@ def get_recent_news():
         limit = int(request.args.get('limit', 20))
         
         client = get_clickhouse_client()
+        tension_analyzer = get_tension_analyzer()
         
         # Формируем условие для категории
         category_condition = ""
@@ -363,16 +365,17 @@ def get_recent_news():
         # Запрос для получения последних новостей
         query = f"""
         SELECT 
-            parsed_date,
+            published_date,
             title,
+            content,
             url,
-            site_name,
+            source,
             category,
             sentiment_score
-        FROM ukraine_conflict.all_news 
-        WHERE parsed_date >= today() - {days}
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= today() - {days}
         {category_condition}
-        ORDER BY parsed_date DESC
+        ORDER BY published_date DESC
         LIMIT {limit}
         """
         
@@ -380,13 +383,22 @@ def get_recent_news():
         
         news_list = []
         for row in result:
+            # Анализируем социальную напряженность
+            text = f"{row[1]} {row[2] or ''}"  # title + content
+            tension_metrics = tension_analyzer.analyze_text_tension(text, row[1])
+            
             news_list.append({
                 'date': row[0].isoformat() if hasattr(row[0], 'isoformat') else str(row[0]),
                 'title': row[1],
-                'url': row[2],
-                'source': row[3],
-                'category': row[4],
-                'sentiment_score': float(row[5])
+                'url': row[3],
+                'source': row[4],
+                'category': row[5],
+                'sentiment_score': float(row[6]),
+                'tension_score': tension_metrics.tension_score,
+                'tension_category': tension_metrics.category,
+                'emotional_intensity': tension_metrics.emotional_intensity,
+                'conflict_level': tension_metrics.conflict_level,
+                'urgency_level': tension_metrics.urgency_level
             })
         
         return jsonify({
@@ -467,9 +479,9 @@ def recalculate_sentiment():
         # Получаем новости для пересчета
         query = f"""
         SELECT id, title, content, category
-        FROM ukraine_conflict.all_news 
+        FROM news.ukraine_universal_news 
         WHERE 1=1 {category_condition}
-        ORDER BY parsed_date DESC
+        ORDER BY published_date DESC
         LIMIT {limit}
         """
         
@@ -512,7 +524,7 @@ def recalculate_sentiment():
         if updated_records:
             for record in updated_records:
                 update_query = f"""
-                ALTER TABLE ukraine_conflict.all_news 
+                ALTER TABLE news.ukraine_universal_news 
                 UPDATE 
                     sentiment_score = {record['sentiment_score']},
                     positive_score = {record['positive_score']},
@@ -565,8 +577,8 @@ def get_sentiment_analysis():
             AVG(neutral_score) as avg_neutral,
             AVG(military_intensity) as avg_military_intensity,
             AVG(humanitarian_focus) as avg_humanitarian_focus
-        FROM ukraine_conflict.all_news 
-        WHERE parsed_date >= today() - {days}
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= today() - {days}
         GROUP BY category
         ORDER BY total_news DESC
         """
@@ -598,3 +610,423 @@ def get_sentiment_analysis():
     except Exception as e:
         current_app.logger.error(f"Error getting sentiment analysis: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@ukraine_analytics_bp.route('/social_tension_statistics', methods=['GET'])
+def get_social_tension_statistics():
+    """Получение статистики социальной напряженности.
+    
+    Query Parameters:
+        category (str): Категория новостей (по умолчанию 'all')
+        days (int): Количество дней для анализа (по умолчанию 7)
+    
+    Returns:
+        JSON: Статистика социальной напряженности
+    """
+    try:
+        category = request.args.get('category', 'all')
+        days = int(request.args.get('days', 7))
+        
+        client = get_clickhouse_client()
+        tension_analyzer = get_tension_analyzer()
+        
+        # Формируем условие для категории
+        category_condition = ""
+        if category != 'all':
+            category_condition = f"AND category = '{category}'"
+        
+        # Запрос для получения новостей
+        query = f"""
+        SELECT title, content, published_date, category, site_name
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= today() - {days}
+        {category_condition}
+        ORDER BY published_date DESC
+        LIMIT 5000
+        """
+        
+        results = client.execute(query)
+        
+        if not results:
+            return jsonify({
+                'status': 'success',
+                'total_news': 0,
+                'avg_tension': 0.0,
+                'tension_distribution': {},
+                'trend': 'stable'
+            })
+        
+        # Анализ напряженности для каждой новости
+        tension_scores = []
+        tension_history = []
+        
+        for title, content, pub_date, cat, site_name in results:
+            text = f"{title} {content or ''}"
+            metrics = tension_analyzer.analyze_text_tension(text, title)
+            tension_scores.append(metrics.tension_score)
+            tension_history.append((pub_date, metrics.tension_score))
+        
+        # Расчет статистики
+        avg_tension = sum(tension_scores) / len(tension_scores) if tension_scores else 0
+        
+        # Подсчет распределения по уровням напряженности (значения уже в процентах)
+        tension_distribution = {
+            'low': len([s for s in tension_scores if s < 30]),
+            'medium': len([s for s in tension_scores if 30 <= s < 60]),
+            'high': len([s for s in tension_scores if 60 <= s < 80]),
+            'critical': len([s for s in tension_scores if s >= 80])
+        }
+        
+        # Анализ тренда
+        if len(tension_history) >= 2:
+            recent_scores = [score for _, score in tension_history[-10:]]
+            earlier_scores = [score for _, score in tension_history[:-10]] if len(tension_history) > 10 else []
+            
+            if earlier_scores:
+                recent_avg = sum(recent_scores) / len(recent_scores)
+                earlier_avg = sum(earlier_scores) / len(earlier_scores)
+                
+                if recent_avg > earlier_avg + 0.1:
+                    trend = 'rising'
+                elif recent_avg < earlier_avg - 0.1:
+                    trend = 'falling'
+                else:
+                    trend = 'stable'
+            else:
+                trend = 'stable'
+        else:
+            trend = 'stable'
+        
+        return jsonify({
+            'status': 'success',
+            'total_news': len(results),
+            'avg_tension': round(avg_tension * 100, 2),
+            'tension_distribution': tension_distribution,
+            'trend': trend,
+            'max_tension': round(max(tension_scores) * 100, 2) if tension_scores else 0,
+            'min_tension': round(min(tension_scores) * 100, 2) if tension_scores else 0
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting social tension statistics: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@ukraine_analytics_bp.route('/social_tension_chart', methods=['GET'])
+def get_social_tension_chart():
+    """Создание графика динамики социальной напряженности.
+    
+    Query Parameters:
+        category (str): Категория новостей (по умолчанию 'all')
+        days (int): Количество дней для анализа (по умолчанию 7)
+        chart_type (str): Тип графика ('timeline', 'distribution', 'heatmap')
+    
+    Returns:
+        JSON: URL созданного графика
+    """
+    try:
+        category = request.args.get('category', 'all')
+        days = int(request.args.get('days', 7))
+        chart_type = request.args.get('chart_type', 'timeline')
+        
+        client = get_clickhouse_client()
+        tension_analyzer = get_tension_analyzer()
+        
+        # Формируем условие для категории
+        category_condition = ""
+        if category != 'all':
+            category_condition = f"AND category = '{category}'"
+        
+        # Запрос для получения новостей
+        query = f"""
+        SELECT title, content, published_date, category, site_name
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= today() - {days}
+        {category_condition}
+        ORDER BY published_date DESC
+        LIMIT 5000
+        """
+        
+        results = client.execute(query)
+        
+        if not results:
+            return jsonify({'status': 'error', 'message': 'No data found'}), 404
+        
+        # Анализ напряженности
+        tension_data = []
+        for title, content, pub_date, cat, site_name in results:
+            text = f"{title} {content or ''}"
+            metrics = tension_analyzer.analyze_text_tension(text, title)
+            tension_data.append({
+                'date': pub_date,
+                'tension': metrics.tension_score * 100,  # Конвертируем в проценты
+                'category': cat,
+                'source': site_name,
+                'title': title
+            })
+        
+        # Создание графика
+        chart_url = create_tension_chart(tension_data, chart_type, category, days)
+        
+        return jsonify({
+            'status': 'success',
+            'chart_url': chart_url,
+            'data_points': len(tension_data)
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error creating social tension chart: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@ukraine_analytics_bp.route('/tension_by_category', methods=['GET'])
+def get_tension_by_category():
+    """Получение напряженности по категориям.
+    
+    Query Parameters:
+        days (int): Количество дней для анализа (по умолчанию 7)
+    
+    Returns:
+        JSON: Напряженность по категориям
+    """
+    try:
+        days = int(request.args.get('days', 7))
+        
+        client = get_clickhouse_client()
+        tension_analyzer = get_tension_analyzer()
+        
+        # Запрос для получения новостей по категориям
+        query = f"""
+        SELECT category, title, content, published_date
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= today() - {days}
+        ORDER BY category, published_date DESC
+        LIMIT 5000
+        """
+        
+        results = client.execute(query)
+        
+        if not results:
+            return jsonify({
+                'status': 'success',
+                'categories': []
+            })
+        
+        # Группировка по категориям
+        categories_data = {}
+        for category, title, content, pub_date in results:
+            if category not in categories_data:
+                categories_data[category] = []
+            
+            text = f"{title} {content or ''}"
+            metrics = tension_analyzer.analyze_text_tension(text, title)
+            categories_data[category].append(metrics.tension_score * 100)
+        
+        # Расчет статистики по категориям
+        category_stats = []
+        for category, tensions in categories_data.items():
+            if tensions:
+                # Подсчет распределения по уровням напряженности
+                distribution = {
+                    'low': len([s for s in tensions if s < 30]),
+                    'medium': len([s for s in tensions if 30 <= s < 60]),
+                    'high': len([s for s in tensions if 60 <= s < 80]),
+                    'critical': len([s for s in tensions if s >= 80])
+                }
+                
+                category_stats.append({
+                    'category': category,
+                    'category_name': get_category_name(category),
+                    'avg_tension': round(sum(tensions) / len(tensions), 2),
+                    'max_tension': round(max(tensions), 2),
+                    'min_tension': round(min(tensions), 2),
+                    'news_count': len(tensions),
+                    'distribution': distribution
+                })
+        
+        # Сортировка по средней напряженности
+        category_stats.sort(key=lambda x: x['avg_tension'], reverse=True)
+        
+        return jsonify({
+            'status': 'success',
+            'categories': category_stats
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting tension by category: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@ukraine_analytics_bp.route('/tension_alerts', methods=['GET'])
+def get_tension_alerts():
+    """Получение предупреждений о высокой напряженности.
+    
+    Query Parameters:
+        threshold (float): Порог напряженности для предупреждений (по умолчанию 70.0)
+        hours (int): Количество часов для анализа (по умолчанию 24)
+    
+    Returns:
+        JSON: Список предупреждений
+    """
+    try:
+        threshold = float(request.args.get('threshold', 70.0))
+        hours = int(request.args.get('hours', 24))
+        
+        client = get_clickhouse_client()
+        tension_analyzer = get_tension_analyzer()
+        
+        # Запрос для получения последних новостей
+        query = f"""
+        SELECT title, content, published_date, category, source, url
+        FROM news.ukraine_universal_news 
+        WHERE published_date >= now() - INTERVAL {hours} HOUR
+        ORDER BY published_date DESC
+        LIMIT 500
+        """
+        
+        results = client.execute(query)
+        
+        alerts = []
+        for title, content, pub_date, category, source, url in results:
+            text = content or ""
+            metrics = tension_analyzer.analyze_text_tension(text, title)
+            
+            if metrics.tension_score >= threshold:
+                alerts.append({
+                    'title': title,
+                    'tension_score': round(metrics.tension_score, 2),
+                    'category': metrics.category,
+                    'published_date': pub_date.isoformat() if pub_date else None,
+                    'source': source,
+                    'url': url,
+                    'news_category': category,
+                    'emotional_intensity': round(metrics.emotional_intensity, 2),
+                    'conflict_level': round(metrics.conflict_level, 2),
+                    'urgency_factor': round(metrics.urgency_factor, 2)
+                })
+        
+        # Сортировка по уровню напряженности
+        alerts.sort(key=lambda x: x['tension_score'], reverse=True)
+        
+        return jsonify({
+            'status': 'success',
+            'alerts_count': len(alerts),
+            'threshold': threshold,
+            'alerts': alerts[:50]  # Ограничиваем до 50 предупреждений
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting tension alerts: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+def create_tension_chart(tension_data, chart_type, category, days):
+    """Создание графика социальной напряженности."""
+    try:
+        # Настройка стиля
+        plt.style.use('seaborn-v0_8')
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        if chart_type == 'timeline':
+            # График временной динамики
+            dates = [item['date'] for item in tension_data]
+            tensions = [item['tension'] for item in tension_data]
+            
+            ax.plot(dates, tensions, linewidth=2, color='#e74c3c', alpha=0.8)
+            ax.fill_between(dates, tensions, alpha=0.3, color='#e74c3c')
+            
+            # Добавляем горизонтальные линии для уровней напряженности
+            ax.axhline(y=70, color='red', linestyle='--', alpha=0.7, label='Критический уровень')
+            ax.axhline(y=50, color='orange', linestyle='--', alpha=0.7, label='Высокий уровень')
+            ax.axhline(y=30, color='yellow', linestyle='--', alpha=0.7, label='Средний уровень')
+            
+            ax.set_title(f'Динамика социальной напряженности ({days} дней)', fontsize=16, fontweight='bold')
+            ax.set_xlabel('Дата', fontsize=12)
+            ax.set_ylabel('Индекс напряженности', fontsize=12)
+            ax.legend()
+            
+        elif chart_type == 'distribution':
+            # График распределения по уровням
+            tensions = [item['tension'] for item in tension_data]
+            
+            # Создаем гистограмму
+            bins = [0, 10, 30, 50, 70, 100]
+            labels = ['Минимальная', 'Низкая', 'Средняя', 'Высокая', 'Критическая']
+            colors = ['#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#8e44ad']
+            
+            counts, _, _ = ax.hist(tensions, bins=bins, color=colors, alpha=0.7, edgecolor='black')
+            
+            ax.set_title(f'Распределение социальной напряженности ({days} дней)', fontsize=16, fontweight='bold')
+            ax.set_xlabel('Уровень напряженности', fontsize=12)
+            ax.set_ylabel('Количество новостей', fontsize=12)
+            
+            # Добавляем подписи к столбцам
+            for i, (count, label) in enumerate(zip(counts, labels)):
+                if count > 0:
+                    ax.text(bins[i] + (bins[i+1] - bins[i])/2, count + 0.5, 
+                           f'{int(count)}\n{label}', ha='center', va='bottom', fontsize=10)
+        
+        elif chart_type == 'heatmap':
+            # Тепловая карта по дням и часам
+            from collections import defaultdict
+            import pandas as pd
+            
+            # Группируем данные по дням и часам
+            heatmap_data = defaultdict(lambda: defaultdict(list))
+            
+            for item in tension_data:
+                date = item['date']
+                if date:
+                    day = date.strftime('%Y-%m-%d')
+                    hour = date.hour
+                    heatmap_data[day][hour].append(item['tension'])
+            
+            # Создаем матрицу для тепловой карты
+            days_list = sorted(heatmap_data.keys())
+            hours = list(range(24))
+            
+            matrix = []
+            for day in days_list:
+                row = []
+                for hour in hours:
+                    if hour in heatmap_data[day] and heatmap_data[day][hour]:
+                        avg_tension = sum(heatmap_data[day][hour]) / len(heatmap_data[day][hour])
+                        row.append(avg_tension)
+                    else:
+                        row.append(0)
+                matrix.append(row)
+            
+            if matrix:
+                im = ax.imshow(matrix, cmap='Reds', aspect='auto', interpolation='nearest')
+                
+                ax.set_xticks(range(24))
+                ax.set_xticklabels([f'{h:02d}:00' for h in range(24)], rotation=45)
+                ax.set_yticks(range(len(days_list)))
+                ax.set_yticklabels(days_list)
+                
+                ax.set_title(f'Тепловая карта напряженности по времени ({days} дней)', fontsize=16, fontweight='bold')
+                ax.set_xlabel('Час дня', fontsize=12)
+                ax.set_ylabel('Дата', fontsize=12)
+                
+                # Добавляем цветовую шкалу
+                cbar = plt.colorbar(im, ax=ax)
+                cbar.set_label('Индекс напряженности', fontsize=12)
+        
+        plt.tight_layout()
+        
+        # Сохранение графика
+        chart_filename = f"social_tension_{chart_type}_{category}_{days}d_{uuid.uuid4().hex[:8]}.png"
+        chart_path = os.path.join(current_app.static_folder, 'charts', chart_filename)
+        
+        # Создаем директорию если её нет
+        os.makedirs(os.path.dirname(chart_path), exist_ok=True)
+        
+        plt.savefig(chart_path, dpi=300, bbox_inches='tight', facecolor='white')
+        plt.close()
+        
+        return f"/static/charts/{chart_filename}"
+        
+    except Exception as e:
+        current_app.logger.error(f"Error creating tension chart: {str(e)}")
+        plt.close()
+        return None
