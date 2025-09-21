@@ -123,7 +123,7 @@ function formatAccountResults(results) {
     
     // Общая информация об аккаунте
     if (results.account_info) {
-        html += '<div class="col-12">';
+        html += '<div>';
         html += '<h6>Информация об аккаунте</h6>';
         html += '<div class="card">';
         html += '<div class="card-body">';
@@ -308,7 +308,7 @@ function formatKeywordResults(results) {
     let html = '<div class="row">';
     
     // Общая статистика
-    html += '<div class="col-12">';
+    html += '<div>';
     html += '<h6>Результаты поиска</h6>';
     html += `<p>Найдено результатов: <strong>${results.total_found || 0}</strong></p>`;
     

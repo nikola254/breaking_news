@@ -1,4 +1,4 @@
-﻿"""API РґР»СЏ СЂР°Р±РѕС‚С‹ СЃ РЅРѕРІРѕСЃС‚СЏРјРё.
+"""API РґР»СЏ СЂР°Р±РѕС‚С‹ СЃ РЅРѕРІРѕСЃС‚СЏРјРё.
 
 Р­С‚РѕС‚ РјРѕРґСѓР»СЊ СЃРѕРґРµСЂР¶РёС‚ REST API СЌРЅРґРїРѕРёРЅС‚С‹ РґР»СЏ:
 - РџРѕР»СѓС‡РµРЅРёСЏ РЅРѕРІРѕСЃС‚РµР№ РёР· СЂР°Р·Р»РёС‡РЅС‹С… РёСЃС‚РѕС‡РЅРёРєРѕРІ
@@ -34,14 +34,14 @@ def get_news():
     offset = request.args.get('offset', 0, type=int)
     search = request.args.get('search', '')
     
-    # РџСЂРѕРІРµСЂРєР° РІР°Р»РёРґРЅРѕСЃС‚Рё РёСЃС‚РѕС‡РЅРёРєРѕРІ
-    valid_sources = ['all', 'ria', 'israil', 'telegram', 'lenta', 'rbc', 'cnn', 'aljazeera', 'tsn', 'unian', 'rt', 'euronews', 'reuters', 'france24', 'dw', 'bbc', 'gazeta', 'kommersant', 'universal_military_operations', 'universal_humanitarian_crisis', 'universal_economic_consequences', 'universal_political_decisions', 'universal_information_social']
+    # Проверка валидности источников
+    valid_sources = ['all', 'ria', 'israil', 'telegram', 'twitter', 'lenta', 'rbc', 'cnn', 'aljazeera', 'tsn', 'unian', 'rt', 'euronews', 'reuters', 'france24', 'dw', 'bbc', 'gazeta', 'kommersant', 'universal_military_operations', 'universal_humanitarian_crisis', 'universal_economic_consequences', 'universal_political_decisions', 'universal_information_social']
     
     if source not in valid_sources:
         return jsonify({'status': 'error', 'message': f'РќРµРґРѕРїСѓСЃС‚РёРјС‹Р№ РёСЃС‚РѕС‡РЅРёРє. Р”РѕРїСѓСЃС‚РёРјС‹Рµ РёСЃС‚РѕС‡РЅРёРєРё: {valid_sources}'}), 400
     
     # РџСЂРѕРІРµСЂРєР° РІР°Р»РёРґРЅРѕСЃС‚Рё РєР°С‚РµРіРѕСЂРёРё (РІРєР»СЋС‡Р°СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ С‚Р°Р±Р»РёС†С‹)
-    valid_categories = ['military_operations', 'humanitarian_crisis', 'economic_consequences', 'political_decisions', 'information_social']
+    valid_categories = ['military_operations', 'humanitarian_crisis', 'economic_consequences', 'political_decisions', 'information_social', 'diplomatic_efforts']
     
     # РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РєР°С‚РµРіРѕСЂРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕР№ С‚Р°Р±Р»РёС†РµР№
     is_custom_table = category.startswith('custom_') and category.endswith('_headlines')

@@ -20,35 +20,81 @@ class OKAnalyzer:
         
     def _generate_signature(self, params: Dict) -> str:
         """Генерация подписи для запроса к API OK"""
-        # Сортируем параметры по ключу
-        sorted_params = sorted(params.items())
-        
-        # Создаем строку параметров
-        param_string = ''.join([f"{key}={value}" for key, value in sorted_params])
-        
-        # Добавляем секретный ключ
-        param_string += self.session_secret_key
-        
-        # Вычисляем MD5 хеш
-        signature = hashlib.md5(param_string.encode('utf-8')).hexdigest()
-        
-        return signature
+        try:
+            # Проверяем входные параметры
+            if not params or not isinstance(params, dict):
+                params = {}
+            
+            # Сортируем параметры по ключу, фильтруя None значения
+            filtered_params = {k: v for k, v in params.items() if v is not None}
+            sorted_params = sorted(filtered_params.items())
+            
+            # Создаем строку параметров с проверкой на None
+            param_parts = []
+            for key, value in sorted_params:
+                if key is not None and value is not None:
+                    param_parts.append(f"{key}={value}")
+            
+            param_string = ''.join(param_parts)
+            
+            # Проверяем секретный ключ
+            if not self.session_secret_key:
+                raise ValueError("session_secret_key не может быть пустым")
+            
+            # Добавляем секретный ключ
+            param_string += str(self.session_secret_key)
+            
+            # Проверяем, что строка не пустая
+            if not param_string:
+                param_string = str(self.session_secret_key)
+            
+            # Вычисляем MD5 хеш
+            signature = hashlib.md5(param_string.encode('utf-8')).hexdigest()
+            
+            return signature
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка при генерации подписи: {e}")
+            # Возвращаем базовую подпись из секретного ключа
+            return hashlib.md5(str(self.session_secret_key).encode('utf-8')).hexdigest()
     
     def _make_request(self, method: str, params: Dict) -> Optional[Dict]:
         """Выполнение запроса к API Одноклассников"""
-        # Добавляем обязательные параметры
-        params.update({
-            'application_key': self.application_key,
-            'access_token': self.access_token,
-            'method': method,
-            'format': 'json'
-        })
-        
-        # Генерируем подпись
-        params['sig'] = self._generate_signature(params)
-        
         try:
-            response = requests.post(self.base_url, data=params)
+            # Проверяем входные параметры
+            if not method:
+                self.logger.error("Метод API не может быть пустым")
+                return None
+            
+            if not params or not isinstance(params, dict):
+                params = {}
+            
+            # Проверяем обязательные параметры
+            if not self.application_key:
+                self.logger.error("application_key не установлен")
+                return None
+            
+            if not self.access_token:
+                self.logger.error("access_token не установлен")
+                return None
+            
+            # Добавляем обязательные параметры с проверкой на None
+            params.update({
+                'application_key': str(self.application_key) if self.application_key else '',
+                'access_token': str(self.access_token) if self.access_token else '',
+                'method': str(method) if method else '',
+                'format': 'json'
+            })
+            
+            # Генерируем подпись
+            signature = self._generate_signature(params)
+            if not signature:
+                self.logger.error("Не удалось сгенерировать подпись")
+                return None
+            
+            params['sig'] = signature
+            
+            response = requests.post(self.base_url, data=params, timeout=30)
             response.raise_for_status()
             data = response.json()
             
@@ -63,6 +109,9 @@ class OKAnalyzer:
             return None
         except json.JSONDecodeError as e:
             self.logger.error(f"JSON decode error: {e}")
+            return None
+        except Exception as e:
+            self.logger.error(f"Unexpected error in _make_request: {e}")
             return None
     
     def search_groups(self, query: str, count: int = 50) -> List[Dict]:

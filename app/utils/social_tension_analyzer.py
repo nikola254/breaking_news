@@ -240,6 +240,17 @@ class SocialTensionAnalyzer:
     def _calculate_overall_tension(self, tension: float, emotional: float, 
                                  conflict: float, urgency: float) -> float:
         """Расчет общего индекса напряженности."""
+        # Проверяем входные данные на корректность
+        def safe_value(value):
+            if not isinstance(value, (int, float)) or math.isnan(value) or math.isinf(value):
+                return 0.0
+            return float(value)
+        
+        tension = safe_value(tension)
+        emotional = safe_value(emotional)
+        conflict = safe_value(conflict)
+        urgency = safe_value(urgency)
+        
         # Взвешенная сумма всех компонентов
         weights = {
             'tension': 0.4,
@@ -254,6 +265,10 @@ class SocialTensionAnalyzer:
             conflict * weights['conflict'] +
             urgency * weights['urgency']
         )
+        
+        # Проверяем результат на корректность
+        if math.isnan(overall) or math.isinf(overall):
+            return 0.0
         
         return min(max(overall, 0), 100)
     
@@ -384,49 +399,73 @@ class SocialTensionAnalyzer:
     def _adjust_tension_with_cloud(self, base_tension: float, cloud_data: Dict) -> float:
         """Корректировка напряженности на основе данных API_CLOUD."""
         try:
+            # Проверяем входные данные на корректность
+            if not isinstance(base_tension, (int, float)) or math.isnan(base_tension) or math.isinf(base_tension):
+                return 0.0
+                
             if not cloud_data or 'sentiment' not in cloud_data:
                 return base_tension
             
             cloud_sentiment = cloud_data['sentiment']
             cloud_confidence = cloud_data.get('confidence', 0.5)
             
+            # Проверяем корректность данных от API_CLOUD
+            if not isinstance(cloud_confidence, (int, float)) or math.isnan(cloud_confidence) or math.isinf(cloud_confidence):
+                return base_tension
+            
             # Если API_CLOUD показывает высокую негативность, увеличиваем напряженность
-            if cloud_sentiment.get('negative', 0) > 0.7 and cloud_confidence > 0.8:
-                adjustment = cloud_sentiment['negative'] * 0.3
-                return min(1.0, base_tension + adjustment)
+            negative_score = cloud_sentiment.get('negative', 0)
+            if (isinstance(negative_score, (int, float)) and not math.isnan(negative_score) and 
+                negative_score > 0.7 and cloud_confidence > 0.8):
+                # Корректируем для диапазона 0-100
+                adjustment = negative_score * 30.0  # 0.3 * 100
+                result = min(100.0, base_tension + adjustment)
+                return result if not math.isnan(result) and not math.isinf(result) else base_tension
             
             # Если API_CLOUD показывает позитивность, снижаем напряженность
-            elif cloud_sentiment.get('positive', 0) > 0.6 and cloud_confidence > 0.8:
-                adjustment = cloud_sentiment['positive'] * 0.2
-                return max(0.0, base_tension - adjustment)
+            positive_score = cloud_sentiment.get('positive', 0)
+            if (isinstance(positive_score, (int, float)) and not math.isnan(positive_score) and 
+                positive_score > 0.6 and cloud_confidence > 0.8):
+                # Корректируем для диапазона 0-100
+                adjustment = positive_score * 20.0  # 0.2 * 100
+                result = max(0.0, base_tension - adjustment)
+                return result if not math.isnan(result) and not math.isinf(result) else base_tension
             
             return base_tension
             
         except Exception as e:
             self.logger.error(f"Error adjusting tension with cloud data: {e}")
-            return base_tension
+            return base_tension if isinstance(base_tension, (int, float)) and not math.isnan(base_tension) else 0.0
     
     def _adjust_emotion_with_cloud(self, base_emotion: float, cloud_data: Dict) -> float:
         """Корректировка эмоциональной интенсивности на основе данных API_CLOUD."""
         try:
-            if not cloud_data or 'emotions' not in cloud_data:
+            # Проверяем входные данные на корректность
+            if not isinstance(base_emotion, (int, float)) or math.isnan(base_emotion) or math.isinf(base_emotion):
+                return 0.0
+                
+            if not cloud_data or 'sentiment' not in cloud_data:
                 return base_emotion
             
-            emotions = cloud_data['emotions']
+            cloud_sentiment = cloud_data['sentiment']
+            cloud_confidence = cloud_data.get('confidence', 0.5)
             
-            # Ищем интенсивные эмоции
-            intense_emotions = ['anger', 'fear', 'sadness', 'disgust']
-            emotion_boost = 0
+            # Проверяем корректность данных от API_CLOUD
+            if not isinstance(cloud_confidence, (int, float)) or math.isnan(cloud_confidence) or math.isinf(cloud_confidence):
+                return base_emotion
             
-            for emotion in intense_emotions:
-                if emotion in emotions and emotions[emotion] > 0.6:
-                    emotion_boost += emotions[emotion] * 0.2
+            # Усиливаем эмоциональную интенсивность при высокой уверенности API_CLOUD
+            if cloud_confidence > 0.8:
+                # Корректируем для диапазона 0-100
+                emotion_boost = cloud_confidence * 20.0  # 0.2 * 100
+                result = min(100.0, base_emotion + emotion_boost)
+                return result if not math.isnan(result) and not math.isinf(result) else base_emotion
             
-            return min(1.0, base_emotion + emotion_boost)
+            return base_emotion
             
         except Exception as e:
             self.logger.error(f"Error adjusting emotion with cloud data: {e}")
-            return base_emotion
+            return base_emotion if isinstance(base_emotion, (int, float)) and not math.isnan(base_emotion) else 0.0
 
 # Глобальный экземпляр анализатора
 _tension_analyzer = None

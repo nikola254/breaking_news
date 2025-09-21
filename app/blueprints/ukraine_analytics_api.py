@@ -11,6 +11,7 @@ API для аналитики украинского конфликта.
 
 from flask import Blueprint, request, jsonify, current_app
 import datetime
+import math
 import os
 import matplotlib
 matplotlib.use('Agg')
@@ -672,6 +673,18 @@ def get_sentiment_analysis():
         
         result = client.execute(query)
         
+        def safe_float(value):
+            """Безопасное преобразование в float с защитой от NaN."""
+            try:
+                if value is None:
+                    return 0.0
+                result = float(value)
+                if math.isnan(result) or math.isinf(result):
+                    return 0.0
+                return result
+            except (ValueError, TypeError):
+                return 0.0
+        
         analysis_data = []
         for row in result:
             category, total, avg_sentiment, avg_pos, avg_neg, avg_neu, avg_mil, avg_hum = row
@@ -680,12 +693,12 @@ def get_sentiment_analysis():
                 'category': category,
                 'category_name': get_category_name(category),
                 'total_news': total,
-                'avg_sentiment': float(avg_sentiment) if avg_sentiment else 0.0,
-                'avg_positive': float(avg_pos) if avg_pos else 0.0,
-                'avg_negative': float(avg_neg) if avg_neg else 0.0,
-                'avg_neutral': float(avg_neu) if avg_neu else 0.0,
-                'avg_military_intensity': float(avg_mil) if avg_mil else 0.0,
-                'avg_humanitarian_focus': float(avg_hum) if avg_hum else 0.0
+                'avg_sentiment': safe_float(avg_sentiment),
+                'avg_positive': safe_float(avg_pos),
+                'avg_negative': safe_float(avg_neg),
+                'avg_neutral': safe_float(avg_neu),
+                'avg_military_intensity': safe_float(avg_mil),
+                'avg_humanitarian_focus': safe_float(avg_hum)
             })
         
         return jsonify({
@@ -746,6 +759,18 @@ def get_social_tension_statistics():
                 'trend': 'stable'
             })
         
+        def safe_float(value):
+            """Безопасное преобразование в float с защитой от NaN."""
+            try:
+                if value is None:
+                    return 0.0
+                result = float(value)
+                if math.isnan(result) or math.isinf(result):
+                    return 0.0
+                return result
+            except (ValueError, TypeError):
+                return 0.0
+        
         # Анализ напряженности для каждой новости
         tension_scores = []
         tension_history = []
@@ -753,11 +778,12 @@ def get_social_tension_statistics():
         for title, content, pub_date, cat, site_name in results:
             text = f"{title} {content or ''}"
             metrics = tension_analyzer.analyze_text_tension(text, title)
-            tension_scores.append(metrics.tension_score)
-            tension_history.append((pub_date, metrics.tension_score))
+            safe_score = safe_float(metrics.tension_score)
+            tension_scores.append(safe_score)
+            tension_history.append((pub_date, safe_score))
         
         # Расчет статистики
-        avg_tension = sum(tension_scores) / len(tension_scores) if tension_scores else 0
+        avg_tension = safe_float(sum(tension_scores) / len(tension_scores)) if tension_scores else 0.0
         
         # Подсчет распределения по уровням напряженности (значения уже в процентах)
         tension_distribution = {
@@ -790,11 +816,11 @@ def get_social_tension_statistics():
         return jsonify({
             'status': 'success',
             'total_news': len(results),
-            'avg_tension': round(avg_tension, 2),
+            'avg_tension': round(safe_float(avg_tension), 2),
             'tension_distribution': tension_distribution,
             'trend': trend,
-            'max_tension': round(max(tension_scores), 2) if tension_scores else 0,
-            'min_tension': round(min(tension_scores), 2) if tension_scores else 0
+            'max_tension': round(safe_float(max(tension_scores)), 2) if tension_scores else 0.0,
+            'min_tension': round(safe_float(min(tension_scores)), 2) if tension_scores else 0.0
         })
         
     except Exception as e:
