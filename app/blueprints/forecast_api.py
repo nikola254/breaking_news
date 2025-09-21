@@ -1,10 +1,10 @@
-"""API для прогнозирования и анализа трендов новостей.
+"""API РґР»СЏ РїСЂРѕРіРЅРѕР·РёСЂРѕРІР°РЅРёСЏ Рё Р°РЅР°Р»РёР·Р° С‚СЂРµРЅРґРѕРІ РЅРѕРІРѕСЃС‚РµР№.
 
-Этот модуль содержит функции для:
-- Генерации прогнозов напряженности новостей
-- Анализа трендов по категориям
-- Создания визуализаций данных
-- Статистического анализа новостных потоков
+Р­С‚РѕС‚ РјРѕРґСѓР»СЊ СЃРѕРґРµСЂР¶РёС‚ С„СѓРЅРєС†РёРё РґР»СЏ:
+- Р“РµРЅРµСЂР°С†РёРё РїСЂРѕРіРЅРѕР·РѕРІ РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё РЅРѕРІРѕСЃС‚РµР№
+- РђРЅР°Р»РёР·Р° С‚СЂРµРЅРґРѕРІ РїРѕ РєР°С‚РµРіРѕСЂРёСЏРј
+- РЎРѕР·РґР°РЅРёСЏ РІРёР·СѓР°Р»РёР·Р°С†РёР№ РґР°РЅРЅС‹С…
+- РЎС‚Р°С‚РёСЃС‚РёС‡РµСЃРєРѕРіРѕ Р°РЅР°Р»РёР·Р° РЅРѕРІРѕСЃС‚РЅС‹С… РїРѕС‚РѕРєРѕРІ
 """
 
 from flask import Blueprint, request, jsonify, current_app
@@ -12,7 +12,7 @@ import datetime
 import random
 import os
 import matplotlib
-matplotlib.use('Agg')  # Используем не-интерактивный бэкенд
+matplotlib.use('Agg')  # РСЃРїРѕР»СЊР·СѓРµРј РЅРµ-РёРЅС‚РµСЂР°РєС‚РёРІРЅС‹Р№ Р±СЌРєРµРЅРґ
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -24,14 +24,14 @@ import re
 from collections import Counter
 from app.utils.ukraine_sentiment_analyzer import get_ukraine_sentiment_analyzer
 
-# Создаем Blueprint для API прогнозов
+# РЎРѕР·РґР°РµРј Blueprint РґР»СЏ API РїСЂРѕРіРЅРѕР·РѕРІ
 forecast_api_bp = Blueprint('forecast_api', __name__, url_prefix='/api')
 
 def get_clickhouse_client():
-    """Создание клиента для подключения к ClickHouse.
+    """РЎРѕР·РґР°РЅРёРµ РєР»РёРµРЅС‚Р° РґР»СЏ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє ClickHouse.
     
     Returns:
-        Client: Настроенный клиент ClickHouse
+        Client: РќР°СЃС‚СЂРѕРµРЅРЅС‹Р№ РєР»РёРµРЅС‚ ClickHouse
     """
     return Client(
         host=Config.CLICKHOUSE_HOST,
@@ -42,7 +42,7 @@ def get_clickhouse_client():
     )
 
 def get_clickhouse_connection():
-    """Получение соединения с ClickHouse"""
+    """РџРѕР»СѓС‡РµРЅРёРµ СЃРѕРµРґРёРЅРµРЅРёСЏ СЃ ClickHouse"""
     try:
         client = Client(
             host=Config.CLICKHOUSE_HOST,
@@ -53,32 +53,32 @@ def get_clickhouse_connection():
         )
         return client
     except Exception as e:
-        print(f"Ошибка подключения к ClickHouse: {e}")
+        print(f"РћС€РёР±РєР° РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє ClickHouse: {e}")
         return None
 
 def get_military_keywords():
-    """Военные ключевые слова для анализа"""
+    """Р’РѕРµРЅРЅС‹Рµ РєР»СЋС‡РµРІС‹Рµ СЃР»РѕРІР° РґР»СЏ Р°РЅР°Р»РёР·Р°"""
     return {
-        'military_operations': ['наступление', 'атака', 'операция', 'штурм', 'удар', 'бомбардировка', 'обстрел'],
-        'weapons': ['танк', 'артиллерия', 'ракета', 'дрон', 'авиация', 'вертолет', 'истребитель'],
-        'locations': ['фронт', 'позиция', 'укрепление', 'база', 'аэродром', 'склад', 'мост'],
-        'personnel': ['солдат', 'офицер', 'генерал', 'командир', 'военный', 'боец'],
-        'escalation': ['мобилизация', 'призыв', 'резерв', 'подкрепление', 'эскалация']
+        'military_operations': ['РЅР°СЃС‚СѓРїР»РµРЅРёРµ', 'Р°С‚Р°РєР°', 'РѕРїРµСЂР°С†РёСЏ', 'С€С‚СѓСЂРј', 'СѓРґР°СЂ', 'Р±РѕРјР±Р°СЂРґРёСЂРѕРІРєР°', 'РѕР±СЃС‚СЂРµР»'],
+        'weapons': ['С‚Р°РЅРє', 'Р°СЂС‚РёР»Р»РµСЂРёСЏ', 'СЂР°РєРµС‚Р°', 'РґСЂРѕРЅ', 'Р°РІРёР°С†РёСЏ', 'РІРµСЂС‚РѕР»РµС‚', 'РёСЃС‚СЂРµР±РёС‚РµР»СЊ'],
+        'locations': ['С„СЂРѕРЅС‚', 'РїРѕР·РёС†РёСЏ', 'СѓРєСЂРµРїР»РµРЅРёРµ', 'Р±Р°Р·Р°', 'Р°СЌСЂРѕРґСЂРѕРј', 'СЃРєР»Р°Рґ', 'РјРѕСЃС‚'],
+        'personnel': ['СЃРѕР»РґР°С‚', 'РѕС„РёС†РµСЂ', 'РіРµРЅРµСЂР°Р»', 'РєРѕРјР°РЅРґРёСЂ', 'РІРѕРµРЅРЅС‹Р№', 'Р±РѕРµС†'],
+        'escalation': ['РјРѕР±РёР»РёР·Р°С†РёСЏ', 'РїСЂРёР·С‹РІ', 'СЂРµР·РµСЂРІ', 'РїРѕРґРєСЂРµРїР»РµРЅРёРµ', 'СЌСЃРєР°Р»Р°С†РёСЏ']
     }
 
 def analyze_sentiment(text):
-    """Анализ тональности текста с использованием украинского анализатора"""
+    """РђРЅР°Р»РёР· С‚РѕРЅР°Р»СЊРЅРѕСЃС‚Рё С‚РµРєСЃС‚Р° СЃ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµРј СѓРєСЂР°РёРЅСЃРєРѕРіРѕ Р°РЅР°Р»РёР·Р°С‚РѕСЂР°"""
     try:
-        # Используем специализированный анализатор для украинских новостей
+        # РСЃРїРѕР»СЊР·СѓРµРј СЃРїРµС†РёР°Р»РёР·РёСЂРѕРІР°РЅРЅС‹Р№ Р°РЅР°Р»РёР·Р°С‚РѕСЂ РґР»СЏ СѓРєСЂР°РёРЅСЃРєРёС… РЅРѕРІРѕСЃС‚РµР№
         analyzer = get_ukraine_sentiment_analyzer()
         result = analyzer.analyze_sentiment(text)
         return analyzer.get_sentiment_category(result['sentiment_score'])
     except Exception as e:
-        print(f"Ошибка анализа тональности: {e}")
+        print(f"РћС€РёР±РєР° Р°РЅР°Р»РёР·Р° С‚РѕРЅР°Р»СЊРЅРѕСЃС‚Рё: {e}")
         return 'neutral'
 
 def calculate_tension_index(news_data, military_keywords):
-    """Расчет индекса напряженности"""
+    """Р Р°СЃС‡РµС‚ РёРЅРґРµРєСЃР° РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё"""
     if not news_data:
         return 0.5
     
@@ -88,20 +88,20 @@ def calculate_tension_index(news_data, military_keywords):
     for article in news_data:
         text = (article.get('title', '') + ' ' + article.get('content', '')).lower()
         
-        # Подсчет военных ключевых слов
+        # РџРѕРґСЃС‡РµС‚ РІРѕРµРЅРЅС‹С… РєР»СЋС‡РµРІС‹С… СЃР»РѕРІ
         military_count = 0
         for category, keywords in military_keywords.items():
             for keyword in keywords:
                 military_count += text.count(keyword)
         
-        # Анализ тональности
+        # РђРЅР°Р»РёР· С‚РѕРЅР°Р»СЊРЅРѕСЃС‚Рё
         sentiment = analyze_sentiment(text)
         sentiment_weight = {'negative': 1.0, 'neutral': 0.5, 'positive': 0.2}[sentiment]
         
-        # Расчет веса статьи
+        # Р Р°СЃС‡РµС‚ РІРµСЃР° СЃС‚Р°С‚СЊРё
         article_weight = 1 + (military_count * 0.1)
         
-        # Базовый уровень напряженности
+        # Р‘Р°Р·РѕРІС‹Р№ СѓСЂРѕРІРµРЅСЊ РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё
         base_tension = 0.3 + (military_count * 0.05)
         article_tension = min(1.0, base_tension * sentiment_weight)
         
@@ -111,24 +111,24 @@ def calculate_tension_index(news_data, military_keywords):
     return min(1.0, tension_score / total_weight if total_weight > 0 else 0.5)
 
 def extract_key_topics(news_data, limit=10):
-    """Извлечение ключевых тем"""
+    """РР·РІР»РµС‡РµРЅРёРµ РєР»СЋС‡РµРІС‹С… С‚РµРј"""
     if not news_data:
         return []
     
-    # Объединяем все тексты
+    # РћР±СЉРµРґРёРЅСЏРµРј РІСЃРµ С‚РµРєСЃС‚С‹
     all_text = ' '.join([article.get('title', '') + ' ' + article.get('content', '') for article in news_data])
     
-    # Простое извлечение ключевых слов
-    words = re.findall(r'\b[а-яё]{4,}\b', all_text.lower())
+    # РџСЂРѕСЃС‚РѕРµ РёР·РІР»РµС‡РµРЅРёРµ РєР»СЋС‡РµРІС‹С… СЃР»РѕРІ
+    words = re.findall(r'\b[Р°-СЏС‘]{4,}\b', all_text.lower())
     
-    # Исключаем стоп-слова
-    stop_words = {'который', 'которая', 'которые', 'также', 'более', 'может', 'должен', 'после', 'время'}
+    # РСЃРєР»СЋС‡Р°РµРј СЃС‚РѕРї-СЃР»РѕРІР°
+    stop_words = {'РєРѕС‚РѕСЂС‹Р№', 'РєРѕС‚РѕСЂР°СЏ', 'РєРѕС‚РѕСЂС‹Рµ', 'С‚Р°РєР¶Рµ', 'Р±РѕР»РµРµ', 'РјРѕР¶РµС‚', 'РґРѕР»Р¶РµРЅ', 'РїРѕСЃР»Рµ', 'РІСЂРµРјСЏ'}
     words = [word for word in words if word not in stop_words]
     
-    # Подсчитываем частоту
+    # РџРѕРґСЃС‡РёС‚С‹РІР°РµРј С‡Р°СЃС‚РѕС‚Сѓ
     word_counts = Counter(words)
     
-    # Возвращаем топ тем с весами
+    # Р’РѕР·РІСЂР°С‰Р°РµРј С‚РѕРї С‚РµРј СЃ РІРµСЃР°РјРё
     topics = []
     for word, count in word_counts.most_common(limit):
         weight = min(1.0, count / len(news_data))
@@ -137,54 +137,54 @@ def extract_key_topics(news_data, limit=10):
     return topics
 
 def generate_military_forecast(category, tension_index, topics, forecast_days):
-    """Генерация военного прогноза"""
+    """Р“РµРЅРµСЂР°С†РёСЏ РІРѕРµРЅРЅРѕРіРѕ РїСЂРѕРіРЅРѕР·Р°"""
     if category not in ['ukraine', 'middle_east'] or tension_index < 0.6:
         return None
     
-    # Определяем вероятные направления
+    # РћРїСЂРµРґРµР»СЏРµРј РІРµСЂРѕСЏС‚РЅС‹Рµ РЅР°РїСЂР°РІР»РµРЅРёСЏ
     directions = {
-        'ukraine': ['Харьковское', 'Запорожское', 'Херсонское', 'Донецкое'],
-        'middle_east': ['Газа', 'Западный берег', 'Ливан', 'Сирия']
+        'ukraine': ['РҐР°СЂСЊРєРѕРІСЃРєРѕРµ', 'Р—Р°РїРѕСЂРѕР¶СЃРєРѕРµ', 'РҐРµСЂСЃРѕРЅСЃРєРѕРµ', 'Р”РѕРЅРµС†РєРѕРµ'],
+        'middle_east': ['Р“Р°Р·Р°', 'Р—Р°РїР°РґРЅС‹Р№ Р±РµСЂРµРі', 'Р›РёРІР°РЅ', 'РЎРёСЂРёСЏ']
     }
     
-    # Генерируем прогноз на основе уровня напряженности
+    # Р“РµРЅРµСЂРёСЂСѓРµРј РїСЂРѕРіРЅРѕР· РЅР° РѕСЃРЅРѕРІРµ СѓСЂРѕРІРЅСЏ РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё
     forecast = {
         'overall_assessment': {
-            'tension_level': 'высокий' if tension_index > 0.8 else 'средний',
+            'tension_level': 'РІС‹СЃРѕРєРёР№' if tension_index > 0.8 else 'СЃСЂРµРґРЅРёР№',
             'probability_escalation': min(95, int(tension_index * 100)),
-            'risk_level': 'критический' if tension_index > 0.9 else 'повышенный'
+            'risk_level': 'РєСЂРёС‚РёС‡РµСЃРєРёР№' if tension_index > 0.9 else 'РїРѕРІС‹С€РµРЅРЅС‹Р№'
         },
         'probable_actions': [],
         'risk_areas': directions.get(category, [])[:3],
         'timeline': {
-            'short_term': f'1-{min(7, forecast_days)} дней',
-            'medium_term': f'{min(7, forecast_days)}-{min(30, forecast_days)} дней'
+            'short_term': f'1-{min(7, forecast_days)} РґРЅРµР№',
+            'medium_term': f'{min(7, forecast_days)}-{min(30, forecast_days)} РґРЅРµР№'
         },
         'recommendations': [
-            'Усиление мониторинга ситуации',
-            'Подготовка к возможной эскалации',
-            'Координация с союзниками'
+            'РЈСЃРёР»РµРЅРёРµ РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРёС‚СѓР°С†РёРё',
+            'РџРѕРґРіРѕС‚РѕРІРєР° Рє РІРѕР·РјРѕР¶РЅРѕР№ СЌСЃРєР°Р»Р°С†РёРё',
+            'РљРѕРѕСЂРґРёРЅР°С†РёСЏ СЃ СЃРѕСЋР·РЅРёРєР°РјРё'
         ]
     }
     
-    # Добавляем вероятные действия на основе тем
-    if any('наступление' in topic['topic'] for topic in topics):
-        forecast['probable_actions'].append('Подготовка наступательных операций')
-    if any('оборона' in topic['topic'] for topic in topics):
-        forecast['probable_actions'].append('Укрепление оборонительных позиций')
-    if any('авиация' in topic['topic'] for topic in topics):
-        forecast['probable_actions'].append('Активизация авиационных ударов')
+    # Р”РѕР±Р°РІР»СЏРµРј РІРµСЂРѕСЏС‚РЅС‹Рµ РґРµР№СЃС‚РІРёСЏ РЅР° РѕСЃРЅРѕРІРµ С‚РµРј
+    if any('РЅР°СЃС‚СѓРїР»РµРЅРёРµ' in topic['topic'] for topic in topics):
+        forecast['probable_actions'].append('РџРѕРґРіРѕС‚РѕРІРєР° РЅР°СЃС‚СѓРїР°С‚РµР»СЊРЅС‹С… РѕРїРµСЂР°С†РёР№')
+    if any('РѕР±РѕСЂРѕРЅР°' in topic['topic'] for topic in topics):
+        forecast['probable_actions'].append('РЈРєСЂРµРїР»РµРЅРёРµ РѕР±РѕСЂРѕРЅРёС‚РµР»СЊРЅС‹С… РїРѕР·РёС†РёР№')
+    if any('Р°РІРёР°С†РёСЏ' in topic['topic'] for topic in topics):
+        forecast['probable_actions'].append('РђРєС‚РёРІРёР·Р°С†РёСЏ Р°РІРёР°С†РёРѕРЅРЅС‹С… СѓРґР°СЂРѕРІ')
     
     return forecast
 
 def perform_real_analysis(category, analysis_period, forecast_period):
-    """Выполнение реального анализа данных"""
+    """Р’С‹РїРѕР»РЅРµРЅРёРµ СЂРµР°Р»СЊРЅРѕРіРѕ Р°РЅР°Р»РёР·Р° РґР°РЅРЅС‹С…"""
     try:
         client = get_clickhouse_connection()
         if not client:
             return None
         
-        # Получаем список пользовательских таблиц
+        # РџРѕР»СѓС‡Р°РµРј СЃРїРёСЃРѕРє РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёС… С‚Р°Р±Р»РёС†
         custom_tables_query = """
             SELECT name 
             FROM system.tables 
@@ -196,45 +196,45 @@ def perform_real_analysis(category, analysis_period, forecast_period):
         
         for table in custom_tables.result_rows:
             table_name = table[0]
-            custom_unions.append(f"SELECT title, content, parsed_date, category FROM news.{table_name}")
+            custom_unions.append(f"SELECT title, content, published_date, category FROM news.{table_name}")
         
-        # Формируем запрос в зависимости от категории
+        # Р¤РѕСЂРјРёСЂСѓРµРј Р·Р°РїСЂРѕСЃ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РєР°С‚РµРіРѕСЂРёРё
         if category == 'all':
             category_filter = ""
         else:
             category_filter = f"AND category = '{category}'"
         
-        # Получаем данные за период анализа из всех таблиц
-        # Формируем список всех таблиц (стандартные + пользовательские)
+        # РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ Р·Р° РїРµСЂРёРѕРґ Р°РЅР°Р»РёР·Р° РёР· РІСЃРµС… С‚Р°Р±Р»РёС†
+        # Р¤РѕСЂРјРёСЂСѓРµРј СЃРїРёСЃРѕРє РІСЃРµС… С‚Р°Р±Р»РёС† (СЃС‚Р°РЅРґР°СЂС‚РЅС‹Рµ + РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ)
         all_unions = [
-            "SELECT title, content, parsed_date, category FROM news.ria_headlines",
-            "SELECT title, content, parsed_date, category FROM news.bbc_headlines",
-            "SELECT title, content, parsed_date, category FROM news.cnn_headlines",
-            "SELECT title, content, parsed_date, category FROM news.reuters_headlines",
-            "SELECT title, content, parsed_date, category FROM news.france24_headlines",
-            "SELECT title, content, parsed_date, category FROM news.aljazeera_headlines",
-            "SELECT title, content, parsed_date, category FROM news.euronews_headlines",
-            "SELECT title, content, parsed_date, category FROM news.dw_headlines",
-            "SELECT title, content, parsed_date, category FROM news.rt_headlines",
-            "SELECT title, content, parsed_date, category FROM news.gazeta_headlines",
-            "SELECT title, content, parsed_date, category FROM news.lenta_headlines",
-            "SELECT title, content, parsed_date, category FROM news.kommersant_headlines",
-            "SELECT title, content, parsed_date, category FROM news.rbc_headlines",
-            "SELECT title, content, parsed_date, category FROM news.tsn_headlines",
-            "SELECT title, content, parsed_date, category FROM news.unian_headlines",
-            "SELECT title, content, parsed_date, category FROM news.israil_headlines",
-            "SELECT title, content, parsed_date, category FROM news.telegram_headlines"
+            "SELECT title, content, published_date, category FROM news.ria_headlines",
+            "SELECT title, content, published_date, category FROM news.bbc_headlines",
+            "SELECT title, content, published_date, category FROM news.cnn_headlines",
+            "SELECT title, content, published_date, category FROM news.reuters_headlines",
+            "SELECT title, content, published_date, category FROM news.france24_headlines",
+            "SELECT title, content, published_date, category FROM news.aljazeera_headlines",
+            "SELECT title, content, published_date, category FROM news.euronews_headlines",
+            "SELECT title, content, published_date, category FROM news.dw_headlines",
+            "SELECT title, content, published_date, category FROM news.rt_headlines",
+            "SELECT title, content, published_date, category FROM news.gazeta_headlines",
+            "SELECT title, content, published_date, category FROM news.lenta_headlines",
+            "SELECT title, content, published_date, category FROM news.kommersant_headlines",
+            "SELECT title, content, published_date, category FROM news.rbc_headlines",
+            "SELECT title, content, published_date, category FROM news.tsn_headlines",
+            "SELECT title, content, published_date, category FROM news.unian_headlines",
+            "SELECT title, content, published_date, category FROM news.israil_headlines",
+            "SELECT title, content, published_date, category FROM news.telegram_headlines"
         ]
         
-        # Добавляем пользовательские таблицы
+        # Р”РѕР±Р°РІР»СЏРµРј РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ С‚Р°Р±Р»РёС†С‹
         all_unions.extend(custom_unions)
         
         query = f"""
-        SELECT title, content, parsed_date as published_date, category
+        SELECT title, content, published_date as published_date, category
         FROM (
             {' UNION ALL '.join(all_unions)}
         ) as all_news
-        WHERE parsed_date >= now() - INTERVAL {analysis_period} HOUR
+        WHERE published_date >= now() - INTERVAL {analysis_period} HOUR
         {category_filter}
         ORDER BY published_date DESC
         LIMIT 1000
@@ -245,7 +245,7 @@ def perform_real_analysis(category, analysis_period, forecast_period):
         if not news_data.result_rows:
             return None
         
-        # Преобразуем в список словарей
+        # РџСЂРµРѕР±СЂР°Р·СѓРµРј РІ СЃРїРёСЃРѕРє СЃР»РѕРІР°СЂРµР№
         articles = []
         for row in news_data.result_rows:
             articles.append({
@@ -255,31 +255,31 @@ def perform_real_analysis(category, analysis_period, forecast_period):
                 'category': row[3]
             })
         
-        # Анализируем данные
+        # РђРЅР°Р»РёР·РёСЂСѓРµРј РґР°РЅРЅС‹Рµ
         military_keywords = get_military_keywords()
         tension_index = calculate_tension_index(articles, military_keywords)
         topics = extract_key_topics(articles)
         
-        # Генерируем прогноз напряженности
+        # Р“РµРЅРµСЂРёСЂСѓРµРј РїСЂРѕРіРЅРѕР· РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё
         forecast_days = max(1, forecast_period // 24)
         today = datetime.datetime.now()
         tension_values = []
         
-        # Прогнозируем изменение напряженности
-        base_trend = (tension_index - 0.5) * 0.1  # Тренд на основе текущего уровня
+        # РџСЂРѕРіРЅРѕР·РёСЂСѓРµРј РёР·РјРµРЅРµРЅРёРµ РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё
+        base_trend = (tension_index - 0.5) * 0.1  # РўСЂРµРЅРґ РЅР° РѕСЃРЅРѕРІРµ С‚РµРєСѓС‰РµРіРѕ СѓСЂРѕРІРЅСЏ
         
         for i in range(forecast_days):
             date = today + datetime.timedelta(days=i)
             
-            # Добавляем случайные колебания и тренд
+            # Р”РѕР±Р°РІР»СЏРµРј СЃР»СѓС‡Р°Р№РЅС‹Рµ РєРѕР»РµР±Р°РЅРёСЏ Рё С‚СЂРµРЅРґ
             daily_variation = np.random.normal(0, 0.03)
             trend_component = base_trend * (i / forecast_days)
             
             predicted_tension = tension_index + trend_component + daily_variation
             predicted_tension = max(0.1, min(1.0, predicted_tension))
             
-            # Доверительные интервалы
-            confidence = 0.95 - (i * 0.02)  # Уменьшаем уверенность со временем
+            # Р”РѕРІРµСЂРёС‚РµР»СЊРЅС‹Рµ РёРЅС‚РµСЂРІР°Р»С‹
+            confidence = 0.95 - (i * 0.02)  # РЈРјРµРЅСЊС€Р°РµРј СѓРІРµСЂРµРЅРЅРѕСЃС‚СЊ СЃРѕ РІСЂРµРјРµРЅРµРј
             margin = (1 - confidence) * 0.2
             
             tension_values.append({
@@ -289,7 +289,7 @@ def perform_real_analysis(category, analysis_period, forecast_period):
                 'upper_bound': min(1.0, predicted_tension + margin)
             })
         
-        # Генерируем военный прогноз если применимо
+        # Р“РµРЅРµСЂРёСЂСѓРµРј РІРѕРµРЅРЅС‹Р№ РїСЂРѕРіРЅРѕР· РµСЃР»Рё РїСЂРёРјРµРЅРёРјРѕ
         military_forecast = generate_military_forecast(category, tension_index, topics, forecast_days)
         
         return {
@@ -297,51 +297,51 @@ def perform_real_analysis(category, analysis_period, forecast_period):
             'tension_index': tension_index,
             'tension_forecast': {
                 'values': tension_values,
-                'trend': 'растущий' if base_trend > 0 else 'снижающийся' if base_trend < 0 else 'стабильный'
+                'trend': 'СЂР°СЃС‚СѓС‰РёР№' if base_trend > 0 else 'СЃРЅРёР¶Р°СЋС‰РёР№СЃСЏ' if base_trend < 0 else 'СЃС‚Р°Р±РёР»СЊРЅС‹Р№'
             },
             'topics_forecast': {
                 'topics': topics,
-                'analysis_period': f'{analysis_period} часов'
+                'analysis_period': f'{analysis_period} С‡Р°СЃРѕРІ'
             },
             'military_forecast': military_forecast
         }
         
     except Exception as e:
-        print(f"Ошибка анализа: {e}")
+        print(f"РћС€РёР±РєР° Р°РЅР°Р»РёР·Р°: {e}")
         return None
 
 def generate_fallback_topics(category):
-    """Генерация тем по умолчанию для категории"""
+    """Р“РµРЅРµСЂР°С†РёСЏ С‚РµРј РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РґР»СЏ РєР°С‚РµРіРѕСЂРёРё"""
     topics_by_category = {
         'military_operations': [
-            {'topic': 'боевые действия', 'weight': 0.9},
-            {'topic': 'военная техника', 'weight': 0.7},
-            {'topic': 'потери', 'weight': 0.6}
+            {'topic': 'Р±РѕРµРІС‹Рµ РґРµР№СЃС‚РІРёСЏ', 'weight': 0.9},
+            {'topic': 'РІРѕРµРЅРЅР°СЏ С‚РµС…РЅРёРєР°', 'weight': 0.7},
+            {'topic': 'РїРѕС‚РµСЂРё', 'weight': 0.6}
         ],
         'political_decisions': [
-            {'topic': 'переговоры', 'weight': 0.8},
-            {'topic': 'дипломатия', 'weight': 0.7},
-            {'topic': 'санкции', 'weight': 0.6}
+            {'topic': 'РїРµСЂРµРіРѕРІРѕСЂС‹', 'weight': 0.8},
+            {'topic': 'РґРёРїР»РѕРјР°С‚РёСЏ', 'weight': 0.7},
+            {'topic': 'СЃР°РЅРєС†РёРё', 'weight': 0.6}
         ],
         'economic_consequences': [
-            {'topic': 'экономические потери', 'weight': 0.8},
-            {'topic': 'энергетика', 'weight': 0.7},
-            {'topic': 'торговля', 'weight': 0.5}
+            {'topic': 'СЌРєРѕРЅРѕРјРёС‡РµСЃРєРёРµ РїРѕС‚РµСЂРё', 'weight': 0.8},
+            {'topic': 'СЌРЅРµСЂРіРµС‚РёРєР°', 'weight': 0.7},
+            {'topic': 'С‚РѕСЂРіРѕРІР»СЏ', 'weight': 0.5}
         ],
         'humanitarian_crisis': [
-            {'topic': 'беженцы', 'weight': 0.9},
-            {'topic': 'гуманитарная помощь', 'weight': 0.8},
-            {'topic': 'жертвы среди мирного населения', 'weight': 0.7}
+            {'topic': 'Р±РµР¶РµРЅС†С‹', 'weight': 0.9},
+            {'topic': 'РіСѓРјР°РЅРёС‚Р°СЂРЅР°СЏ РїРѕРјРѕС‰СЊ', 'weight': 0.8},
+            {'topic': 'Р¶РµСЂС‚РІС‹ СЃСЂРµРґРё РјРёСЂРЅРѕРіРѕ РЅР°СЃРµР»РµРЅРёСЏ', 'weight': 0.7}
         ],
         'information_social': [
-            {'topic': 'информационная война', 'weight': 0.8},
-            {'topic': 'пропаганда', 'weight': 0.7},
-            {'topic': 'общественное мнение', 'weight': 0.6}
+            {'topic': 'РёРЅС„РѕСЂРјР°С†РёРѕРЅРЅР°СЏ РІРѕР№РЅР°', 'weight': 0.8},
+            {'topic': 'РїСЂРѕРїР°РіР°РЅРґР°', 'weight': 0.7},
+            {'topic': 'РѕР±С‰РµСЃС‚РІРµРЅРЅРѕРµ РјРЅРµРЅРёРµ', 'weight': 0.6}
         ],
         'all': [
-            {'topic': 'военные действия', 'weight': 0.8},
-            {'topic': 'политические события', 'weight': 0.7},
-            {'topic': 'гуманитарная ситуация', 'weight': 0.6}
+            {'topic': 'РІРѕРµРЅРЅС‹Рµ РґРµР№СЃС‚РІРёСЏ', 'weight': 0.8},
+            {'topic': 'РїРѕР»РёС‚РёС‡РµСЃРєРёРµ СЃРѕР±С‹С‚РёСЏ', 'weight': 0.7},
+            {'topic': 'РіСѓРјР°РЅРёС‚Р°СЂРЅР°СЏ СЃРёС‚СѓР°С†РёСЏ', 'weight': 0.6}
         ]
     }
     
@@ -349,29 +349,29 @@ def generate_fallback_topics(category):
 
 @forecast_api_bp.route('/generate_forecast', methods=['POST'])
 def generate_forecast():
-    """Генерация прогноза напряженности новостей.
+    """Р“РµРЅРµСЂР°С†РёСЏ РїСЂРѕРіРЅРѕР·Р° РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё РЅРѕРІРѕСЃС‚РµР№.
     
-    Анализирует исторические данные и создает прогноз
-    напряженности новостей на указанный период.
+    РђРЅР°Р»РёР·РёСЂСѓРµС‚ РёСЃС‚РѕСЂРёС‡РµСЃРєРёРµ РґР°РЅРЅС‹Рµ Рё СЃРѕР·РґР°РµС‚ РїСЂРѕРіРЅРѕР·
+    РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё РЅРѕРІРѕСЃС‚РµР№ РЅР° СѓРєР°Р·Р°РЅРЅС‹Р№ РїРµСЂРёРѕРґ.
     
     Request JSON:
-        category (str): Категория новостей для анализа
-        analysis_period (int): Период анализа в часах
-        forecast_period (int): Период прогноза в часах
+        category (str): РљР°С‚РµРіРѕСЂРёСЏ РЅРѕРІРѕСЃС‚РµР№ РґР»СЏ Р°РЅР°Р»РёР·Р°
+        analysis_period (int): РџРµСЂРёРѕРґ Р°РЅР°Р»РёР·Р° РІ С‡Р°СЃР°С…
+        forecast_period (int): РџРµСЂРёРѕРґ РїСЂРѕРіРЅРѕР·Р° РІ С‡Р°СЃР°С…
     
     Returns:
-        JSON: Прогноз с данными и путем к графику
+        JSON: РџСЂРѕРіРЅРѕР· СЃ РґР°РЅРЅС‹РјРё Рё РїСѓС‚РµРј Рє РіСЂР°С„РёРєСѓ
     """
     try:
         data = request.json
         category = data.get('category', 'all')
-        analysis_period = data.get('analysis_period', 24)  # в часах
-        forecast_period = data.get('forecast_period', 24)  # в часах
+        analysis_period = data.get('analysis_period', 24)  # РІ С‡Р°СЃР°С…
+        forecast_period = data.get('forecast_period', 24)  # РІ С‡Р°СЃР°С…
         
-        # Преобразуем период прогноза в дни для совместимости с текущим кодом
+        # РџСЂРµРѕР±СЂР°Р·СѓРµРј РїРµСЂРёРѕРґ РїСЂРѕРіРЅРѕР·Р° РІ РґРЅРё РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё СЃ С‚РµРєСѓС‰РёРј РєРѕРґРѕРј
         forecast_days = max(1, forecast_period // 24)
         
-        # Используем реальный анализ данных из ClickHouse
+        # РСЃРїРѕР»СЊР·СѓРµРј СЂРµР°Р»СЊРЅС‹Р№ Р°РЅР°Р»РёР· РґР°РЅРЅС‹С… РёР· ClickHouse
         analysis_result = perform_real_analysis(category, analysis_period, forecast_period)
         
         if analysis_result:
@@ -379,11 +379,11 @@ def generate_forecast():
             topics_data = analysis_result['topics_forecast']['topics']
             military_forecast = analysis_result.get('military_forecast')
         else:
-            # Fallback к генерации данных, если анализ не удался
+            # Fallback Рє РіРµРЅРµСЂР°С†РёРё РґР°РЅРЅС‹С…, РµСЃР»Рё Р°РЅР°Р»РёР· РЅРµ СѓРґР°Р»СЃСЏ
             today = datetime.datetime.now()
             tension_values = []
             
-            # Базовый уровень напряженности в зависимости от категории
+            # Р‘Р°Р·РѕРІС‹Р№ СѓСЂРѕРІРµРЅСЊ РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РєР°С‚РµРіРѕСЂРёРё
             base_tension = {
                 'all': 0.5,
                 'military_operations': 0.8,
@@ -393,12 +393,12 @@ def generate_forecast():
                 'information_social': 0.65
             }.get(category, 0.5)
             
-            # Генерируем значения с трендом
-            trend = random.uniform(-0.1, 0.1)  # Случайный тренд
+            # Р“РµРЅРµСЂРёСЂСѓРµРј Р·РЅР°С‡РµРЅРёСЏ СЃ С‚СЂРµРЅРґРѕРј
+            trend = random.uniform(-0.1, 0.1)  # РЎР»СѓС‡Р°Р№РЅС‹Р№ С‚СЂРµРЅРґ
             
             for i in range(forecast_days):
                 date = today + datetime.timedelta(days=i)
-                # Добавляем случайные колебания и тренд
+                # Р”РѕР±Р°РІР»СЏРµРј СЃР»СѓС‡Р°Р№РЅС‹Рµ РєРѕР»РµР±Р°РЅРёСЏ Рё С‚СЂРµРЅРґ
                 noise = random.uniform(-0.05, 0.05)
                 trend_component = trend * i / forecast_days
                 value = min(1.0, max(0.1, base_tension + noise + trend_component))
@@ -413,65 +413,65 @@ def generate_forecast():
             topics_data = generate_fallback_topics(category)
             military_forecast = None
         
-        # Используем данные из реального анализа или fallback
+        # РСЃРїРѕР»СЊР·СѓРµРј РґР°РЅРЅС‹Рµ РёР· СЂРµР°Р»СЊРЅРѕРіРѕ Р°РЅР°Р»РёР·Р° РёР»Рё fallback
         if not analysis_result:
             topics_data = generate_fallback_topics(category)
         
-        # Темы в зависимости от категории
+        # РўРµРјС‹ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РєР°С‚РµРіРѕСЂРёРё
         topics_by_category = {
             'ukraine': [
-                {'name': 'Военные действия', 'value': random.uniform(0.4, 0.6), 'change': random.uniform(-0.1, 0.1)},
-                {'name': 'Дипломатия', 'value': random.uniform(0.2, 0.3), 'change': random.uniform(-0.1, 0.1)},
-                {'name': 'Гуманитарная ситуация', 'value': random.uniform(0.1, 0.2), 'change': random.uniform(-0.1, 0.1)},
-                {'name': 'Экономика', 'value': random.uniform(0.05, 0.15), 'change': random.uniform(-0.05, 0.05)},
-                {'name': 'Другое', 'value': random.uniform(0.05, 0.1), 'change': random.uniform(-0.05, 0.05)}
+                {'name': 'Р’РѕРµРЅРЅС‹Рµ РґРµР№СЃС‚РІРёСЏ', 'value': random.uniform(0.4, 0.6), 'change': random.uniform(-0.1, 0.1)},
+                {'name': 'Р”РёРїР»РѕРјР°С‚РёСЏ', 'value': random.uniform(0.2, 0.3), 'change': random.uniform(-0.1, 0.1)},
+                {'name': 'Р“СѓРјР°РЅРёС‚Р°СЂРЅР°СЏ СЃРёС‚СѓР°С†РёСЏ', 'value': random.uniform(0.1, 0.2), 'change': random.uniform(-0.1, 0.1)},
+                {'name': 'Р­РєРѕРЅРѕРјРёРєР°', 'value': random.uniform(0.05, 0.15), 'change': random.uniform(-0.05, 0.05)},
+                {'name': 'Р”СЂСѓРіРѕРµ', 'value': random.uniform(0.05, 0.1), 'change': random.uniform(-0.05, 0.05)}
             ],
             'middle_east': [
-                {'name': 'Конфликт Израиль-Палестина', 'value': random.uniform(0.3, 0.5), 'change': random.uniform(-0.1, 0.1)},
-                {'name': 'Иран', 'value': random.uniform(0.2, 0.3), 'change': random.uniform(-0.1, 0.1)},
-                {'name': 'Сирия', 'value': random.uniform(0.1, 0.2), 'change': random.uniform(-0.1, 0.1)},
-                {'name': 'Йемен', 'value': random.uniform(0.05, 0.15), 'change': random.uniform(-0.05, 0.05)},
-                {'name': 'Другое', 'value': random.uniform(0.05, 0.1), 'change': random.uniform(-0.05, 0.05)}
+                {'name': 'РљРѕРЅС„Р»РёРєС‚ РР·СЂР°РёР»СЊ-РџР°Р»РµСЃС‚РёРЅР°', 'value': random.uniform(0.3, 0.5), 'change': random.uniform(-0.1, 0.1)},
+                {'name': 'РСЂР°РЅ', 'value': random.uniform(0.2, 0.3), 'change': random.uniform(-0.1, 0.1)},
+                {'name': 'РЎРёСЂРёСЏ', 'value': random.uniform(0.1, 0.2), 'change': random.uniform(-0.1, 0.1)},
+                {'name': 'Р™РµРјРµРЅ', 'value': random.uniform(0.05, 0.15), 'change': random.uniform(-0.05, 0.05)},
+                {'name': 'Р”СЂСѓРіРѕРµ', 'value': random.uniform(0.05, 0.1), 'change': random.uniform(-0.05, 0.05)}
             ],
             'fake_news': [
-                {'name': 'Дезинформация', 'value': random.uniform(0.3, 0.5), 'change': random.uniform(-0.1, 0.1)},
-                {'name': 'Манипуляции', 'value': random.uniform(0.2, 0.4), 'change': random.uniform(-0.1, 0.1)},
-                {'name': 'Фейковые аккаунты', 'value': random.uniform(0.1, 0.2), 'change': random.uniform(-0.1, 0.1)},
-                {'name': 'Другое', 'value': random.uniform(0.05, 0.15), 'change': random.uniform(-0.05, 0.05)}
+                {'name': 'Р”РµР·РёРЅС„РѕСЂРјР°С†РёСЏ', 'value': random.uniform(0.3, 0.5), 'change': random.uniform(-0.1, 0.1)},
+                {'name': 'РњР°РЅРёРїСѓР»СЏС†РёРё', 'value': random.uniform(0.2, 0.4), 'change': random.uniform(-0.1, 0.1)},
+                {'name': 'Р¤РµР№РєРѕРІС‹Рµ Р°РєРєР°СѓРЅС‚С‹', 'value': random.uniform(0.1, 0.2), 'change': random.uniform(-0.1, 0.1)},
+                {'name': 'Р”СЂСѓРіРѕРµ', 'value': random.uniform(0.05, 0.15), 'change': random.uniform(-0.05, 0.05)}
             ]
         }
         
-        # Для остальных категорий используем общие темы
+        # Р”Р»СЏ РѕСЃС‚Р°Р»СЊРЅС‹С… РєР°С‚РµРіРѕСЂРёР№ РёСЃРїРѕР»СЊР·СѓРµРј РѕР±С‰РёРµ С‚РµРјС‹
         default_topics = [
-            {'name': 'Политика', 'value': random.uniform(0.2, 0.4), 'change': random.uniform(-0.1, 0.1)},
-            {'name': 'Экономика', 'value': random.uniform(0.1, 0.3), 'change': random.uniform(-0.1, 0.1)},
-            {'name': 'Военные действия', 'value': random.uniform(0.2, 0.5), 'change': random.uniform(-0.1, 0.1)},
-            {'name': 'Международные отношения', 'value': random.uniform(0.1, 0.2), 'change': random.uniform(-0.1, 0.1)},
-            {'name': 'Другое', 'value': random.uniform(0.05, 0.15), 'change': random.uniform(-0.05, 0.05)}
+            {'name': 'РџРѕР»РёС‚РёРєР°', 'value': random.uniform(0.2, 0.4), 'change': random.uniform(-0.1, 0.1)},
+            {'name': 'Р­РєРѕРЅРѕРјРёРєР°', 'value': random.uniform(0.1, 0.3), 'change': random.uniform(-0.1, 0.1)},
+            {'name': 'Р’РѕРµРЅРЅС‹Рµ РґРµР№СЃС‚РІРёСЏ', 'value': random.uniform(0.2, 0.5), 'change': random.uniform(-0.1, 0.1)},
+            {'name': 'РњРµР¶РґСѓРЅР°СЂРѕРґРЅС‹Рµ РѕС‚РЅРѕС€РµРЅРёСЏ', 'value': random.uniform(0.1, 0.2), 'change': random.uniform(-0.1, 0.1)},
+            {'name': 'Р”СЂСѓРіРѕРµ', 'value': random.uniform(0.05, 0.15), 'change': random.uniform(-0.05, 0.05)}
         ]
         
         topics = topics_by_category.get(category, default_topics)
         
-        # Добавляем военный прогноз в ответ если он есть
+        # Р”РѕР±Р°РІР»СЏРµРј РІРѕРµРЅРЅС‹Р№ РїСЂРѕРіРЅРѕР· РІ РѕС‚РІРµС‚ РµСЃР»Рё РѕРЅ РµСЃС‚СЊ
         response_data = {
             'success': True,
             'forecast': {
                 'tension': {
                     'values': tension_values,
-                    'trend': analysis_result.get('tension_forecast', {}).get('trend', 'стабильный') if analysis_result else 'неопределенный'
+                    'trend': analysis_result.get('tension_forecast', {}).get('trend', 'СЃС‚Р°Р±РёР»СЊРЅС‹Р№') if analysis_result else 'РЅРµРѕРїСЂРµРґРµР»РµРЅРЅС‹Р№'
                 },
                 'topics': topics_data,
                 'metadata': {
                     'category': category,
-                    'analysis_period': f'{analysis_period} часов',
-                    'forecast_period': f'{forecast_period} часов',
+                    'analysis_period': f'{analysis_period} С‡Р°СЃРѕРІ',
+                    'forecast_period': f'{forecast_period} С‡Р°СЃРѕРІ',
                     'news_analyzed': analysis_result.get('news_count', 0) if analysis_result else 0,
                     'tension_index': round(analysis_result.get('tension_index', 0.5) if analysis_result else 0.5, 3)
                 }
             }
         }
         
-        # Добавляем военный прогноз если он есть
+        # Р”РѕР±Р°РІР»СЏРµРј РІРѕРµРЅРЅС‹Р№ РїСЂРѕРіРЅРѕР· РµСЃР»Рё РѕРЅ РµСЃС‚СЊ
         if analysis_result and analysis_result.get('military_forecast'):
             response_data['forecast']['military_forecast'] = analysis_result['military_forecast']
         
@@ -480,7 +480,7 @@ def generate_forecast():
         current_app.logger.error(f"Error generating forecast: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# Функция для генерации графика прогноза напряженности
+# Р¤СѓРЅРєС†РёСЏ РґР»СЏ РіРµРЅРµСЂР°С†РёРё РіСЂР°С„РёРєР° РїСЂРѕРіРЅРѕР·Р° РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё
 def generate_tension_chart(tension_values, category):
     plt.figure(figsize=(10, 6))
     sns.set_style("whitegrid")
@@ -490,18 +490,18 @@ def generate_tension_chart(tension_values, category):
     lower_bounds = [item['lower_bound'] for item in tension_values]
     upper_bounds = [item['upper_bound'] for item in tension_values]
     
-    plt.plot(dates, values, marker='o', linewidth=2, color='#1976D2', label='Индекс напряженности')
-    plt.fill_between(dates, lower_bounds, upper_bounds, color='#1976D2', alpha=0.2, label='Диапазон прогноза')
+    plt.plot(dates, values, marker='o', linewidth=2, color='#1976D2', label='РРЅРґРµРєСЃ РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё')
+    plt.fill_between(dates, lower_bounds, upper_bounds, color='#1976D2', alpha=0.2, label='Р”РёР°РїР°Р·РѕРЅ РїСЂРѕРіРЅРѕР·Р°')
     
-    plt.title(f'Прогноз индекса социальной напряженности: {get_category_name(category)}')
-    plt.xlabel('Дата')
-    plt.ylabel('Индекс напряженности')
+    plt.title(f'РџСЂРѕРіРЅРѕР· РёРЅРґРµРєСЃР° СЃРѕС†РёР°Р»СЊРЅРѕР№ РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё: {get_category_name(category)}')
+    plt.xlabel('Р”Р°С‚Р°')
+    plt.ylabel('РРЅРґРµРєСЃ РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё')
     plt.ylim(0, 1)
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.legend()
     
-    # Сохраняем график
+    # РЎРѕС…СЂР°РЅСЏРµРј РіСЂР°С„РёРє
     unique_id = uuid.uuid4().hex[:8]
     today_str = datetime.datetime.now().strftime('%Y%m%d')
     filename = f'tension_forecast_{category}_{today_str}_{unique_id}.png'
@@ -515,7 +515,7 @@ def generate_tension_chart(tension_values, category):
     
     return f'/static/images/{filename}'
 
-# Функция для генерации графика распределения тем
+# Р¤СѓРЅРєС†РёСЏ РґР»СЏ РіРµРЅРµСЂР°С†РёРё РіСЂР°С„РёРєР° СЂР°СЃРїСЂРµРґРµР»РµРЅРёСЏ С‚РµРј
 def generate_topics_chart(topics, category):
     plt.figure(figsize=(10, 6))
     sns.set_style("whitegrid")
@@ -524,28 +524,28 @@ def generate_topics_chart(topics, category):
     values = [item['value'] for item in topics]
     changes = [item['change'] for item in topics]
     
-    # Цвета в зависимости от изменения (красный - негативное, зеленый - позитивное)
+    # Р¦РІРµС‚Р° РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РёР·РјРµРЅРµРЅРёСЏ (РєСЂР°СЃРЅС‹Р№ - РЅРµРіР°С‚РёРІРЅРѕРµ, Р·РµР»РµРЅС‹Р№ - РїРѕР·РёС‚РёРІРЅРѕРµ)
     colors = ['#4CAF50' if change >= 0 else '#F44336' for change in changes]
     
     bars = plt.bar(names, values, color=colors)
     
-    # Добавляем аннотации с процентами и изменениями
+    # Р”РѕР±Р°РІР»СЏРµРј Р°РЅРЅРѕС‚Р°С†РёРё СЃ РїСЂРѕС†РµРЅС‚Р°РјРё Рё РёР·РјРµРЅРµРЅРёСЏРјРё
     for i, bar in enumerate(bars):
         height = bar.get_height()
         change = changes[i]
-        change_symbol = '↑' if change > 0 else '↓' if change < 0 else '→'
+        change_symbol = 'в†‘' if change > 0 else 'в†“' if change < 0 else 'в†’'
         plt.text(bar.get_x() + bar.get_width()/2., height + 0.02,
                 f'{values[i]:.1%}\n{change_symbol}{abs(change):.1%}',
                 ha='center', va='bottom', fontsize=9)
     
-    plt.title(f'Распределение тем: {get_category_name(category)}')
-    plt.xlabel('Темы')
-    plt.ylabel('Доля')
-    plt.ylim(0, max(values) * 1.3)  # Оставляем место для аннотаций
+    plt.title(f'Р Р°СЃРїСЂРµРґРµР»РµРЅРёРµ С‚РµРј: {get_category_name(category)}')
+    plt.xlabel('РўРµРјС‹')
+    plt.ylabel('Р”РѕР»СЏ')
+    plt.ylim(0, max(values) * 1.3)  # РћСЃС‚Р°РІР»СЏРµРј РјРµСЃС‚Рѕ РґР»СЏ Р°РЅРЅРѕС‚Р°С†РёР№
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     
-    # Сохраняем график
+    # РЎРѕС…СЂР°РЅСЏРµРј РіСЂР°С„РёРє
     unique_id = uuid.uuid4().hex[:8]
     today_str = datetime.datetime.now().strftime('%Y%m%d')
     filename = f'topics_forecast_{category}_{today_str}_{unique_id}.png'
@@ -559,7 +559,7 @@ def generate_topics_chart(topics, category):
     
     return f'/static/images/{filename}'
 
-# Вспомогательная функция для получения читаемого названия категории
+# Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅР°СЏ С„СѓРЅРєС†РёСЏ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ С‡РёС‚Р°РµРјРѕРіРѕ РЅР°Р·РІР°РЅРёСЏ РєР°С‚РµРіРѕСЂРёРё
 def get_category_name(category):
     categories = {
         'all': 'Все категории',

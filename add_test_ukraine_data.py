@@ -158,7 +158,7 @@ def add_test_data():
                 'keywords_found': news_item['keywords_found'],
                 'sentiment_score': news_item['sentiment_score'],
                 'published_date': published_date,
-                'parsed_date': datetime.now(),
+                'published_date': datetime.now(),
                 'language': 'ru',
                 'tags': [news_item['category'], 'ukraine'],
                 'metadata': f'{{"impact_level": "{news_item["impact_level"]}"}}'

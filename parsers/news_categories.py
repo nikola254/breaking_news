@@ -284,7 +284,7 @@ def classify_news(title, content):
         'humanitarian_crisis': 'ukraine_conflict_humanitarian', 
         'economic_consequences': 'ukraine_conflict_economic',
         'political_decisions': 'ukraine_conflict_political',
-        'information_social': 'ukraine_conflict_information'
+        'information_social': 'ukraine_conflict_information_social'
     }
     
     return category_mapping.get(category, 'other')
@@ -417,11 +417,11 @@ def create_ukraine_conflict_tables(client):
                 category String,
                 confidence Float32 DEFAULT 0.0,
                 sentiment Float32 DEFAULT 0.0,
-                parsed_date DateTime DEFAULT now(),
+                published_date DateTime DEFAULT now(),
                 language String DEFAULT 'unknown',
                 metadata String DEFAULT '{}'
             ) ENGINE = MergeTree()
-            ORDER BY (parsed_date, category, id)
+            ORDER BY (published_date, category, id)
         ''')
         
         # Создаем таблицы для каждой категории
@@ -448,11 +448,11 @@ def create_ukraine_conflict_tables(client):
                         confidence Float32 DEFAULT 0.0,
                         sentiment Float32 DEFAULT 0.0,
                         {extra_fields}
-                        parsed_date DateTime DEFAULT now(),
+                        published_date DateTime DEFAULT now(),
                         language String DEFAULT 'unknown',
                         metadata String DEFAULT '{{}}'
                     ) ENGINE = MergeTree()
-                    ORDER BY (parsed_date, id)
+                    ORDER BY (published_date, id)
                 ''')
         
         logger.info("Созданы таблицы для украинского конфликта")
@@ -506,9 +506,9 @@ def create_category_tables(client):
                             message_link String,
                             source String DEFAULT 'telegram',
                             category String DEFAULT '{category}',
-                            parsed_date DateTime DEFAULT now()
+                            published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
-                        ORDER BY (parsed_date, id)
+                        ORDER BY (published_date, id)
                     '''
                 # Специальная обработка для israil
                 elif source_key == 'israil':
@@ -521,9 +521,9 @@ def create_category_tables(client):
                             source_links String,
                             source String DEFAULT '7kanal.co.il',
                             category String DEFAULT '{category}',
-                            parsed_date DateTime DEFAULT now()
+                            published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
-                        ORDER BY (parsed_date, id)
+                        ORDER BY (published_date, id)
                     '''
                 # Стандартная структура для остальных источников
                 else:
@@ -535,9 +535,9 @@ def create_category_tables(client):
                             content String,
                             source String DEFAULT '{source_info["default_source"]}',
                             category String DEFAULT '{category}',
-                            parsed_date DateTime DEFAULT now()
+                            published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
-                        ORDER BY (parsed_date, id)
+                        ORDER BY (published_date, id)
                     '''
                 
                 client.execute(query)

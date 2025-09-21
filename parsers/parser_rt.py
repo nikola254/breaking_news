@@ -60,9 +60,9 @@ def create_ukraine_tables_if_not_exists():
             rubric String,
             source String DEFAULT 'rt.com',
             category String DEFAULT 'other',
-            parsed_date DateTime DEFAULT now()
+            published_date DateTime DEFAULT now()
         ) ENGINE = MergeTree()
-        ORDER BY (parsed_date, id)
+        ORDER BY (published_date, id)
     ''')
     
     # Создаем таблицы для каждой категории
@@ -219,7 +219,7 @@ def parse_rt_news():
             category_table = f'news.rt_{category}'
             try:
                 client.execute(
-                    f'INSERT INTO {category_table} (title, link, content, source, category, parsed_date) VALUES',
+                    f'INSERT INTO {category_table} (title, link, content, source, category, published_date) VALUES',
                     [(title, link, content, 'rt.com', category, datetime.now())]
                 )
             except Exception as e:

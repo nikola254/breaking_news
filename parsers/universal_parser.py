@@ -95,12 +95,12 @@ class UniversalParser:
             content String,
             category String,
             published_date DateTime DEFAULT now(),
-            parsed_date DateTime DEFAULT now(),
+            published_date DateTime DEFAULT now(),
             language String DEFAULT 'unknown',
             tags Array(String) DEFAULT [],
             metadata String DEFAULT '{}'
         ) ENGINE = MergeTree()
-        ORDER BY (site_name, parsed_date)
+        ORDER BY (site_name, published_date)
         """
         self.client.execute(create_table_query)
         self._create_universal_category_tables()
@@ -119,9 +119,9 @@ class UniversalParser:
                         content String,
                         source String,
                         category String DEFAULT '{category}',
-                        parsed_date DateTime DEFAULT now()
+                        published_date DateTime DEFAULT now()
                     ) ENGINE = MergeTree()
-                    ORDER BY (parsed_date, id)
+                    ORDER BY (published_date, id)
                 ''')
             
             logger.info("Стандартные таблицы категорий созданы успешно")

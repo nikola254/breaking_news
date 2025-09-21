@@ -36,6 +36,56 @@ def get_clickhouse_client():
         database=Config.CLICKHOUSE_DATABASE
     )
 
+def get_table_for_category(category):
+    """Получение правильной таблицы для категории.
+    
+    Args:
+        category (str): Код категории
+    
+    Returns:
+        str: Название таблицы
+    """
+    if category == 'all':
+        # Для всех категорий используем основную таблицу
+        return "news.ukraine_universal_news"
+    elif category == 'military':
+        return "news.universal_military_operations"
+    elif category == 'humanitarian':
+        return "news.universal_humanitarian_crisis"
+    elif category == 'economic':
+        return "news.universal_economic_consequences"
+    elif category == 'political':
+        return "news.universal_political_decisions"
+    elif category == 'information':
+        return "news.universal_information_social"
+    else:
+        # Для остальных категорий используем основную таблицу
+        return "news.ukraine_universal_news"
+
+def get_table_columns(category):
+    """Получение правильных столбцов для таблицы категории.
+    
+    Args:
+        category (str): Код категории
+    
+    Returns:
+        dict: Словарь с именами столбцов
+    """
+    if category in ['military', 'humanitarian', 'economic', 'political', 'information']:
+        # Для специализированных таблиц (military, humanitarian, etc.)
+        return {
+            'source_column': 'source',
+            'site_name_column': 'source',  # В специализированных таблицах нет site_name
+            'url_column': 'link'  # В специализированных таблицах url называется link
+        }
+    else:
+        # Для основной таблицы ukraine_universal_news (all и остальные категории)
+        return {
+            'source_column': 'source',
+            'site_name_column': 'site_name',
+            'url_column': 'url'
+        }
+
 @ukraine_analytics_bp.route('/statistics', methods=['GET'])
 def get_statistics():
     """Получение общей статистики по украинским новостям.
@@ -53,6 +103,9 @@ def get_statistics():
         
         client = get_clickhouse_client()
         
+        # Получаем правильную таблицу для категории
+        table_source = get_table_for_category(category)
+        
         # Формируем условие для категории
         category_condition = ""
         if category != 'all':
@@ -63,7 +116,7 @@ def get_statistics():
         SELECT 
             COUNT(*) as total_news,
             AVG(sentiment_score) as avg_sentiment
-        FROM news.ukraine_universal_news 
+        FROM {table_source}
         WHERE published_date >= today() - {days}
         {category_condition}
         """
@@ -105,6 +158,9 @@ def get_tension_chart():
         
         client = get_clickhouse_client()
         
+        # Получаем правильную таблицу для категории
+        table_source = get_table_for_category(category)
+        
         # Формируем условие для категории
         category_condition = ""
         if category != 'all':
@@ -116,7 +172,7 @@ def get_tension_chart():
             toDate(published_date) as day,
             AVG(sentiment_score) as avg_sentiment,
             COUNT(*) as news_count
-        FROM news.ukraine_universal_news 
+        FROM {table_source}
         WHERE published_date >= today() - {days}
         {category_condition}
         GROUP BY day
@@ -187,13 +243,16 @@ def get_category_chart():
         
         client = get_clickhouse_client()
         
+        # Используем UNION для получения данных из всех таблиц
+        table_source = get_table_for_category('all')
+        
         # Запрос для получения распределения по категориям
         query = f"""
         SELECT 
             category,
             count() AS news_count,
             avg(sentiment_score) AS avg_sentiment
-        FROM news.ukraine_universal_news 
+        FROM {table_source}
         WHERE published_date >= today() - {days}
         GROUP BY category 
         ORDER BY news_count DESC
@@ -272,6 +331,9 @@ def get_sources_chart():
         
         client = get_clickhouse_client()
         
+        # Получаем правильную таблицу для категории
+        table_source = get_table_for_category(category)
+        
         # Формируем условие для категории
         category_condition = ""
         if category != 'all':
@@ -283,7 +345,7 @@ def get_sources_chart():
             source,
             COUNT(*) as news_count,
             AVG(sentiment_score) as avg_sentiment
-        FROM news.ukraine_universal_news 
+        FROM {table_source}
         WHERE published_date >= today() - {days}
         {category_condition}
         GROUP BY source
@@ -357,10 +419,17 @@ def get_recent_news():
         client = get_clickhouse_client()
         tension_analyzer = get_tension_analyzer()
         
+        # Получаем правильную таблицу для категории
+        table_source = get_table_for_category(category)
+        columns = get_table_columns(category)
+        
         # Формируем условие для категории
         category_condition = ""
         if category != 'all':
-            category_condition = f"AND category = '{category}'"
+            if category == 'military':
+                category_condition = f"AND category = 'military_operations'"
+            else:
+                category_condition = f"AND category = '{category}'"
         
         # Запрос для получения последних новостей
         query = f"""
@@ -368,11 +437,11 @@ def get_recent_news():
             published_date,
             title,
             content,
-            url,
-            source,
+            {columns['url_column']} as url,
+            {columns['source_column']} as source,
             category,
             sentiment_score
-        FROM news.ukraine_universal_news 
+        FROM {table_source}
         WHERE published_date >= today() - {days}
         {category_condition}
         ORDER BY published_date DESC
@@ -398,7 +467,7 @@ def get_recent_news():
                 'tension_category': tension_metrics.category,
                 'emotional_intensity': tension_metrics.emotional_intensity,
                 'conflict_level': tension_metrics.conflict_level,
-                'urgency_level': tension_metrics.urgency_level
+                'urgency_factor': tension_metrics.urgency_factor
             })
         
         return jsonify({
@@ -471,6 +540,9 @@ def recalculate_sentiment():
         client = get_clickhouse_client()
         analyzer = get_ukraine_sentiment_analyzer()
         
+        # Получаем правильную таблицу для категории
+        table_source = get_table_for_category(category)
+        
         # Формируем условие для категории
         category_condition = ""
         if category != 'all':
@@ -479,7 +551,7 @@ def recalculate_sentiment():
         # Получаем новости для пересчета
         query = f"""
         SELECT id, title, content, category
-        FROM news.ukraine_universal_news 
+        FROM {table_source}
         WHERE 1=1 {category_condition}
         ORDER BY published_date DESC
         LIMIT {limit}
@@ -510,6 +582,7 @@ def recalculate_sentiment():
                 # Подготавливаем данные для обновления
                 updated_records.append({
                     'id': news_id,
+                    'category': news_category,
                     'sentiment_score': sentiment_result['sentiment_score'],
                     'positive_score': sentiment_result['positive_score'],
                     'negative_score': sentiment_result['negative_score'],
@@ -522,23 +595,34 @@ def recalculate_sentiment():
         
         # Обновляем записи в базе данных
         if updated_records:
+            # Группируем записи по категориям для обновления соответствующих таблиц
+            records_by_category = {}
             for record in updated_records:
-                update_query = f"""
-                ALTER TABLE news.ukraine_universal_news 
-                UPDATE 
-                    sentiment_score = {record['sentiment_score']},
-                    positive_score = {record['positive_score']},
-                    negative_score = {record['negative_score']},
-                    neutral_score = {record['neutral_score']},
-                    military_intensity = {record['military_intensity']},
-                    humanitarian_focus = {record['humanitarian_focus']}
-                WHERE id = '{record['id']}'
-                """
-                
-                try:
-                    client.execute(update_query)
-                except Exception as e:
-                    current_app.logger.error(f"Error updating record {record['id']}: {str(e)}")
+                cat = record.get('category', 'military_operations')  # получаем категорию из результата запроса
+                if cat not in records_by_category:
+                    records_by_category[cat] = []
+                records_by_category[cat].append(record)
+            
+            # Обновляем каждую таблицу отдельно
+            for cat, records in records_by_category.items():
+                table_name = f"news.universal_{cat}"
+                for record in records:
+                    update_query = f"""
+                    ALTER TABLE {table_name}
+                    UPDATE 
+                        sentiment_score = {record['sentiment_score']},
+                        positive_score = {record['positive_score']},
+                        negative_score = {record['negative_score']},
+                        neutral_score = {record['neutral_score']},
+                        military_intensity = {record['military_intensity']},
+                        humanitarian_focus = {record['humanitarian_focus']}
+                    WHERE id = '{record['id']}'
+                    """
+                    
+                    try:
+                        client.execute(update_query)
+                    except Exception as e:
+                        current_app.logger.error(f"Error updating record {record['id']} in {table_name}: {str(e)}")
         
         return jsonify({
             'status': 'success',
@@ -566,6 +650,9 @@ def get_sentiment_analysis():
         
         client = get_clickhouse_client()
         
+        # Используем UNION для получения данных из всех таблиц
+        table_source = get_table_for_category('all')
+        
         # Запрос для получения детальной статистики тональности
         query = f"""
         SELECT 
@@ -577,7 +664,7 @@ def get_sentiment_analysis():
             AVG(neutral_score) as avg_neutral,
             AVG(military_intensity) as avg_military_intensity,
             AVG(humanitarian_focus) as avg_humanitarian_focus
-        FROM news.ukraine_universal_news 
+        FROM {table_source}
         WHERE published_date >= today() - {days}
         GROUP BY category
         ORDER BY total_news DESC
@@ -630,6 +717,9 @@ def get_social_tension_statistics():
         client = get_clickhouse_client()
         tension_analyzer = get_tension_analyzer()
         
+        # Получаем правильную таблицу для категории
+        table_source = get_table_for_category(category)
+        
         # Формируем условие для категории
         category_condition = ""
         if category != 'all':
@@ -637,8 +727,8 @@ def get_social_tension_statistics():
         
         # Запрос для получения новостей
         query = f"""
-        SELECT title, content, published_date, category, site_name
-        FROM news.ukraine_universal_news 
+        SELECT title, content, published_date, category, source
+        FROM {table_source}
         WHERE published_date >= today() - {days}
         {category_condition}
         ORDER BY published_date DESC
@@ -700,11 +790,11 @@ def get_social_tension_statistics():
         return jsonify({
             'status': 'success',
             'total_news': len(results),
-            'avg_tension': round(avg_tension * 100, 2),
+            'avg_tension': round(avg_tension, 2),
             'tension_distribution': tension_distribution,
             'trend': trend,
-            'max_tension': round(max(tension_scores) * 100, 2) if tension_scores else 0,
-            'min_tension': round(min(tension_scores) * 100, 2) if tension_scores else 0
+            'max_tension': round(max(tension_scores), 2) if tension_scores else 0,
+            'min_tension': round(min(tension_scores), 2) if tension_scores else 0
         })
         
     except Exception as e:
@@ -732,6 +822,9 @@ def get_social_tension_chart():
         client = get_clickhouse_client()
         tension_analyzer = get_tension_analyzer()
         
+        # Получаем правильную таблицу для категории
+        table_source = get_table_for_category(category)
+        
         # Формируем условие для категории
         category_condition = ""
         if category != 'all':
@@ -739,8 +832,8 @@ def get_social_tension_chart():
         
         # Запрос для получения новостей
         query = f"""
-        SELECT title, content, published_date, category, site_name
-        FROM news.ukraine_universal_news 
+        SELECT title, content, published_date, category, source
+        FROM {table_source}
         WHERE published_date >= today() - {days}
         {category_condition}
         ORDER BY published_date DESC
@@ -750,7 +843,14 @@ def get_social_tension_chart():
         results = client.execute(query)
         
         if not results:
-            return jsonify({'status': 'error', 'message': 'No data found'}), 404
+            # Создаем пустой график с сообщением
+            chart_url = create_empty_chart(chart_type, category, days)
+            return jsonify({
+                'status': 'success',
+                'chart_url': chart_url,
+                'data_points': 0,
+                'message': 'Нет данных для выбранной категории'
+            })
         
         # Анализ напряженности
         tension_data = []
@@ -759,7 +859,7 @@ def get_social_tension_chart():
             metrics = tension_analyzer.analyze_text_tension(text, title)
             tension_data.append({
                 'date': pub_date,
-                'tension': metrics.tension_score * 100,  # Конвертируем в проценты
+                'tension': metrics.tension_score,  # Уже в процентах (0-100)
                 'category': cat,
                 'source': site_name,
                 'title': title
@@ -795,10 +895,13 @@ def get_tension_by_category():
         client = get_clickhouse_client()
         tension_analyzer = get_tension_analyzer()
         
+        # Используем UNION для получения данных из всех таблиц
+        table_source = get_table_for_category('all')
+        
         # Запрос для получения новостей по категориям
         query = f"""
         SELECT category, title, content, published_date
-        FROM news.ukraine_universal_news 
+        FROM {table_source}
         WHERE published_date >= today() - {days}
         ORDER BY category, published_date DESC
         LIMIT 5000
@@ -820,7 +923,7 @@ def get_tension_by_category():
             
             text = f"{title} {content or ''}"
             metrics = tension_analyzer.analyze_text_tension(text, title)
-            categories_data[category].append(metrics.tension_score * 100)
+            categories_data[category].append(metrics.tension_score)
         
         # Расчет статистики по категориям
         category_stats = []
@@ -875,10 +978,13 @@ def get_tension_alerts():
         client = get_clickhouse_client()
         tension_analyzer = get_tension_analyzer()
         
+        # Используем UNION для получения данных из всех таблиц
+        table_source = get_table_for_category('all')
+        
         # Запрос для получения последних новостей
         query = f"""
-        SELECT title, content, published_date, category, source, url
-        FROM news.ukraine_universal_news 
+        SELECT title, content, published_date, category, source, '' as url
+        FROM {table_source}
         WHERE published_date >= now() - INTERVAL {hours} HOUR
         ORDER BY published_date DESC
         LIMIT 500
@@ -920,9 +1026,47 @@ def get_tension_alerts():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+def create_empty_chart(chart_type, category, days):
+    """Создание пустого графика с сообщением об отсутствии данных."""
+    try:
+        plt.style.use('seaborn-v0_8')
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        # Убираем оси и добавляем текст
+        ax.axis('off')
+        ax.text(0.5, 0.5, f'Нет данных для категории "{category}"\nза последние {days} дней', 
+                ha='center', va='center', fontsize=16, 
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.5))
+        
+        ax.set_title(f'График социальной напряженности ({chart_type})', fontsize=16, fontweight='bold')
+        
+        plt.tight_layout()
+        
+        # Сохранение графика
+        chart_filename = f"social_tension_{chart_type}_{category}_{days}d_empty_{uuid.uuid4().hex[:8]}.png"
+        chart_path = os.path.join(current_app.static_folder, 'charts', chart_filename)
+        
+        # Создаем директорию если её нет
+        os.makedirs(os.path.dirname(chart_path), exist_ok=True)
+        
+        plt.savefig(chart_path, dpi=300, bbox_inches='tight', facecolor='white')
+        plt.close()
+        
+        return f"/static/charts/{chart_filename}"
+        
+    except Exception as e:
+        current_app.logger.error(f"Error creating empty chart: {str(e)}")
+        plt.close()
+        return None
+
+
 def create_tension_chart(tension_data, chart_type, category, days):
     """Создание графика социальной напряженности."""
     try:
+        # Проверка на минимальное количество данных
+        if not tension_data or len(tension_data) < 1:
+            return create_empty_chart(chart_type, category, days)
+            
         # Настройка стиля
         plt.style.use('seaborn-v0_8')
         fig, ax = plt.subplots(figsize=(12, 8))
@@ -954,7 +1098,12 @@ def create_tension_chart(tension_data, chart_type, category, days):
             labels = ['Минимальная', 'Низкая', 'Средняя', 'Высокая', 'Критическая']
             colors = ['#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#8e44ad']
             
-            counts, _, _ = ax.hist(tensions, bins=bins, color=colors, alpha=0.7, edgecolor='black')
+            counts, bin_edges, patches = ax.hist(tensions, bins=bins, alpha=0.7, edgecolor='black')
+            
+            # Применяем цвета к каждому столбцу отдельно
+            for i, patch in enumerate(patches):
+                if i < len(colors):
+                    patch.set_facecolor(colors[i])
             
             ax.set_title(f'Распределение социальной напряженности ({days} дней)', fontsize=16, fontweight='bold')
             ax.set_xlabel('Уровень напряженности', fontsize=12)

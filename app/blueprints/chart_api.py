@@ -21,6 +21,61 @@ import uuid
 # Создаем Blueprint для API графиков
 chart_api_bp = Blueprint('chart_api', __name__, url_prefix='/api')
 
+def get_category_name(category):
+    """Получение читаемого названия категории."""
+    category_names = {
+        'politics': 'Политика',
+        'economy': 'Экономика', 
+        'society': 'Общество',
+        'technology': 'Технологии',
+        'sports': 'Спорт',
+        'culture': 'Культура',
+        'health': 'Здоровье',
+        'education': 'Образование',
+        'environment': 'Экология',
+        'crime': 'Криминал',
+        'military': 'Военные действия',
+        'international': 'Международные отношения',
+        'humanitarian': 'Гуманитарная помощь',
+        'all': 'Все категории'
+    }
+    return category_names.get(category, category.title())
+
+def create_empty_chart_simple(chart_type, category):
+    """Создание пустого графика с сообщением об отсутствии данных."""
+    try:
+        plt.figure(figsize=(12, 8))
+        plt.axis('off')
+        
+        message = f'Нет данных для категории "{get_category_name(category)}"'
+        if chart_type == "tension":
+            title = "График прогноза напряженности"
+        else:
+            title = "График распределения тем"
+            
+        plt.text(0.5, 0.6, message, ha='center', va='center', fontsize=16, 
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.5))
+        plt.text(0.5, 0.4, title, ha='center', va='center', fontsize=18, fontweight='bold')
+        
+        # Сохраняем график
+        unique_id = uuid.uuid4().hex[:8]
+        today_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'empty_{chart_type}_{category}_{today_str}_{unique_id}.png'
+        
+        static_folder = os.path.join(current_app.root_path, 'static', 'images')
+        os.makedirs(static_folder, exist_ok=True)
+        
+        filepath = os.path.join(static_folder, filename)
+        plt.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='white')
+        plt.close()
+        
+        return f'/static/images/{filename}'
+        
+    except Exception as e:
+        current_app.logger.error(f"Error creating empty chart: {str(e)}")
+        plt.close()
+        return None
+
 @chart_api_bp.route('/generate_charts', methods=['POST'])
 def generate_charts():
     """Создание графиков на основе данных прогноза от AI.
@@ -79,6 +134,10 @@ def generate_tension_chart_from_data(tension_values, category):
     Returns:
         str: Путь к созданному графику
     """
+    # Проверка на пустые данные
+    if not tension_values or len(tension_values) == 0:
+        return create_empty_chart_simple("tension", category)
+        
     plt.figure(figsize=(12, 7))
     sns.set_style("whitegrid")
     
@@ -139,6 +198,10 @@ def generate_topics_chart_from_data(topics, category):
     Returns:
         str: Путь к созданному графику
     """
+    # Проверка на пустые данные
+    if not topics or len(topics) == 0:
+        return create_empty_chart_simple("topics", category)
+        
     plt.figure(figsize=(12, 8))
     sns.set_style("whitegrid")
     

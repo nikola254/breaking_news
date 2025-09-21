@@ -60,7 +60,7 @@ def create_social_media_database():
             risk_level String,
             analysis_method String,
             keywords_matched Array(String),
-            parsed_date DateTime DEFAULT now(),
+            published_date DateTime DEFAULT now(),
             source String DEFAULT 'twitter'
         ) ENGINE = MergeTree()
         ORDER BY (created_at, id)
@@ -90,7 +90,7 @@ def create_social_media_database():
             risk_level String,
             analysis_method String,
             keywords_matched Array(String),
-            parsed_date DateTime DEFAULT now(),
+            published_date DateTime DEFAULT now(),
             source String DEFAULT 'vk'
         ) ENGINE = MergeTree()
         ORDER BY (date, id)
@@ -118,7 +118,7 @@ def create_social_media_database():
             risk_level String,
             analysis_method String,
             keywords_matched Array(String),
-            parsed_date DateTime DEFAULT now(),
+            published_date DateTime DEFAULT now(),
             source String DEFAULT 'ok'
         ) ENGINE = MergeTree()
         ORDER BY (created_time, id)
@@ -146,7 +146,7 @@ def create_social_media_database():
             risk_level String,
             analysis_method String,
             keywords_matched Array(String),
-            parsed_date DateTime DEFAULT now(),
+            published_date DateTime DEFAULT now(),
             source String DEFAULT 'telegram'
         ) ENGINE = MergeTree()
         ORDER BY (date, id)
@@ -167,7 +167,7 @@ def create_social_media_database():
             risk_level String,
             analysis_method String,
             keywords_matched Array(String),
-            parsed_date DateTime DEFAULT now()
+            published_date DateTime DEFAULT now()
         ) ENGINE = MergeTree()
         ORDER BY (created_at, platform, id)
         PARTITION BY (platform, toYYYYMM(created_at))
@@ -185,7 +185,7 @@ def create_social_media_database():
             keywords Array(String),
             status String,
             error_message String,
-            parsed_date DateTime DEFAULT now()
+            published_date DateTime DEFAULT now()
         ) ENGINE = MergeTree()
         ORDER BY (start_time, platform)
         PARTITION BY toYYYYMM(start_time)

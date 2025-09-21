@@ -167,9 +167,9 @@ def parse_example_news_site():
                 source String,
                 category String,
                 classification_method String,
-                parsed_date DateTime
+                published_date DateTime
             ) ENGINE = MergeTree()
-            ORDER BY parsed_date
+            ORDER BY published_date
         ''')
         logger.info("Таблица ai_classified_news готова")
     except Exception as e:
@@ -198,7 +198,7 @@ def parse_example_news_site():
             
             # Сохраняем в базу данных
             client.execute(
-                'INSERT INTO news.ai_classified_news (id, title, link, content, source, category, classification_method, parsed_date) VALUES',
+                'INSERT INTO news.ai_classified_news (id, title, link, content, source, category, classification_method, published_date) VALUES',
                 [(processed_count + 1, title, link, content, 'example.com', category, classification_method, datetime.now())]
             )
             
@@ -217,7 +217,7 @@ def parse_example_news_site():
     # Показываем результаты из базы
     try:
         results = client.execute(
-            'SELECT title, category, classification_method FROM news.ai_classified_news ORDER BY parsed_date DESC LIMIT 10'
+            'SELECT title, category, classification_method FROM news.ai_classified_news ORDER BY published_date DESC LIMIT 10'
         )
         
         logger.info("\n=== ПОСЛЕДНИЕ КЛАССИФИЦИРОВАННЫЕ СТАТЬИ ===")

@@ -47,7 +47,7 @@ def create_main_tables(client):
                 content String,
                 source String DEFAULT 'ria.ru',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'israil': {
@@ -60,7 +60,7 @@ def create_main_tables(client):
                 source_links String,
                 source String DEFAULT '7kanal.co.il',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'telegram': {
@@ -74,7 +74,7 @@ def create_main_tables(client):
                 message_link String,
                 source String DEFAULT 'telegram',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'lenta': {
@@ -87,7 +87,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'lenta.ru',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'rbc': {
@@ -100,7 +100,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'rbc.ru',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'cnn': {
@@ -113,7 +113,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'cnn.com',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'aljazeera': {
@@ -126,7 +126,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'aljazeera.com',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'tsn': {
@@ -139,7 +139,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'tsn.ua',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'unian': {
@@ -152,7 +152,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'unian.net',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'rt': {
@@ -165,7 +165,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'rt.com',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'euronews': {
@@ -178,7 +178,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'euronews.com',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'reuters': {
@@ -191,7 +191,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'reuters.com',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'france24': {
@@ -204,7 +204,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'france24.com',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'dw': {
@@ -217,7 +217,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'dw.com',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'bbc': {
@@ -230,7 +230,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'bbc.com',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'gazeta': {
@@ -243,7 +243,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'gazeta.ru',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         },
         'kommersant': {
@@ -256,7 +256,7 @@ def create_main_tables(client):
                 rubric String,
                 source String DEFAULT 'kommersant.ru',
                 category String DEFAULT 'other',
-                parsed_date DateTime DEFAULT now()
+                published_date DateTime DEFAULT now()
             '''
         }
     }
@@ -269,7 +269,7 @@ def create_main_tables(client):
                 CREATE TABLE IF NOT EXISTS news.{source_info["table"]} (
                     {source_info["structure"]}
                 ) ENGINE = MergeTree()
-                ORDER BY (parsed_date, id)
+                ORDER BY (published_date, id)
             '''
             
             client.execute(query)
@@ -294,12 +294,12 @@ def create_universal_tables(client):
                 content String,
                 category String,
                 published_date DateTime DEFAULT now(),
-                parsed_date DateTime DEFAULT now(),
+                published_date DateTime DEFAULT now(),
                 language String DEFAULT 'unknown',
                 tags Array(String) DEFAULT [],
                 metadata String DEFAULT '{}'
             ) ENGINE = MergeTree()
-            ORDER BY (site_name, parsed_date)
+            ORDER BY (site_name, published_date)
         '''
         client.execute(query)
         print("✓ Таблица universal_news создана")
@@ -319,9 +319,9 @@ def create_universal_tables(client):
                     content String,
                     source String,
                     category String DEFAULT '{category}',
-                    parsed_date DateTime DEFAULT now()
+                    published_date DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
-                ORDER BY (parsed_date, id)
+                ORDER BY (published_date, id)
             '''
             client.execute(query)
             print(f"✓ Таблица universal_{category} создана")
@@ -373,9 +373,9 @@ def create_category_tables(client):
                             message_link String,
                             source String DEFAULT 'telegram',
                             category String DEFAULT '{category}',
-                            parsed_date DateTime DEFAULT now()
+                            published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
-                        ORDER BY (parsed_date, id)
+                        ORDER BY (published_date, id)
                     '''
                 # Специальная обработка для israil
                 elif source_key == 'israil':
@@ -388,9 +388,9 @@ def create_category_tables(client):
                             source_links String,
                             source String DEFAULT '7kanal.co.il',
                             category String DEFAULT '{category}',
-                            parsed_date DateTime DEFAULT now()
+                            published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
-                        ORDER BY (parsed_date, id)
+                        ORDER BY (published_date, id)
                     '''
                 # Стандартная структура для остальных источников
                 else:
@@ -402,9 +402,9 @@ def create_category_tables(client):
                             content String,
                             source String DEFAULT '{source_info["default_source"]}',
                             category String DEFAULT '{category}',
-                            parsed_date DateTime DEFAULT now()
+                            published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
-                        ORDER BY (parsed_date, id)
+                        ORDER BY (published_date, id)
                     '''
                 
                 client.execute(query)

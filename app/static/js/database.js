@@ -217,9 +217,9 @@ function updateTable(data) {
         headers.forEach(header => {
             const cell = document.createElement('td');
             
-            if (header.key === 'parsed_date' || header.key === 'date') {
+            if (header.key === 'published_date' || header.key === 'date') {
                 // Форматируем дату
-                const dateValue = item['parsed_date'] || item['date'];
+                const dateValue = item['published_date'] || item['date'];
                 if (dateValue) {
                     try {
                         const date = new Date(dateValue);
@@ -316,7 +316,7 @@ function updateTable(data) {
 function getHeadersForSource(source) {
     // Унифицированная структура для всех источников
     return [
-        { key: 'parsed_date', label: 'Дата', class: 'date-col' },
+        { key: 'published_date', label: 'Дата', class: 'date-col' },
         { key: 'title', label: 'Заголовок', class: 'title-col' },
         { key: 'category', label: 'Категория', class: 'category-col' }
     ];
@@ -535,7 +535,7 @@ function openArticleModal(article) {
     // Устанавливаем метаданные
     modalSource.textContent = article.source || 'Неизвестный источник';
     
-    const dateValue = article.parsed_date || article.date;
+    const dateValue = article.published_date || article.date;
     if (dateValue) {
         try {
             const date = new Date(dateValue);

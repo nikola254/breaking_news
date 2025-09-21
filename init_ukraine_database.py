@@ -90,10 +90,10 @@ def create_ukraine_category_tables(client):
                             ai_confidence Float32 DEFAULT 0.0,
                             keywords_found Array(String) DEFAULT [],
                             sentiment_score Float32 DEFAULT 0.0,
-                            parsed_date DateTime DEFAULT now(),
+                            published_date DateTime DEFAULT now(),
                             published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
-                        ORDER BY (parsed_date, id)
+                        ORDER BY (published_date, id)
                     '''
                 # Специальная обработка для israil
                 elif source_key == 'israil':
@@ -110,10 +110,10 @@ def create_ukraine_category_tables(client):
                             ai_confidence Float32 DEFAULT 0.0,
                             keywords_found Array(String) DEFAULT [],
                             sentiment_score Float32 DEFAULT 0.0,
-                            parsed_date DateTime DEFAULT now(),
+                            published_date DateTime DEFAULT now(),
                             published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
-                        ORDER BY (parsed_date, id)
+                        ORDER BY (published_date, id)
                     '''
                 # Стандартная структура для остальных источников
                 else:
@@ -129,10 +129,10 @@ def create_ukraine_category_tables(client):
                             ai_confidence Float32 DEFAULT 0.0,
                             keywords_found Array(String) DEFAULT [],
                             sentiment_score Float32 DEFAULT 0.0,
-                            parsed_date DateTime DEFAULT now(),
+                            published_date DateTime DEFAULT now(),
                             published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
-                        ORDER BY (parsed_date, id)
+                        ORDER BY (published_date, id)
                     '''
                 
                 client.execute(query)
@@ -161,12 +161,12 @@ def create_ukraine_universal_tables(client):
                 keywords_found Array(String) DEFAULT [],
                 sentiment_score Float32 DEFAULT 0.0,
                 published_date DateTime DEFAULT now(),
-                parsed_date DateTime DEFAULT now(),
+                published_date DateTime DEFAULT now(),
                 language String DEFAULT 'unknown',
                 tags Array(String) DEFAULT [],
                 metadata String DEFAULT '{}'
             ) ENGINE = MergeTree()
-            ORDER BY (site_name, parsed_date)
+            ORDER BY (site_name, published_date)
         '''
         client.execute(query)
         print("✓ Таблица ukraine_universal_news создана")
@@ -197,10 +197,10 @@ def create_ukraine_universal_tables(client):
                     ai_confidence Float32 DEFAULT 0.0,
                     keywords_found Array(String) DEFAULT [],
                     sentiment_score Float32 DEFAULT 0.0,
-                    parsed_date DateTime DEFAULT now(),
+                    published_date DateTime DEFAULT now(),
                     published_date DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
-                ORDER BY (parsed_date, id)
+                ORDER BY (published_date, id)
             '''
             client.execute(query)
             print(f"✓ Таблица ukraine_universal_{category} создана")

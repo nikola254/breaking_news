@@ -103,10 +103,10 @@ def create_ukraine_tables_if_not_exists():
                 ai_confidence Float32 DEFAULT 0.0,
                 keywords_found Array(String) DEFAULT [],
                 sentiment_score Float32 DEFAULT 0.0,
-                parsed_date DateTime DEFAULT now(),
+                published_date DateTime DEFAULT now(),
                 published_date DateTime DEFAULT now()
             ) ENGINE = MergeTree()
-            ORDER BY (parsed_date, id)
+            ORDER BY (published_date, id)
             """
         elif '{source_name}' == 'israil':
             sql = f"""
@@ -122,10 +122,10 @@ def create_ukraine_tables_if_not_exists():
                 ai_confidence Float32 DEFAULT 0.0,
                 keywords_found Array(String) DEFAULT [],
                 sentiment_score Float32 DEFAULT 0.0,
-                parsed_date DateTime DEFAULT now(),
+                published_date DateTime DEFAULT now(),
                 published_date DateTime DEFAULT now()
             ) ENGINE = MergeTree()
-            ORDER BY (parsed_date, id)
+            ORDER BY (published_date, id)
             """
         else:
             sql = f"""
@@ -140,10 +140,10 @@ def create_ukraine_tables_if_not_exists():
                 ai_confidence Float32 DEFAULT 0.0,
                 keywords_found Array(String) DEFAULT [],
                 sentiment_score Float32 DEFAULT 0.0,
-                parsed_date DateTime DEFAULT now(),
+                published_date DateTime DEFAULT now(),
                 published_date DateTime DEFAULT now()
             ) ENGINE = MergeTree()
-            ORDER BY (parsed_date, id)
+            ORDER BY (published_date, id)
             """
         
         client.execute(sql)
@@ -181,7 +181,7 @@ def create_ukraine_tables_if_not_exists():
         # Обновляем структуру данных для включения украинских полей
         content = content.replace(
             "'title': title,\n                'link': link,\n                'content': content",
-            "'title': title,\n                'link': link,\n                'content': content,\n                'source': source_name,\n                'category': category,\n                'relevance_score': relevance_result['relevance_score'],\n                'ai_confidence': relevance_result.get('ai_confidence', 0.0),\n                'keywords_found': relevance_result['keywords_found'],\n                'sentiment_score': 0.0,\n                'parsed_date': datetime.now(),\n                'published_date': datetime.now()"
+            "'title': title,\n                'link': link,\n                'content': content,\n                'source': source_name,\n                'category': category,\n                'relevance_score': relevance_result['relevance_score'],\n                'ai_confidence': relevance_result.get('ai_confidence', 0.0),\n                'keywords_found': relevance_result['keywords_found'],\n                'sentiment_score': 0.0,\n                'published_date': datetime.now(),\n                'published_date': datetime.now()"
         )
         
         # Записываем обновленное содержимое

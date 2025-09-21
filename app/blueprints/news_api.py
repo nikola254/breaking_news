@@ -1,32 +1,32 @@
-"""API для работы с новостями.
+﻿"""API РґР»СЏ СЂР°Р±РѕС‚С‹ СЃ РЅРѕРІРѕСЃС‚СЏРјРё.
 
-Этот модуль содержит REST API эндпоинты для:
-- Получения новостей из различных источников
-- Фильтрации по категориям и источникам
-- Поиска по содержимому
-- Получения статистики
+Р­С‚РѕС‚ РјРѕРґСѓР»СЊ СЃРѕРґРµСЂР¶РёС‚ REST API СЌРЅРґРїРѕРёРЅС‚С‹ РґР»СЏ:
+- РџРѕР»СѓС‡РµРЅРёСЏ РЅРѕРІРѕСЃС‚РµР№ РёР· СЂР°Р·Р»РёС‡РЅС‹С… РёСЃС‚РѕС‡РЅРёРєРѕРІ
+- Р¤РёР»СЊС‚СЂР°С†РёРё РїРѕ РєР°С‚РµРіРѕСЂРёСЏРј Рё РёСЃС‚РѕС‡РЅРёРєР°Рј
+- РџРѕРёСЃРєР° РїРѕ СЃРѕРґРµСЂР¶РёРјРѕРјСѓ
+- РџРѕР»СѓС‡РµРЅРёСЏ СЃС‚Р°С‚РёСЃС‚РёРєРё
 """
 
 from flask import Blueprint, request, jsonify
 import datetime
 from app.models import get_clickhouse_client
 
-# Создаем Blueprint для API новостей
+# РЎРѕР·РґР°РµРј Blueprint РґР»СЏ API РЅРѕРІРѕСЃС‚РµР№
 news_api_bp = Blueprint('news_api', __name__, url_prefix='/api')
 
 @news_api_bp.route('/news', methods=['GET'])
 def get_news():
-    """Получение новостей с фильтрацией и поиском.
+    """РџРѕР»СѓС‡РµРЅРёРµ РЅРѕРІРѕСЃС‚РµР№ СЃ С„РёР»СЊС‚СЂР°С†РёРµР№ Рё РїРѕРёСЃРєРѕРј.
     
     Query Parameters:
-        source (str): Источник новостей ('all', 'ria', 'israil', 'telegram', 'lenta', 'rbc', 'cnn', 'aljazeera', 'tsn', 'unian', 'rt', 'euronews', 'reuters', 'france24', 'dw', 'bbc', 'gazeta', 'kommersant')
-        category (str): Категория новостей ('all', 'ukraine', 'middle_east', etc.)
-        limit (int): Количество новостей для возврата (по умолчанию 100)
-        offset (int): Смещение для пагинации (по умолчанию 0)
-        search (str): Поисковый запрос по заголовку и содержимому
+        source (str): РСЃС‚РѕС‡РЅРёРє РЅРѕРІРѕСЃС‚РµР№ ('all', 'ria', 'israil', 'telegram', 'lenta', 'rbc', 'cnn', 'aljazeera', 'tsn', 'unian', 'rt', 'euronews', 'reuters', 'france24', 'dw', 'bbc', 'gazeta', 'kommersant')
+        category (str): РљР°С‚РµРіРѕСЂРёСЏ РЅРѕРІРѕСЃС‚РµР№ ('all', 'ukraine', 'middle_east', etc.)
+        limit (int): РљРѕР»РёС‡РµСЃС‚РІРѕ РЅРѕРІРѕСЃС‚РµР№ РґР»СЏ РІРѕР·РІСЂР°С‚Р° (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 100)
+        offset (int): РЎРјРµС‰РµРЅРёРµ РґР»СЏ РїР°РіРёРЅР°С†РёРё (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 0)
+        search (str): РџРѕРёСЃРєРѕРІС‹Р№ Р·Р°РїСЂРѕСЃ РїРѕ Р·Р°РіРѕР»РѕРІРєСѓ Рё СЃРѕРґРµСЂР¶РёРјРѕРјСѓ
     
     Returns:
-        JSON: Список новостей с метаданными или сообщение об ошибке
+        JSON: РЎРїРёСЃРѕРє РЅРѕРІРѕСЃС‚РµР№ СЃ РјРµС‚Р°РґР°РЅРЅС‹РјРё РёР»Рё СЃРѕРѕР±С‰РµРЅРёРµ РѕР± РѕС€РёР±РєРµ
     """
     source = request.args.get('source', 'universal_military_operations')
     category = request.args.get('category', 'all')
@@ -34,25 +34,25 @@ def get_news():
     offset = request.args.get('offset', 0, type=int)
     search = request.args.get('search', '')
     
-    # Проверка валидности источников
+    # РџСЂРѕРІРµСЂРєР° РІР°Р»РёРґРЅРѕСЃС‚Рё РёСЃС‚РѕС‡РЅРёРєРѕРІ
     valid_sources = ['all', 'ria', 'israil', 'telegram', 'lenta', 'rbc', 'cnn', 'aljazeera', 'tsn', 'unian', 'rt', 'euronews', 'reuters', 'france24', 'dw', 'bbc', 'gazeta', 'kommersant', 'universal_military_operations', 'universal_humanitarian_crisis', 'universal_economic_consequences', 'universal_political_decisions', 'universal_information_social']
     
     if source not in valid_sources:
-        return jsonify({'status': 'error', 'message': f'Недопустимый источник. Допустимые источники: {valid_sources}'}), 400
+        return jsonify({'status': 'error', 'message': f'РќРµРґРѕРїСѓСЃС‚РёРјС‹Р№ РёСЃС‚РѕС‡РЅРёРє. Р”РѕРїСѓСЃС‚РёРјС‹Рµ РёСЃС‚РѕС‡РЅРёРєРё: {valid_sources}'}), 400
     
-    # Проверка валидности категории (включая пользовательские таблицы)
+    # РџСЂРѕРІРµСЂРєР° РІР°Р»РёРґРЅРѕСЃС‚Рё РєР°С‚РµРіРѕСЂРёРё (РІРєР»СЋС‡Р°СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ С‚Р°Р±Р»РёС†С‹)
     valid_categories = ['military_operations', 'humanitarian_crisis', 'economic_consequences', 'political_decisions', 'information_social']
     
-    # Проверяем, является ли категория пользовательской таблицей
+    # РџСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РєР°С‚РµРіРѕСЂРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕР№ С‚Р°Р±Р»РёС†РµР№
     is_custom_table = category.startswith('custom_') and category.endswith('_headlines')
     
     if category not in valid_categories and category != 'all' and not is_custom_table:
-        return jsonify({'status': 'error', 'message': f'Недопустимая категория. Допустимые категории: {valid_categories} или пользовательские таблицы'}), 400
+        return jsonify({'status': 'error', 'message': f'РќРµРґРѕРїСѓСЃС‚РёРјР°СЏ РєР°С‚РµРіРѕСЂРёСЏ. Р”РѕРїСѓСЃС‚РёРјС‹Рµ РєР°С‚РµРіРѕСЂРёРё: {valid_categories} РёР»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ С‚Р°Р±Р»РёС†С‹'}), 400
     
     try:
         client = get_clickhouse_client()
         
-        # Получаем список пользовательских таблиц для включения в общий запрос
+        # РџРѕР»СѓС‡Р°РµРј СЃРїРёСЃРѕРє РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёС… С‚Р°Р±Р»РёС† РґР»СЏ РІРєР»СЋС‡РµРЅРёСЏ РІ РѕР±С‰РёР№ Р·Р°РїСЂРѕСЃ
         custom_tables_query = """
             SELECT name 
             FROM system.tables 
@@ -65,30 +65,30 @@ def get_news():
         for table in custom_tables.result_rows:
             table_name = table[0]
             union_query = f"""
-                SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                 FROM news.{table_name}
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
             """
             custom_tables_unions.append(union_query)
         
-        # Формируем запрос в зависимости от источника и категории
+        # Р¤РѕСЂРјРёСЂСѓРµРј Р·Р°РїСЂРѕСЃ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РёСЃС‚РѕС‡РЅРёРєР° Рё РєР°С‚РµРіРѕСЂРёРё
         if source.startswith('universal_'):
-            # Работа с universal таблицами
+            # Р Р°Р±РѕС‚Р° СЃ universal С‚Р°Р±Р»РёС†Р°РјРё
             table_name = source
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, '' as link,
+                    id, title, content, source, category, published_date, '' as link,
                     '' as telegram_channel
                 FROM news.{table_name}
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'all' and category == 'all':
-            # Все источники, все категории
+            # Р’СЃРµ РёСЃС‚РѕС‡РЅРёРєРё, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date,
+                    id, title, content, source, category, published_date,
                     CASE
                         WHEN source = 'ria.ru' THEN link
                         WHEN source = '7kanal.co.il' THEN link
@@ -97,170 +97,170 @@ def get_news():
                     END as link,
                     if(source = 'telegram', channel, '') as telegram_channel
                 FROM (
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.ria_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.israil_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.lenta_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.rbc_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.cnn_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.aljazeera_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.tsn_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.unian_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.rt_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.euronews_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.reuters_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.france24_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.dw_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.bbc_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.gazeta_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.kommersant_headlines
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, '' as link, content, source, category, parsed_date, message_link, channel
+                    SELECT id, title, '' as link, content, source, category, published_date, message_link, channel
                     FROM (
-                        SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_ukraine
+                        SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_ukraine
                         UNION ALL
-                        SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_middle_east
+                        SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_middle_east
                         UNION ALL
-                        SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_fake_news
+                        SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_fake_news
                         UNION ALL
-                        SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_info_war
+                        SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_info_war
                         UNION ALL
-                        SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_europe
+                        SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_europe
                         UNION ALL
-                        SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_usa
+                        SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_usa
                         UNION ALL
-                        SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_other
+                        SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_other
                     )
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.universal_ukraine
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.universal_middle_east
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.universal_fake_news
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.universal_info_war
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.universal_europe
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.universal_usa
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.universal_other
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                 )
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'all' and category != 'all':
-            # Все источники, конкретная категория
+            # Р’СЃРµ РёСЃС‚РѕС‡РЅРёРєРё, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date,
+                    id, title, content, source, category, published_date,
                     CASE
                         WHEN source = 'ria.ru' THEN link
                         WHEN source = '7kanal.co.il' THEN link
@@ -269,522 +269,522 @@ def get_news():
                     END as link,
                     if(source = 'telegram', channel, '') as telegram_channel
                 FROM (
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.ria_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.israil_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.lenta_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.rbc_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.cnn_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.aljazeera_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.tsn_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.unian_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.rt_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.euronews_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.reuters_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.france24_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.dw_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.bbc_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.gazeta_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.kommersant_headlines
                     WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, '' as link, content, source, category, parsed_date, message_link, channel
+                    SELECT id, title, '' as link, content, source, category, published_date, message_link, channel
                     FROM (
-                        SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_{category}
+                        SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_{category}
                     )
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                     
                     UNION ALL
                     
-                    SELECT id, title, link, content, source, category, parsed_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                     FROM news.universal_{category}
                     {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
                 )
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'ria' and category == 'all':
-            # Только РИА, все категории
+            # РўРѕР»СЊРєРѕ Р РРђ, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.ria_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'ria' and category != 'all':
-            # Только РИА, конкретная категория
+            # РўРѕР»СЊРєРѕ Р РРђ, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.ria_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'israil' and category == 'all':
-            # Только Израиль, все категории
+            # РўРѕР»СЊРєРѕ РР·СЂР°РёР»СЊ, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.israil_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'israil' and category != 'all':
-            # Только Израиль, конкретная категория
+            # РўРѕР»СЊРєРѕ РР·СЂР°РёР»СЊ, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.israil_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'telegram' and category == 'all':
-            # Только Telegram, все категории
+            # РўРѕР»СЊРєРѕ Telegram, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, message_link as link, content, source, category, parsed_date,
+                    id, title, message_link as link, content, source, category, published_date,
                     channel as telegram_channel
                 FROM (
-                    SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_ukraine
+                    SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_ukraine
                     UNION ALL
-                    SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_middle_east
+                    SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_middle_east
                     UNION ALL
-                    SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_fake_news
+                    SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_fake_news
                     UNION ALL
-                    SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_info_war
+                    SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_info_war
                     UNION ALL
-                    SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_europe
+                    SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_europe
                     UNION ALL
-                    SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_usa
+                    SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_usa
                     UNION ALL
-                    SELECT id, title, content, source, category, parsed_date, message_link, channel FROM news.telegram_other
+                    SELECT id, title, content, source, category, published_date, message_link, channel FROM news.telegram_other
                 )
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'telegram' and category != 'all':
-            # Только Telegram, конкретная категория
+            # РўРѕР»СЊРєРѕ Telegram, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, message_link as link, content, source, category, parsed_date,
+                    id, title, message_link as link, content, source, category, published_date,
                     channel as telegram_channel
                 FROM news.telegram_{category}
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'lenta' and category == 'all':
-            # Только Lenta, все категории
+            # РўРѕР»СЊРєРѕ Lenta, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.lenta_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'lenta' and category != 'all':
-            # Только Lenta, конкретная категория
+            # РўРѕР»СЊРєРѕ Lenta, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.lenta_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'rbc' and category == 'all':
-            # Только RBC, все категории
+            # РўРѕР»СЊРєРѕ RBC, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.rbc_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'rbc' and category != 'all':
-            # Только RBC, конкретная категория
+            # РўРѕР»СЊРєРѕ RBC, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.rbc_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'cnn' and category == 'all':
-            # Только CNN, все категории
+            # РўРѕР»СЊРєРѕ CNN, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.cnn_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'cnn' and category != 'all':
-            # Только CNN, конкретная категория
+            # РўРѕР»СЊРєРѕ CNN, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.cnn_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'aljazeera' and category == 'all':
-            # Только Al Jazeera, все категории
+            # РўРѕР»СЊРєРѕ Al Jazeera, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.aljazeera_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'aljazeera' and category != 'all':
-            # Только Al Jazeera, конкретная категория
+            # РўРѕР»СЊРєРѕ Al Jazeera, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.aljazeera_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'tsn' and category == 'all':
-            # Только TSN, все категории
+            # РўРѕР»СЊРєРѕ TSN, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.tsn_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'tsn' and category != 'all':
-            # Только TSN, конкретная категория
+            # РўРѕР»СЊРєРѕ TSN, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.tsn_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'unian' and category == 'all':
-            # Только UNIAN, все категории
+            # РўРѕР»СЊРєРѕ UNIAN, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.unian_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'unian' and category != 'all':
-            # Только UNIAN, конкретная категория
+            # РўРѕР»СЊРєРѕ UNIAN, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.unian_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'rt' and category == 'all':
-            # Только RT, все категории
+            # РўРѕР»СЊРєРѕ RT, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.rt_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'rt' and category != 'all':
-            # Только RT, конкретная категория
+            # РўРѕР»СЊРєРѕ RT, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.rt_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'euronews' and category == 'all':
-            # Только Euronews, все категории
+            # РўРѕР»СЊРєРѕ Euronews, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.euronews_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'euronews' and category != 'all':
-            # Только Euronews, конкретная категория
+            # РўРѕР»СЊРєРѕ Euronews, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.euronews_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'reuters' and category == 'all':
-            # Только Reuters, все категории
+            # РўРѕР»СЊРєРѕ Reuters, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.reuters_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'reuters' and category != 'all':
-            # Только Reuters, конкретная категория
+            # РўРѕР»СЊРєРѕ Reuters, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.reuters_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'france24' and category == 'all':
-            # Только France24, все категории
+            # РўРѕР»СЊРєРѕ France24, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.france24_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'france24' and category != 'all':
-            # Только France24, конкретная категория
+            # РўРѕР»СЊРєРѕ France24, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.france24_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'dw' and category == 'all':
-            # Только DW, все категории
+            # РўРѕР»СЊРєРѕ DW, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.dw_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'dw' and category != 'all':
-            # Только DW, конкретная категория
+            # РўРѕР»СЊРєРѕ DW, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.dw_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'bbc' and category == 'all':
-            # Только BBC, все категории
+            # РўРѕР»СЊРєРѕ BBC, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.bbc_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'bbc' and category != 'all':
-            # Только BBC, конкретная категория
+            # РўРѕР»СЊРєРѕ BBC, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.bbc_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'gazeta' and category == 'all':
-            # Только Gazeta, все категории
+            # РўРѕР»СЊРєРѕ Gazeta, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.gazeta_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'gazeta' and category != 'all':
-            # Только Gazeta, конкретная категория
+            # РўРѕР»СЊРєРѕ Gazeta, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.gazeta_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'kommersant' and category == 'all':
-            # Только Kommersant, все категории
+            # РўРѕР»СЊРєРѕ Kommersant, РІСЃРµ РєР°С‚РµРіРѕСЂРёРё
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.kommersant_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'kommersant' and category != 'all':
-            # Только Kommersant, конкретная категория
+            # РўРѕР»СЊРєРѕ Kommersant, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.kommersant_headlines
                 WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif is_custom_table:
-            # Пользовательская таблица
+            # РџРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєР°СЏ С‚Р°Р±Р»РёС†Р°
             query = f'''
                 SELECT 
-                    id, title, content, source, category, parsed_date, link,
+                    id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.{category}
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
-                ORDER BY parsed_date DESC
+                ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         else:
-            return jsonify({'status': 'error', 'message': 'Недопустимый источник'}), 400
+            return jsonify({'status': 'error', 'message': 'РќРµРґРѕРїСѓСЃС‚РёРјС‹Р№ РёСЃС‚РѕС‡РЅРёРє'}), 400
             
         result = client.query(query)
         
-        # Форматируем данные
+        # Р¤РѕСЂРјР°С‚РёСЂСѓРµРј РґР°РЅРЅС‹Рµ
         news = []
         for row in result.result_rows:
             news_item = {
@@ -793,10 +793,10 @@ def get_news():
                 'content': row[2],
                 'source': row[3],
                 'category': row[4],
-                'parsed_date': row[5].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[5], 'strftime') else row[5]
+                'published_date': row[5].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[5], 'strftime') else row[5]
             }
             
-            # Добавляем специфичные поля в зависимости от источника
+            # Р”РѕР±Р°РІР»СЏРµРј СЃРїРµС†РёС„РёС‡РЅС‹Рµ РїРѕР»СЏ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РёСЃС‚РѕС‡РЅРёРєР°
             if len(row) > 6 and row[6]:  # link
                 news_item['link'] = row[6]
             if len(row) > 7 and row[7]:  # telegram_channel
@@ -804,7 +804,7 @@ def get_news():
                 
             news.append(news_item)
         
-        # Подсчет общего количества записей
+        # РџРѕРґСЃС‡РµС‚ РѕР±С‰РµРіРѕ РєРѕР»РёС‡РµСЃС‚РІР° Р·Р°РїРёСЃРµР№
         count_query = f'''
             SELECT COUNT(*) as count
             FROM (
@@ -813,7 +813,7 @@ def get_news():
         '''
         total_count = client.query(count_query).result_rows[0][0]
         
-        # Расчет общего количества страниц
+        # Р Р°СЃС‡РµС‚ РѕР±С‰РµРіРѕ РєРѕР»РёС‡РµСЃС‚РІР° СЃС‚СЂР°РЅРёС†
         page_size = limit
         total_pages = (total_count + page_size - 1) // page_size
         current_page = (offset // page_size) + 1
@@ -834,16 +834,16 @@ def get_news():
 
 @news_api_bp.route('/social_media', methods=['GET'])
 def get_social_media_data():
-    """Получение данных из социальных сетей.
+    """РџРѕР»СѓС‡РµРЅРёРµ РґР°РЅРЅС‹С… РёР· СЃРѕС†РёР°Р»СЊРЅС‹С… СЃРµС‚РµР№.
     
     Query Parameters:
-        source (str): Источник ('twitter', 'vk', 'ok', 'all')
-        page (int): Номер страницы (по умолчанию 1)
-        days (int): Количество дней для выборки (по умолчанию 7)
-        search (str): Поисковый запрос
+        source (str): РСЃС‚РѕС‡РЅРёРє ('twitter', 'vk', 'ok', 'all')
+        page (int): РќРѕРјРµСЂ СЃС‚СЂР°РЅРёС†С‹ (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 1)
+        days (int): РљРѕР»РёС‡РµСЃС‚РІРѕ РґРЅРµР№ РґР»СЏ РІС‹Р±РѕСЂРєРё (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 7)
+        search (str): РџРѕРёСЃРєРѕРІС‹Р№ Р·Р°РїСЂРѕСЃ
     
     Returns:
-        JSON: Данные из социальных сетей
+        JSON: Р”Р°РЅРЅС‹Рµ РёР· СЃРѕС†РёР°Р»СЊРЅС‹С… СЃРµС‚РµР№
     """
     try:
         source = request.args.get('source', 'all')
@@ -854,7 +854,7 @@ def get_social_media_data():
         
         client = get_clickhouse_client()
         
-        # Определяем таблицы для запроса
+        # РћРїСЂРµРґРµР»СЏРµРј С‚Р°Р±Р»РёС†С‹ РґР»СЏ Р·Р°РїСЂРѕСЃР°
         tables = []
         if source == 'all':
             tables = ['twitter_posts', 'vk_posts', 'ok_posts']
@@ -865,14 +865,14 @@ def get_social_media_data():
         elif source == 'ok':
             tables = ['ok_posts']
         else:
-            return jsonify({'status': 'error', 'message': 'Неподдерживаемый источник'}), 400
+            return jsonify({'status': 'error', 'message': 'РќРµРїРѕРґРґРµСЂР¶РёРІР°РµРјС‹Р№ РёСЃС‚РѕС‡РЅРёРє'}), 400
         
-        # Формируем UNION запрос для всех таблиц
+        # Р¤РѕСЂРјРёСЂСѓРµРј UNION Р·Р°РїСЂРѕСЃ РґР»СЏ РІСЃРµС… С‚Р°Р±Р»РёС†
         union_queries = []
         start_date = datetime.datetime.now() - datetime.timedelta(days=days)
         
         for table in tables:
-            # Проверяем существование таблицы
+            # РџСЂРѕРІРµСЂСЏРµРј СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёРµ С‚Р°Р±Р»РёС†С‹
             check_table_query = f"""
                 SELECT count() FROM system.tables 
                 WHERE database = 'news' AND name = '{table}'
@@ -886,7 +886,7 @@ def get_social_media_data():
                 
                 union_query = f"""
                     SELECT 
-                        id, title, content, source, parsed_date,
+                        id, title, content, source, published_date,
                         CASE 
                             WHEN source = 'twitter' THEN post_url
                             WHEN source = 'vk' THEN post_url
@@ -906,7 +906,7 @@ def get_social_media_data():
                             ELSE 0
                         END as engagement
                     FROM news.{table}
-                    WHERE parsed_date >= '{start_date.strftime('%Y-%m-%d %H:%M:%S')}'
+                    WHERE published_date >= '{start_date.strftime('%Y-%m-%d %H:%M:%S')}'
                     {search_condition}
                 """
                 union_queries.append(union_query)
@@ -920,21 +920,21 @@ def get_social_media_data():
                 'total_pages': 0
             })
         
-        # Объединяем запросы и добавляем пагинацию
+        # РћР±СЉРµРґРёРЅСЏРµРј Р·Р°РїСЂРѕСЃС‹ Рё РґРѕР±Р°РІР»СЏРµРј РїР°РіРёРЅР°С†РёСЋ
         full_query = " UNION ALL ".join(union_queries)
         full_query += f"""
-            ORDER BY parsed_date DESC
+            ORDER BY published_date DESC
             LIMIT {page_size} OFFSET {(page - 1) * page_size}
         """
         
         result = client.query(full_query)
         
-        # Получаем общее количество записей для пагинации
-        count_query = " UNION ALL ".join([q.replace("SELECT id, title, content, source, parsed_date, CASE WHEN source = 'twitter' THEN post_url WHEN source = 'vk' THEN post_url WHEN source = 'ok' THEN post_url ELSE '' END as post_url, CASE WHEN source = 'twitter' THEN author WHEN source = 'vk' THEN group_name WHEN source = 'ok' THEN group_name ELSE '' END as author_or_group, CASE WHEN source = 'twitter' THEN likes_count WHEN source = 'vk' THEN likes_count WHEN source = 'ok' THEN likes_count ELSE 0 END as engagement", "SELECT count() as total") for q in union_queries])
+        # РџРѕР»СѓС‡Р°РµРј РѕР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїРёСЃРµР№ РґР»СЏ РїР°РіРёРЅР°С†РёРё
+        count_query = " UNION ALL ".join([q.replace("SELECT id, title, content, source, published_date, CASE WHEN source = 'twitter' THEN post_url WHEN source = 'vk' THEN post_url WHEN source = 'ok' THEN post_url ELSE '' END as post_url, CASE WHEN source = 'twitter' THEN author WHEN source = 'vk' THEN group_name WHEN source = 'ok' THEN group_name ELSE '' END as author_or_group, CASE WHEN source = 'twitter' THEN likes_count WHEN source = 'vk' THEN likes_count WHEN source = 'ok' THEN likes_count ELSE 0 END as engagement", "SELECT count() as total") for q in union_queries])
         count_result = client.query(f"SELECT sum(total) FROM ({count_query})")
         total_count = count_result.result_rows[0][0] if count_result.result_rows else 0
         
-        # Форматируем данные
+        # Р¤РѕСЂРјР°С‚РёСЂСѓРµРј РґР°РЅРЅС‹Рµ
         posts = []
         for row in result.result_rows:
             posts.append({
@@ -942,7 +942,7 @@ def get_social_media_data():
                 'title': row[1] or '',
                 'content': row[2] or '',
                 'source': row[3],
-                'parsed_date': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else '',
+                'published_date': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else '',
                 'post_url': row[5] or '',
                 'author_or_group': row[6] or '',
                 'engagement': row[7] or 0
@@ -962,7 +962,7 @@ def get_social_media_data():
     except Exception as e:
         return jsonify({
             'status': 'error',
-            'message': f'Ошибка при получении данных социальных сетей: {str(e)}'
+            'message': f'РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё РґР°РЅРЅС‹С… СЃРѕС†РёР°Р»СЊРЅС‹С… СЃРµС‚РµР№: {str(e)}'
         }), 500
     finally:
         if 'client' in locals():
@@ -970,18 +970,18 @@ def get_social_media_data():
 
 @news_api_bp.route('/statistics', methods=['GET'])
 def get_statistics():
-    """Получение статистики по количеству статей.
+    """РџРѕР»СѓС‡РµРЅРёРµ СЃС‚Р°С‚РёСЃС‚РёРєРё РїРѕ РєРѕР»РёС‡РµСЃС‚РІСѓ СЃС‚Р°С‚РµР№.
     
-    Возвращает общее количество статей и разбивку по категориям
-    для отображения на главной странице.
+    Р’РѕР·РІСЂР°С‰Р°РµС‚ РѕР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚Р°С‚РµР№ Рё СЂР°Р·Р±РёРІРєСѓ РїРѕ РєР°С‚РµРіРѕСЂРёСЏРј
+    РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РЅР° РіР»Р°РІРЅРѕР№ СЃС‚СЂР°РЅРёС†Рµ.
     
     Returns:
-        JSON: Статистика по количеству статей
+        JSON: РЎС‚Р°С‚РёСЃС‚РёРєР° РїРѕ РєРѕР»РёС‡РµСЃС‚РІСѓ СЃС‚Р°С‚РµР№
     """
     try:
         client = get_clickhouse_client()
         
-        # Получаем общее количество статей из всех источников (включая старые)
+        # РџРѕР»СѓС‡Р°РµРј РѕР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚Р°С‚РµР№ РёР· РІСЃРµС… РёСЃС‚РѕС‡РЅРёРєРѕРІ (РІРєР»СЋС‡Р°СЏ СЃС‚Р°СЂС‹Рµ)
         total_query = """
             SELECT COUNT(*) as total FROM (
                 SELECT id FROM news.ria_headlines
@@ -1049,7 +1049,7 @@ def get_statistics():
         total_result = client.query(total_query)
         total_count = total_result.result_rows[0][0] if total_result.result_rows else 0
         
-        # Получаем статистику по категориям
+        # РџРѕР»СѓС‡Р°РµРј СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ РєР°С‚РµРіРѕСЂРёСЏРј
         categories_stats = {}
         
         categories = {
@@ -1060,7 +1060,7 @@ def get_statistics():
             'information_social': 'Информационно-социальные аспекты'
         }
         
-        # Получаем список всех существующих таблиц в схеме news
+        # РџРѕР»СѓС‡Р°РµРј СЃРїРёСЃРѕРє РІСЃРµС… СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… С‚Р°Р±Р»РёС† РІ СЃС…РµРјРµ news
         existing_tables_query = """
             SELECT name FROM system.tables 
             WHERE database = 'news'
@@ -1070,11 +1070,11 @@ def get_statistics():
         existing_tables = {row[0] for row in existing_tables_result.result_rows}
         
         for category_key, category_name in categories.items():
-            # Список источников для проверки
+            # РЎРїРёСЃРѕРє РёСЃС‚РѕС‡РЅРёРєРѕРІ РґР»СЏ РїСЂРѕРІРµСЂРєРё
             sources = ['ria', 'lenta', 'rbc', 'gazeta', 'kommersant', 'tsn', 'unian', 'rt', 
                       'cnn', 'aljazeera', 'reuters', 'france24', 'dw', 'euronews', 'bbc', 'israil']
             
-            # Строим запрос только для существующих таблиц
+            # РЎС‚СЂРѕРёРј Р·Р°РїСЂРѕСЃ С‚РѕР»СЊРєРѕ РґР»СЏ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… С‚Р°Р±Р»РёС†
             union_parts = []
             for source in sources:
                 table_name = f"{source}_{category_key}"
@@ -1097,7 +1097,7 @@ def get_statistics():
                 'count': category_count
             }
         
-        # Получаем статистику по пользовательским таблицам
+        # РџРѕР»СѓС‡Р°РµРј СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРј С‚Р°Р±Р»РёС†Р°Рј
         custom_tables_query = """
             SELECT name FROM system.tables 
             WHERE database = 'news' 
@@ -1139,15 +1139,15 @@ def get_statistics():
 
 @news_api_bp.route('/categories', methods=['GET'])
 def get_categories():
-    """Получение списка доступных категорий новостей, включая пользовательские сайты.
+    """РџРѕР»СѓС‡РµРЅРёРµ СЃРїРёСЃРєР° РґРѕСЃС‚СѓРїРЅС‹С… РєР°С‚РµРіРѕСЂРёР№ РЅРѕРІРѕСЃС‚РµР№, РІРєР»СЋС‡Р°СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ СЃР°Р№С‚С‹.
     
     Returns:
-        JSON: Список категорий с их названиями и типами
+        JSON: РЎРїРёСЃРѕРє РєР°С‚РµРіРѕСЂРёР№ СЃ РёС… РЅР°Р·РІР°РЅРёСЏРјРё Рё С‚РёРїР°РјРё
     """
     try:
         client = get_clickhouse_client()
         
-        # Базовые категории
+        # Р‘Р°Р·РѕРІС‹Рµ РєР°С‚РµРіРѕСЂРёРё
         base_categories = [
             {'id': 'all', 'name': 'Все категории', 'type': 'base'},
             {'id': 'military_operations', 'name': 'Военные операции', 'type': 'base'},
@@ -1157,7 +1157,7 @@ def get_categories():
         {'id': 'information_social', 'name': 'Информационно-социальные аспекты', 'type': 'base'}
         ]
         
-        # Получаем пользовательские таблицы
+        # РџРѕР»СѓС‡Р°РµРј РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ С‚Р°Р±Р»РёС†С‹
         custom_tables_query = """
             SELECT name 
             FROM system.tables 
@@ -1170,7 +1170,7 @@ def get_categories():
         
         for table in custom_tables.result_rows:
             table_name = table[0]
-            # Извлекаем название сайта из имени таблицы
+            # РР·РІР»РµРєР°РµРј РЅР°Р·РІР°РЅРёРµ СЃР°Р№С‚Р° РёР· РёРјРµРЅРё С‚Р°Р±Р»РёС†С‹
             site_name = table_name.replace('custom_', '').replace('_headlines', '').replace('_', '.')
             custom_categories.append({
                 'id': table_name,
@@ -1193,58 +1193,58 @@ def get_categories():
         if 'client' in locals():
             client.close()
 
-# API-эндпоинт для получения данных из telegram_headlines
+# API-СЌРЅРґРїРѕРёРЅС‚ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С… РёР· telegram_headlines
 @news_api_bp.route('/telegram', methods=['GET'])
 def get_telegram_headlines():
-    """Получение заголовков новостей из Telegram каналов с пагинацией.
+    """РџРѕР»СѓС‡РµРЅРёРµ Р·Р°РіРѕР»РѕРІРєРѕРІ РЅРѕРІРѕСЃС‚РµР№ РёР· Telegram РєР°РЅР°Р»РѕРІ СЃ РїР°РіРёРЅР°С†РёРµР№.
     
     Query Parameters:
-        page (int): Номер страницы для пагинации (по умолчанию 1)
-        channel (str): Фильтр по конкретному каналу (опционально)
-        days (int): Количество дней для выборки (по умолчанию 7)
+        page (int): РќРѕРјРµСЂ СЃС‚СЂР°РЅРёС†С‹ РґР»СЏ РїР°РіРёРЅР°С†РёРё (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 1)
+        channel (str): Р¤РёР»СЊС‚СЂ РїРѕ РєРѕРЅРєСЂРµС‚РЅРѕРјСѓ РєР°РЅР°Р»Сѓ (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)
+        days (int): РљРѕР»РёС‡РµСЃС‚РІРѕ РґРЅРµР№ РґР»СЏ РІС‹Р±РѕСЂРєРё (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 7)
     
     Returns:
-        JSON: Список заголовков Telegram новостей с метаданными пагинации
+        JSON: РЎРїРёСЃРѕРє Р·Р°РіРѕР»РѕРІРєРѕРІ Telegram РЅРѕРІРѕСЃС‚РµР№ СЃ РјРµС‚Р°РґР°РЅРЅС‹РјРё РїР°РіРёРЅР°С†РёРё
     """
     try:
         page = int(request.args.get('page', 1))
-        page_size = 10  # Количество записей на странице
+        page_size = 10  # РљРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїРёСЃРµР№ РЅР° СЃС‚СЂР°РЅРёС†Рµ
         channel = request.args.get('channel', None)
         days = int(request.args.get('days', 7))
         
         client = get_clickhouse_client()
         
-        # Базовый запрос
+        # Р‘Р°Р·РѕРІС‹Р№ Р·Р°РїСЂРѕСЃ
         query = '''
-            SELECT id, title, content, channel, message_id, message_link, parsed_date
+            SELECT id, title, content, channel, message_id, message_link, published_date
             FROM (
-                SELECT id, title, content, channel, message_id, message_link, parsed_date FROM news.telegram_ukraine
+                SELECT id, title, content, channel, message_id, message_link, published_date FROM news.telegram_ukraine
                 UNION ALL
-                SELECT id, title, content, channel, message_id, message_link, parsed_date FROM news.telegram_middle_east
+                SELECT id, title, content, channel, message_id, message_link, published_date FROM news.telegram_middle_east
                 UNION ALL
-                SELECT id, title, content, channel, message_id, message_link, parsed_date FROM news.telegram_fake_news
+                SELECT id, title, content, channel, message_id, message_link, published_date FROM news.telegram_fake_news
                 UNION ALL
-                SELECT id, title, content, channel, message_id, message_link, parsed_date FROM news.telegram_info_war
+                SELECT id, title, content, channel, message_id, message_link, published_date FROM news.telegram_info_war
                 UNION ALL
-                SELECT id, title, content, channel, message_id, message_link, parsed_date FROM news.telegram_europe
+                SELECT id, title, content, channel, message_id, message_link, published_date FROM news.telegram_europe
                 UNION ALL
-                SELECT id, title, content, channel, message_id, message_link, parsed_date FROM news.telegram_usa
+                SELECT id, title, content, channel, message_id, message_link, published_date FROM news.telegram_usa
                 UNION ALL
-                SELECT id, title, content, channel, message_id, message_link, parsed_date FROM news.telegram_other
+                SELECT id, title, content, channel, message_id, message_link, published_date FROM news.telegram_other
             )
-            WHERE parsed_date >= %(start_date)s
+            WHERE published_date >= %(start_date)s
         '''
         
-        # Добавляем фильтр по каналу, если указан
+        # Р”РѕР±Р°РІР»СЏРµРј С„РёР»СЊС‚СЂ РїРѕ РєР°РЅР°Р»Сѓ, РµСЃР»Рё СѓРєР°Р·Р°РЅ
         if channel:
             query += ' AND channel = %(channel)s'
             
         query += '''
-            ORDER BY parsed_date DESC
+            ORDER BY published_date DESC
             LIMIT %(limit)s OFFSET %(offset)s
         '''
         
-        # Параметры запроса
+        # РџР°СЂР°РјРµС‚СЂС‹ Р·Р°РїСЂРѕСЃР°
         start_date = datetime.datetime.now() - datetime.timedelta(days=days)
         params = {
             'start_date': start_date,
@@ -1257,7 +1257,7 @@ def get_telegram_headlines():
             
         result = client.query(query, parameters=params)
         
-        # Форматируем данные
+        # Р¤РѕСЂРјР°С‚РёСЂСѓРµРј РґР°РЅРЅС‹Рµ
         headlines = [
             {
                 'id': str(row[0]),
@@ -1266,28 +1266,28 @@ def get_telegram_headlines():
                 'channel': row[3],
                 'message_id': row[4],
                 'message_link': row[5],
-                'parsed_date': row[6].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[6], 'strftime') else row[6]
+                'published_date': row[6].strftime('%Y-%m-%d %H:%M:%S') if hasattr(row[6], 'strftime') else row[6]
             }
             for row in result.result_rows
         ]
         
-        # Подсчет общего количества записей для пагинации
+        # РџРѕРґСЃС‡РµС‚ РѕР±С‰РµРіРѕ РєРѕР»РёС‡РµСЃС‚РІР° Р·Р°РїРёСЃРµР№ РґР»СЏ РїР°РіРёРЅР°С†РёРё
         count_query = '''
             SELECT COUNT(*)
             FROM (
-                SELECT id FROM news.telegram_ukraine WHERE parsed_date >= %(start_date)s
+                SELECT id FROM news.telegram_ukraine WHERE published_date >= %(start_date)s
                 UNION ALL
-                SELECT id FROM news.telegram_middle_east WHERE parsed_date >= %(start_date)s
+                SELECT id FROM news.telegram_middle_east WHERE published_date >= %(start_date)s
                 UNION ALL
-                SELECT id FROM news.telegram_fake_news WHERE parsed_date >= %(start_date)s
+                SELECT id FROM news.telegram_fake_news WHERE published_date >= %(start_date)s
                 UNION ALL
-                SELECT id FROM news.telegram_info_war WHERE parsed_date >= %(start_date)s
+                SELECT id FROM news.telegram_info_war WHERE published_date >= %(start_date)s
                 UNION ALL
-                SELECT id FROM news.telegram_europe WHERE parsed_date >= %(start_date)s
+                SELECT id FROM news.telegram_europe WHERE published_date >= %(start_date)s
                 UNION ALL
-                SELECT id FROM news.telegram_usa WHERE parsed_date >= %(start_date)s
+                SELECT id FROM news.telegram_usa WHERE published_date >= %(start_date)s
                 UNION ALL
-                SELECT id FROM news.telegram_other WHERE parsed_date >= %(start_date)s
+                SELECT id FROM news.telegram_other WHERE published_date >= %(start_date)s
             )
         '''
         
@@ -1297,7 +1297,7 @@ def get_telegram_headlines():
         total_count = client.query(count_query, parameters=params).result_rows[0][0]
         total_pages = (total_count + page_size - 1) // page_size
         
-        # Получаем список доступных каналов для фильтрации
+        # РџРѕР»СѓС‡Р°РµРј СЃРїРёСЃРѕРє РґРѕСЃС‚СѓРїРЅС‹С… РєР°РЅР°Р»РѕРІ РґР»СЏ С„РёР»СЊС‚СЂР°С†РёРё
         channels_query = '''
             SELECT DISTINCT channel FROM (
                 SELECT channel FROM news.telegram_ukraine
@@ -1332,27 +1332,27 @@ def get_telegram_headlines():
 
 @news_api_bp.route('/sources', methods=['GET'])
 def get_available_sources():
-    """Получение списка всех доступных источников данных.
+    """РџРѕР»СѓС‡РµРЅРёРµ СЃРїРёСЃРєР° РІСЃРµС… РґРѕСЃС‚СѓРїРЅС‹С… РёСЃС‚РѕС‡РЅРёРєРѕРІ РґР°РЅРЅС‹С….
     
-    Возвращает список всех доступных источников новостей,
-    включая стандартные источники и пользовательские таблицы.
+    Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃРїРёСЃРѕРє РІСЃРµС… РґРѕСЃС‚СѓРїРЅС‹С… РёСЃС‚РѕС‡РЅРёРєРѕРІ РЅРѕРІРѕСЃС‚РµР№,
+    РІРєР»СЋС‡Р°СЏ СЃС‚Р°РЅРґР°СЂС‚РЅС‹Рµ РёСЃС‚РѕС‡РЅРёРєРё Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ С‚Р°Р±Р»РёС†С‹.
     
     Returns:
-        JSON: Список доступных источников с их описаниями
+        JSON: РЎРїРёСЃРѕРє РґРѕСЃС‚СѓРїРЅС‹С… РёСЃС‚РѕС‡РЅРёРєРѕРІ СЃ РёС… РѕРїРёСЃР°РЅРёСЏРјРё
     """
     try:
         client = get_clickhouse_client()
         
-        # Стандартные источники
+        # РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ РёСЃС‚РѕС‡РЅРёРєРё
         standard_sources = {
-            'all': 'Все источники',
-            'ria': 'РИА Новости',
+            'all': 'Все категории',
+            'ria': 'Р РРђ РќРѕРІРѕСЃС‚Рё',
             'lenta': 'Lenta.ru',
-            'rbc': 'РБК',
-            'gazeta': 'Газета.ru',
-            'kommersant': 'Коммерсантъ',
-            'tsn': 'ТСН',
-            'unian': 'УНИАН',
+            'rbc': 'Р Р‘Рљ',
+            'gazeta': 'Р“Р°Р·РµС‚Р°.ru',
+            'kommersant': 'РљРѕРјРјРµСЂСЃР°РЅС‚СЉ',
+            'tsn': 'РўРЎРќ',
+            'unian': 'РЈРќРРђРќ',
             'rt': 'RT',
             'cnn': 'CNN',
             'aljazeera': 'Al Jazeera',
@@ -1362,10 +1362,10 @@ def get_available_sources():
             'euronews': 'Euronews',
             'bbc': 'BBC',
             'israil': '7kanal.co.il',
-            'telegram': 'Telegram каналы'
+            'telegram': 'Telegram РєР°РЅР°Р»С‹'
         }
         
-        # Получаем список пользовательских таблиц
+        # РџРѕР»СѓС‡Р°РµРј СЃРїРёСЃРѕРє РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёС… С‚Р°Р±Р»РёС†
         custom_tables_query = """
             SELECT name FROM system.tables 
             WHERE database = 'news' 
@@ -1378,21 +1378,21 @@ def get_available_sources():
         
         for row in custom_tables_result.result_rows:
             table_name = row[0]
-            # Извлекаем название сайта из имени таблицы
+            # РР·РІР»РµРєР°РµРј РЅР°Р·РІР°РЅРёРµ СЃР°Р№С‚Р° РёР· РёРјРµРЅРё С‚Р°Р±Р»РёС†С‹
             site_name = table_name.replace('custom_', '').replace('_headlines', '')
             display_name = site_name.replace('_', '.').title()
-            custom_sources[table_name] = f'Пользовательский сайт: {display_name}'
+            custom_sources[table_name] = f'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёР№ СЃР°Р№С‚: {display_name}'
         
-        # Стандартные категории
+        # РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ РєР°С‚РµРіРѕСЂРёРё
         standard_categories = {
             'all': 'Все категории',
-            'ukraine': 'Украина',
-            'middle_east': 'Ближний Восток',
-            'fake_news': 'Фейковые новости',
-            'info_war': 'Информационная война',
-            'europe': 'Европа',
-            'usa': 'США',
-            'other': 'Другое'
+            'ukraine': 'РЈРєСЂР°РёРЅР°',
+            'middle_east': 'Р‘Р»РёР¶РЅРёР№ Р’РѕСЃС‚РѕРє',
+            'fake_news': 'Р¤РµР№РєРѕРІС‹Рµ РЅРѕРІРѕСЃС‚Рё',
+            'info_war': 'РРЅС„РѕСЂРјР°С†РёРѕРЅРЅР°СЏ РІРѕР№РЅР°',
+            'europe': 'Р•РІСЂРѕРїР°',
+            'usa': 'РЎРЁРђ',
+            'other': 'Р”СЂСѓРіРѕРµ'
         }
         
         return jsonify({

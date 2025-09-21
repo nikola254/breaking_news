@@ -68,9 +68,9 @@ def create_ukraine_tables_if_not_exists():
         message_link String,
         source String DEFAULT 'telegram',
         category String DEFAULT 'other',
-        parsed_date DateTime DEFAULT now()
+        published_date DateTime DEFAULT now()
     ) ENGINE = MergeTree()
-    ORDER BY (parsed_date, id)
+    ORDER BY (published_date, id)
     ''')
 
 async def get_telegram_messages(client, channel, limit=100):
@@ -228,13 +228,13 @@ async def parse_telegram_channels():
                         'message_link': message_link,
                         'category': category,
                         'source': 'telegram',
-                        'parsed_date': datetime.now()
+                        'published_date': datetime.now()
                     })
                 
                 # Insert data into ClickHouse if we have any
                 if headlines_data:
                     clickhouse_client.execute(
-                        'INSERT INTO news.telegram_headlines (title, content, channel, message_id, message_link, category, source, parsed_date) VALUES',
+                        'INSERT INTO news.telegram_headlines (title, content, channel, message_id, message_link, category, source, published_date) VALUES',
                         headlines_data
                     )
                     print(f"Added {len(headlines_data)} records to database from channel {channel}")

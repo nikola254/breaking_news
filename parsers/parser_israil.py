@@ -57,9 +57,9 @@ def create_ukraine_tables_if_not_exists():
             source_links String,
             source String DEFAULT '7kanal.co.il',
             category String DEFAULT 'section32',
-            parsed_date DateTime DEFAULT now()
+            published_date DateTime DEFAULT now()
         ) ENGINE = MergeTree()
-        ORDER BY (parsed_date, id)
+        ORDER BY (published_date, id)
     ''')
     
     # Создаем таблицы для каждой категории
@@ -212,7 +212,7 @@ def parse_israil_news(driver=None):
                     'content': content,
                     'source_links': source_links_str,
                     'category': category,
-                    'parsed_date': datetime.now()
+                    'published_date': datetime.now()
                 })
                 
             except Exception as e:
@@ -223,7 +223,7 @@ def parse_israil_news(driver=None):
         if headlines_data:
             # Вставляем в общую таблицу
             client.execute(
-                'INSERT INTO news.israil_headlines (title, link, content, source_links, category, parsed_date) VALUES',
+                'INSERT INTO news.israil_headlines (title, link, content, source_links, category, published_date) VALUES',
                 headlines_data
             )
             
@@ -239,7 +239,7 @@ def parse_israil_news(driver=None):
             for category, data in categorized_data.items():
                 if data:
                     client.execute(
-                        f'INSERT INTO news.israil_{category} (title, link, content, source_links, category, parsed_date) VALUES',
+                        f'INSERT INTO news.israil_{category} (title, link, content, source_links, category, published_date) VALUES',
                         data
                     )
             

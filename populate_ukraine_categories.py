@@ -80,13 +80,13 @@ def populate_category_tables():
                 
                 # Копируем данные (только нужные колонки)
                 insert_query = f"""
-                INSERT INTO {target_table} (id, title, content, source, parsed_date, category)
+                INSERT INTO {target_table} (id, title, content, source, published_date, category)
                 SELECT 
                     id,
                     title,
                     content,
                     source,
-                    parsed_date,
+                    published_date,
                     category
                 FROM {source_table}
                 """

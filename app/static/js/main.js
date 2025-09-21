@@ -28,7 +28,7 @@ function loadNews(category, page) {
                     data.data.forEach(news => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
-                            <td>${news.parsed_date ? news.parsed_date.split(' ')[0] : '-'}</td>
+                            <td>${news.published_date ? news.published_date.split(' ')[0] : '-'}</td>
                             <td>${news.source || '-'}</td>
                             <td class="news-title" onclick="openModal(${JSON.stringify(news).replace(/"/g, '&quot;')})"
                             >${news.title || '-'}</td>
@@ -149,7 +149,7 @@ function openModal(news) {
     const modal = document.getElementById('news-modal');
     document.getElementById('modal-title').textContent = news.title;
     document.getElementById('modal-source').innerHTML = `<strong>Источник:</strong> ${news.source}`;
-    document.getElementById('modal-date').innerHTML = `<strong>Дата:</strong> ${news.parsed_date}`;
+    document.getElementById('modal-date').innerHTML = `<strong>Дата:</strong> ${news.published_date}`;
     document.getElementById('modal-content').textContent = news.content;
 
     // Определяем ссылку в зависимости от источника

@@ -88,14 +88,14 @@ class SVOTrendsAnalyzer:
                 interest_level *= 1.8  # Всплеск интереса
             
             # Моделирование роста социальной напряженности
-            tension_growth = 1 + progress * 3  # Линейный рост с ускорением
-            economic_pressure = 1 + 0.5 * progress  # Экономическое давление
+            tension_growth = 1 + progress * 1.5  # Умеренный рост
+            economic_pressure = 1 + 0.3 * progress  # Экономическое давление
             
             social_tension = base_tension * tension_growth * economic_pressure
             
             # Добавляем шум и случайные события
             noise_interest = np.random.normal(0, interest_level * 0.1)
-            noise_tension = np.random.normal(0, social_tension * 0.05)
+            noise_tension = np.random.normal(0, 5)  # Фиксированный шум
             
             interest_level = max(5, interest_level + noise_interest)  # Минимум 5%
             social_tension = max(10, min(100, social_tension + noise_tension))  # 10-100%

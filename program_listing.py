@@ -165,9 +165,9 @@ def create_database_tables():
             content String,
             source String DEFAULT 'ria.ru',
             category String DEFAULT 'world',
-            parsed_date DateTime DEFAULT now()
+            published_date DateTime DEFAULT now()
         ) ENGINE = MergeTree()
-        ORDER BY (parsed_date, id)
+        ORDER BY (published_date, id)
     ''')
     
     # Создание таблицы для Израиль Новости
@@ -180,9 +180,9 @@ def create_database_tables():
             source_links String,
             source String DEFAULT '7kanal.co.il',
             category String DEFAULT 'section32',
-            parsed_date DateTime DEFAULT now()
+            published_date DateTime DEFAULT now()
         ) ENGINE = MergeTree()
-        ORDER BY (parsed_date, id)
+        ORDER BY (published_date, id)
     ''')
     
     # Создание таблиц для категорий
@@ -243,7 +243,7 @@ def parse_and_structure_ria_data():
                 'link': link,
                 'content': content,
                 'category': category,
-                'parsed_date': datetime.now()
+                'published_date': datetime.now()
             })
             
             new_count += 1
@@ -254,7 +254,7 @@ def parse_and_structure_ria_data():
     # Вставка данных в базу
     if headlines_data:
         client.execute(
-            'INSERT INTO news.ria_headlines (title, link, content, category, parsed_date) VALUES',
+            'INSERT INTO news.ria_headlines (title, link, content, category, published_date) VALUES',
             headlines_data
         )
         
@@ -269,7 +269,7 @@ def parse_and_structure_ria_data():
         for category, data in categorized_data.items():
             if data:
                 client.execute(
-                    f'INSERT INTO news.ria_{category} (title, link, content, category, parsed_date) VALUES',
+                    f'INSERT INTO news.ria_{category} (title, link, content, category, published_date) VALUES',
                     data
                 )
     
@@ -359,7 +359,7 @@ def parse_and_structure_israel_data():
                 'content': content,
                 'source_links': ",".join(source_links),
                 'category': category,
-                'parsed_date': datetime.now()
+                'published_date': datetime.now()
             })
             
             new_count += 1
@@ -368,7 +368,7 @@ def parse_and_structure_israel_data():
         # Вставка в базу данных
         if headlines_data:
             client.execute(
-                'INSERT INTO news.israil_headlines (title, link, content, source_links, category, parsed_date) VALUES',
+                'INSERT INTO news.israil_headlines (title, link, content, source_links, category, published_date) VALUES',
                 headlines_data
             )
         

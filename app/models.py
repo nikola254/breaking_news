@@ -55,18 +55,18 @@ class UkraineConflictNews:
         if category == 'all':
             query = """
                 SELECT id, title, content, source, category, relevance_score, 
-                       ai_confidence, sentiment_score, parsed_date, published_date
+                       ai_confidence, sentiment_score, published_date, published_date
                 FROM ukraine_conflict.all_news 
-                ORDER BY parsed_date DESC 
+                ORDER BY published_date DESC 
                 LIMIT {limit} OFFSET {offset}
             """.format(limit=limit, offset=offset)
         else:
             query = """
                 SELECT id, title, content, source, category, relevance_score, 
-                       ai_confidence, sentiment_score, parsed_date, published_date
+                       ai_confidence, sentiment_score, published_date, published_date
                 FROM ukraine_conflict.all_news 
                 WHERE category = '{category}'
-                ORDER BY parsed_date DESC 
+                ORDER BY published_date DESC 
                 LIMIT {limit} OFFSET {offset}
             """.format(category=category, limit=limit, offset=offset)
         
@@ -244,9 +244,9 @@ class SocialMediaData:
         table_name = f"ukraine_conflict.{category}"
         query = """
             SELECT id, title, content, source, relevance_score, 
-                   ai_confidence, sentiment_score, parsed_date, published_date
+                   ai_confidence, sentiment_score, published_date, published_date
             FROM {table_name} 
-            ORDER BY parsed_date DESC 
+            ORDER BY published_date DESC 
             LIMIT {limit} OFFSET {offset}
         """.format(table_name=table_name, limit=limit, offset=offset)
         
@@ -319,20 +319,20 @@ class SocialMediaData:
         if category == 'all':
             query = """
                 SELECT id, title, content, source, category, relevance_score, 
-                       ai_confidence, sentiment_score, parsed_date, published_date
+                       ai_confidence, sentiment_score, published_date, published_date
                 FROM ukraine_conflict.all_news 
                 WHERE title ILIKE '%{search_term}%' OR content ILIKE '%{search_term}%'
-                ORDER BY parsed_date DESC 
+                ORDER BY published_date DESC 
                 LIMIT {limit}
             """.format(search_term=search_term, limit=limit)
         else:
             query = """
                 SELECT id, title, content, source, category, relevance_score, 
-                       ai_confidence, sentiment_score, parsed_date, published_date
+                       ai_confidence, sentiment_score, published_date, published_date
                 FROM ukraine_conflict.all_news 
                 WHERE (title ILIKE '%{search_term}%' OR content ILIKE '%{search_term}%') 
                       AND category = '{category}'
-                ORDER BY parsed_date DESC 
+                ORDER BY published_date DESC 
                 LIMIT {limit}
             """.format(search_term=search_term, category=category, limit=limit)
         
