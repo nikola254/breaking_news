@@ -65,3 +65,6 @@ ukraine*.gif
 ukraine*.bmp
 ukraine*.webp
 ukraine*.svg
+
+add_test_ukraine_data.py
+test_social_tension.py
