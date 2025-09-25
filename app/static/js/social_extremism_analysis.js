@@ -170,7 +170,7 @@ function loadInitialData() {
 }
 
 function loadActiveSessions() {
-    fetch('/social-analysis/monitoring-sessions')
+    fetch('/social-analysis/active-sessions')
         .then(response => response.json())
         .then(data => {
             const container = document.getElementById('activeSessions');
@@ -225,7 +225,7 @@ function loadContent() {
 }
 
 function loadSources() {
-    fetch('/social-analysis/sources')
+    fetch('/social-analysis/available-sources')
         .then(response => response.json())
         .then(data => {
             const tbody = document.getElementById('sourcesTableBody');
@@ -292,13 +292,26 @@ function formatAccountResults(results) {
 }
 
 function formatSearchResults(results) {
-    if (!results || results.length === 0) {
+    // Сбор всех результатов из разных платформ в один массив
+    let allItems = [];
+    if (results && results.platform_results) {
+        for (const platformKey in results.platform_results) {
+            if (results.platform_results.hasOwnProperty(platformKey)) {
+                const platformData = results.platform_results[platformKey];
+                if (platformData.items && Array.isArray(platformData.items)) {
+                    allItems.push(...platformData.items);
+                }
+            }
+        }
+    }
+
+    if (!allItems || allItems.length === 0) {
         return '<p class="text-muted text-center">Результаты не найдены</p>';
     }
     
     let html = '<div class="row">';
     
-    results.forEach((result, index) => {
+    allItems.forEach((result, index) => {
         const badgeClass = getBadgeClass(result.classification);
         const confidence = Math.round((result.confidence || 0) * 100);
         const shortContent = result.content; // Показываем полный контент
@@ -431,18 +444,18 @@ function formatSourcesTable(sources) {
     let html = '';
     
     sources.forEach(source => {
-        const statusBadge = source.status === 'active' ? 'bg-success' : 'bg-secondary';
-        const lastCheck = source.last_check ? new Date(source.last_check).toLocaleString('ru-RU') : 'Никогда';
+        const statusBadge = source.is_active ? 'bg-success' : 'bg-secondary';
+        const lastCheck = source.last_checked ? new Date(source.last_checked).toLocaleString('ru-RU') : 'Никогда';
         
         html += '<tr>';
-        html += `<td class="text-center">${source.name}</td>`;
+        html += `<td class="text-center">${source.display_name || source.username || 'Неизвестно'}</td>`;
         html += `<td class="text-center"><i class="platform-${source.platform}"></i> ${source.platform}</td>`;
-        html += `<td class="text-center"><a href="${source.url}" target="_blank">${truncateText(source.url, 50)}</a></td>`;
-        html += `<td class="text-center"><span class="badge ${statusBadge}">${source.status}</span></td>`;
+        html += `<td class="text-center"><a href="${source.account_url}" target="_blank">${truncateText(source.account_url, 50)}</a></td>`;
+        html += `<td class="text-center"><span class="badge ${statusBadge}">${source.is_active ? 'Активен' : 'Неактивен'}</span></td>`;
         html += `<td class="text-center">${lastCheck}</td>`;
-        html += `<td class="text-center">${source.content_found || 0}</td>`;
+        html += `<td class="text-center">${truncateText(source.description || '', 50)}</td>`;
         html += `<td class="text-center">
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="checkSource('${source.id}')">Проверить</button>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editSource('${source.id}')">Редактировать</button>
                     <button class="btn btn-sm btn-outline-danger" onclick="removeSource('${source.id}')">Удалить</button>
                  </td>`;
         html += '</tr>';
@@ -545,7 +558,7 @@ function calculateRiskLevel(channel) {
 // Функции действий
 function stopMonitoring(sessionId) {
     if (confirm('Остановить мониторинг?')) {
-        fetch(`/social-analysis/stop-monitoring/${sessionId}`, {
+        fetch(`/social-analysis/stop-session/${sessionId}`, {
             method: 'POST'
         })
         .then(response => response.json())
@@ -559,33 +572,29 @@ function stopMonitoring(sessionId) {
     }
 }
 
-function checkSource(sourceId) {
-    fetch(`/social-analysis/check-source/${sourceId}`, {
-        method: 'POST'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Проверка источника запущена');
-            loadSources();
-        } else {
-            alert('Ошибка: ' + data.error);
-        }
-    });
+function editSource(sourceId) {
+    // Реализация редактирования источника
+    alert('Редактирование источника: ' + sourceId); // Заглушка
+    // Здесь нужно будет загрузить данные источника, заполнить форму и отправить на /social-analysis/edit-source
 }
 
 function removeSource(sourceId) {
-    if (confirm('Удалить источник?')) {
+    if (confirm('Вы уверены, что хотите удалить этот источник?')) {
         fetch(`/social-analysis/remove-source/${sourceId}`, {
             method: 'DELETE'
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                alert('Источник успешно удален.');
                 loadSources();
             } else {
-                alert('Ошибка: ' + data.error);
+                alert('Ошибка при удалении источника: ' + data.error);
             }
+        })
+        .catch(error => {
+            console.error('Error removing source:', error);
+            alert('Произошла ошибка при удалении источника.');
         });
     }
 }

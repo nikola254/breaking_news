@@ -76,7 +76,8 @@ class TelegramAnalyzer:
             raise Exception("Client not initialized")
             
         try:
-            entity = await self.client.get_entity(channel_username)
+            username = self._normalize_channel_username(channel_username)
+            entity = await self.client.get_entity(username)
             
             if isinstance(entity, Channel):
                 full_info = await self.client.get_entity(entity)
@@ -108,7 +109,8 @@ class TelegramAnalyzer:
         messages = []
         
         try:
-            entity = await self.client.get_entity(channel_username)
+            username = self._normalize_channel_username(channel_username)
+            entity = await self.client.get_entity(username)
             
             async for message in self.client.iter_messages(entity, limit=limit, offset_date=offset_date):
                 if message.text:
@@ -143,9 +145,34 @@ class TelegramAnalyzer:
             self.logger.warning(f"Rate limit hit, waiting {e.seconds} seconds")
             await asyncio.sleep(e.seconds)
         except Exception as e:
+            # Мягкая обработка ошибки отсутствующего пользователя/канала
+            err_text = str(e)
+            if "No user has" in err_text or "Could not find the input entity" in err_text:
+                self.logger.error(f"Error getting messages from {channel_username}: {err_text}")
+                self.logger.warning(f"Channel '{channel_username}' не найден. Пропускаем.")
+                return []
             self.logger.error(f"Error getting messages from {channel_username}: {e}")
             
         return messages
+
+    def _normalize_channel_username(self, channel_username: str) -> str:
+        """Приводит ввод к формату, понятному Telethon: '@name' или numeric ID.
+        Поддерживает URL вида 'https://t.me/name' или 't.me/name'."""
+        if not channel_username:
+            return channel_username
+        value = channel_username.strip()
+        # Если это URL t.me
+        if value.startswith('http://') or value.startswith('https://') or value.startswith('t.me/'):
+            # Удаляем протокол
+            value = re.sub(r'^https?://', '', value)
+            # Удаляем домен t.me/
+            value = re.sub(r'^t\.me/', '', value)
+            # Берем часть до следующего '/'
+            value = value.split('/')[0]
+        # Добавляем '@' если отсутствует и это не числовой ID
+        if not value.startswith('@') and not value.isdigit():
+            value = '@' + value
+        return value
     
     async def get_chat_messages(self, chat_id: int, limit: int = 100) -> List[Dict]:
         """Получение сообщений из чата"""

@@ -112,21 +112,20 @@ analysis_status = {
 }
 
 def get_clickhouse_client():
-    """Получение клиента ClickHouse"""
-    global clickhouse_client
-    if clickhouse_client is None:
-        try:
-            clickhouse_client = clickhouse_connect.get_client(
-                host=Config.CLICKHOUSE_HOST,
-                port=Config.CLICKHOUSE_PORT,
-                username=Config.CLICKHOUSE_USER,
-                password=Config.CLICKHOUSE_PASSWORD
-            )
-            # Создание таблиц если их нет
-            create_social_analysis_tables()
-        except Exception as e:
-            logger.error(f"Ошибка подключения к ClickHouse: {e}")
-    return clickhouse_client
+    """Получение нового клиента ClickHouse для каждого запроса.
+    Это помогает избежать ошибок конкурентного доступа в многопоточной среде.
+    """
+    try:
+        return clickhouse_connect.get_client(
+            host=Config.CLICKHOUSE_HOST,
+            port=Config.CLICKHOUSE_PORT,
+            username=Config.CLICKHOUSE_USER,
+            password=Config.CLICKHOUSE_PASSWORD,
+            database=Config.CLICKHOUSE_DATABASE  # Явно указываем базу данных
+        )
+    except Exception as e:
+        logger.error(f"Ошибка создания нового клиента ClickHouse: {e}")
+        return None
 
 def create_new_clickhouse_client():
     """Создание нового клиента ClickHouse для избежания конфликтов одновременных запросов"""
@@ -142,9 +141,10 @@ def create_new_clickhouse_client():
         return None
 
 def create_social_analysis_tables():
-    """Создание таблиц для анализа социальных сетей в ClickHouse"""
-    client = clickhouse_client
+    """Создание таблиц для анализа социальных сетей и источников в ClickHouse"""
+    client = get_clickhouse_client()
     if not client:
+        logger.error("Не удалось получить клиент ClickHouse для создания таблиц.")
         return
     
     try:
@@ -188,9 +188,68 @@ def create_social_analysis_tables():
             ORDER BY created_date
         """)
         
-        logger.info("Таблицы ClickHouse для анализа социальных сетей созданы")
+        # Таблица для пользовательских источников
+        client.command("""
+            CREATE TABLE IF NOT EXISTS user_sources (
+                id UUID DEFAULT generateUUIDv4(),
+                platform String,
+                account_url String,
+                username String,
+                display_name String,
+                description String DEFAULT '',
+                is_active UInt8 DEFAULT 1,
+                added_date DateTime DEFAULT now(),
+                last_checked DateTime DEFAULT now(),
+                metadata String DEFAULT '{}'
+            ) ENGINE = MergeTree()
+            ORDER BY added_date
+        """)
+        
+        logger.info("Таблицы ClickHouse для анализа социальных сетей и источников созданы")
     except Exception as e:
         logger.error(f"Ошибка создания таблиц ClickHouse: {e}")
+        import traceback
+        logger.error(f"Traceback for table creation error: {traceback.format_exc()}")
+
+@social_bp.route('/add-source', methods=['POST'])
+def add_source():
+    """Добавление нового источника для мониторинга и анализа"""
+    try:
+        platform = request.form.get('platform')
+        account_url = request.form.get('account_url')
+        username = request.form.get('username')
+        display_name = request.form.get('display_name', username or account_url)
+        description = request.form.get('description', '')
+
+        if not all([platform, account_url, username]):
+            return jsonify({'success': False, 'error': 'Платформа, URL аккаунта и юзернейм обязательны.'}), 400
+
+        client = get_clickhouse_client()
+        if not client:
+            return jsonify({'success': False, 'error': 'Ошибка подключения к базе данных.'}), 500
+
+        # Проверяем, существует ли уже такой источник
+        existing_source = client.query(
+            "SELECT count(*) FROM user_sources WHERE platform = %(platform)s AND account_url = %(account_url)s",
+            parameters={'platform': platform, 'account_url': account_url}
+        ).result_rows[0][0]
+
+        if existing_source > 0:
+            return jsonify({'success': False, 'error': 'Источник с таким URL уже существует.'}), 409
+
+        # Вставка нового источника
+        client.insert('user_sources', [[platform, account_url, username, display_name, description, 1, datetime.now(), datetime.now(), '{}']],
+                     column_names=['platform', 'account_url', 'username', 'display_name', 'description', 'is_active', 'added_date', 'last_checked', 'metadata'])
+        
+        logger.info(f"Добавлен новый источник: {display_name} ({account_url})")
+
+        return jsonify({'success': True, 'message': 'Источник успешно добавлен.'})
+
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении источника: {e}")
+        import traceback
+        logger.error(f"Traceback for add_source error: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # Маршрут для отображения страницы анализа социальных сетей
 @social_bp.route('/', methods=['GET'])
@@ -204,7 +263,15 @@ def extremist_content():
     """Отображение страницы просмотра экстремистского контента и аналитики"""
     return render_template('extremist_content.html')
 
+@social_bp.route('/monitoring-sessions', methods=['GET'])
+def monitoring_sessions():
+    """Отображение страницы управления сессиями мониторинга"""
+    return render_template('monitoring_sessions.html')
 
+@social_bp.route('/sources', methods=['GET'])
+def sources_management():
+    """Отображение страницы управления источниками"""
+    return render_template('sources.html')
 
 def save_analysis_result(platform: str, account_url: str, content: str, 
                         classification: str, confidence: float, keywords: list, metadata: str,
@@ -494,8 +561,8 @@ def search_keywords():
                     )
                     await telegram_analyzer.initialize(password=Config.TELEGRAM_PASSWORD)
                     
-                    # Поиск по популярным каналам (можно расширить)
-                    search_channels = ['@breakingnews', '@news24', '@politicsnews']
+                    # Поиск по популярным каналам (дополнен inosmichannel)
+                    search_channels = ['@infantmilitario', '@news24', '@politicsnews', '@inosmichannel']
                     found_items = []
                     
                     for channel in search_channels:
@@ -535,12 +602,13 @@ def search_keywords():
                                         )
                                         
                                         found_items.append({
-                                            'content': msg['text'][:200] + '...' if len(msg['text']) > 200 else msg['text'],
-                                            'highlighted_text': classification.get('highlighted_text', msg['text'][:200]),
+                                            'content': msg['text'],
+                                            'highlighted_text': classification.get('highlighted_text', msg['text']),
                                             'threat_color': classification.get('threat_color', '#28a745'),
                                             'classification': classification['label'],
                                             'confidence': classification['confidence'],
                                             'channel': channel,
+                                            'author': channel, # Добавляем автора
                                             'date': msg.get('date').isoformat() if msg.get('date') else None,
                                             'url': f"https://t.me/{channel}/{msg.get('id', '')}"
                                         })
@@ -747,8 +815,8 @@ def start_monitoring():
                             )
                             await telegram_analyzer.initialize(password=Config.TELEGRAM_PASSWORD)
                             
-                            # Мониторим популярные каналы
-                            monitor_channels = ['@breakingnews', '@news24', '@politicsnews']
+                            # Мониторим популярные каналы (дополнен inosmichannel)
+                            monitor_channels = ['@infantmilitario', '@news24', '@politicsnews', '@inosmichannel']
                             
                             for channel in monitor_channels:
                                 try:
@@ -1007,6 +1075,9 @@ def initialize_analyzers():
         classifier = ExtremistContentClassifier()
         logger.info("Content classifier initialized")
         
+        # Убедимся, что таблицы ClickHouse созданы
+        create_social_analysis_tables()
+
         # Telegram анализатор инициализируется асинхронно при необходимости
         logger.info("Analyzers initialization completed")
         
@@ -1395,7 +1466,7 @@ def get_analysis_status():
 def get_analysis_results():
     """Получение результатов анализа из ClickHouse"""
     try:
-        client = create_new_clickhouse_client()
+        client = get_clickhouse_client()
         if not client:
             return jsonify({
                 'success': False,
@@ -1476,7 +1547,7 @@ def get_analysis_results():
                 'account_url': row[2],
                 'content': row[3][:500] + '...' if len(row[3]) > 500 else row[3],  # Ограничиваем длину контента
                 'classification': row[4],
-                'confidence': float(row[5]),
+                'confidence': float(row[5]) if row[5] is not None else 0,
                 'keywords': row[6],
                 'analysis_date': row[7].isoformat() if row[7] else None,
                 'metadata': row[8]
@@ -1577,7 +1648,7 @@ def get_analysis_statistics():
         # Средний уровень уверенности
         confidence_query = "SELECT AVG(confidence) as avg_confidence FROM social_analysis_results"
         confidence_result = client.query(confidence_query)
-        avg_confidence = float(confidence_result.result_rows[0][0]) if confidence_result.result_rows and confidence_result.result_rows[0][0] else 0
+        avg_confidence = float(confidence_result.result_rows[0][0]) if confidence_result.result_rows and confidence_result.result_rows[0][0] is not None else 0
         
         return jsonify({
             'success': True,
@@ -1745,7 +1816,7 @@ def get_channel_analytics():
                 'source_url': row[1],
                 'author': row[2],
                 'platform': row[3],
-                'confidence': round(float(row[4]), 3),
+                'confidence': round(float(row[4]) if row[4] is not None else 0, 3),
                 'analysis_date': row[5].isoformat() if row[5] else None,
                 'keywords': row[6]
             }
@@ -1805,9 +1876,9 @@ def get_channel_analytics():
             'error': str(e)
         }), 500
 
-@social_bp.route('/available-sources', methods=['GET'])
+@social_bp.route('/available-sources', methods=['GET'], endpoint='api_available_sources')
 def get_available_sources():
-    """Получение списка доступных источников (каналов/пользователей) для анализа"""
+    """Получение списка доступных источников (каналов/пользователей) из таблицы user_sources"""
     try:
         client = get_clickhouse_client()
         if not client:
@@ -1816,22 +1887,20 @@ def get_available_sources():
                 'error': 'Database connection failed'
             }), 500
         
-        # Получаем уникальные источники из базы данных
+        # Получаем уникальные источники из таблицы user_sources
         query = """
         SELECT 
+            id,
             platform,
             account_url,
-            author,
-            COUNT(*) as total_posts,
-            SUM(CASE WHEN classification = 'extremist' THEN 1 ELSE 0 END) as extremist_posts,
-            SUM(CASE WHEN classification = 'hate_speech' THEN 1 ELSE 0 END) as hate_speech_posts,
-            SUM(CASE WHEN classification = 'propaganda' THEN 1 ELSE 0 END) as propaganda_posts,
-            MAX(analysis_date) as last_activity,
-            AVG(confidence) as avg_confidence
-        FROM social_analysis_results 
-        WHERE account_url != '' AND account_url IS NOT NULL
-        GROUP BY platform, account_url, author
-        ORDER BY total_posts DESC, last_activity DESC
+            username,
+            display_name,
+            description,
+            is_active,
+            added_date,
+            last_checked
+        FROM user_sources
+        ORDER BY added_date DESC
         LIMIT 1000
         """
         
@@ -1839,33 +1908,19 @@ def get_available_sources():
         sources = []
         
         for row in result.result_rows:
-            platform, account_url, author, total_posts, extremist_posts, hate_speech_posts, propaganda_posts, last_activity, avg_confidence = row
-            
-            # Определяем уровень риска источника
-            extremist_ratio = extremist_posts / total_posts if total_posts > 0 else 0
-            if extremist_ratio > 0.5:
-                risk_level = 'critical'
-            elif extremist_ratio > 0.3:
-                risk_level = 'high'
-            elif extremist_ratio > 0.1:
-                risk_level = 'medium'
-            elif extremist_posts > 0:
-                risk_level = 'low'
-            else:
-                risk_level = 'none'
+            (source_id, platform, account_url, username, display_name, 
+             description, is_active, added_date, last_checked) = row
             
             sources.append({
+                'id': str(source_id),
                 'platform': platform,
                 'account_url': account_url,
-                'author': author or 'Неизвестно',
-                'total_posts': total_posts,
-                'extremist_posts': extremist_posts,
-                'hate_speech_posts': hate_speech_posts,
-                'propaganda_posts': propaganda_posts,
-                'last_activity': last_activity.isoformat() if last_activity else None,
-                'avg_confidence': round(avg_confidence, 3) if avg_confidence else 0,
-                'risk_level': risk_level,
-                'extremist_ratio': round(extremist_ratio, 3)
+                'username': username,
+                'display_name': display_name,
+                'description': description,
+                'is_active': bool(is_active),
+                'added_date': added_date.isoformat() if added_date else None,
+                'last_checked': last_checked.isoformat() if last_checked else None
             })
         
         return jsonify({
@@ -1876,6 +1931,8 @@ def get_available_sources():
         
     except Exception as e:
         logger.error(f"Error getting available sources: {e}")
+        import traceback
+        logger.error(f"Traceback for available sources error: {traceback.format_exc()}")
         return jsonify({
             'success': False,
             'error': str(e)
