@@ -90,7 +90,7 @@ def create_ukraine_category_tables(client):
                             ai_confidence Float32 DEFAULT 0.0,
                             keywords_found Array(String) DEFAULT [],
                             sentiment_score Float32 DEFAULT 0.0,
-                            published_date DateTime DEFAULT now(),
+                            tension_score Float32 DEFAULT 0.0,
                             published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
                         ORDER BY (published_date, id)
@@ -110,7 +110,7 @@ def create_ukraine_category_tables(client):
                             ai_confidence Float32 DEFAULT 0.0,
                             keywords_found Array(String) DEFAULT [],
                             sentiment_score Float32 DEFAULT 0.0,
-                            published_date DateTime DEFAULT now(),
+                            tension_score Float32 DEFAULT 0.0,
                             published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
                         ORDER BY (published_date, id)
@@ -129,7 +129,7 @@ def create_ukraine_category_tables(client):
                             ai_confidence Float32 DEFAULT 0.0,
                             keywords_found Array(String) DEFAULT [],
                             sentiment_score Float32 DEFAULT 0.0,
-                            published_date DateTime DEFAULT now(),
+                            tension_score Float32 DEFAULT 0.0,
                             published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
                         ORDER BY (published_date, id)
@@ -160,7 +160,7 @@ def create_ukraine_universal_tables(client):
                 ai_confidence Float32 DEFAULT 0.0,
                 keywords_found Array(String) DEFAULT [],
                 sentiment_score Float32 DEFAULT 0.0,
-                published_date DateTime DEFAULT now(),
+                tension_score Float32 DEFAULT 0.0,
                 published_date DateTime DEFAULT now(),
                 language String DEFAULT 'unknown',
                 tags Array(String) DEFAULT [],
@@ -197,7 +197,7 @@ def create_ukraine_universal_tables(client):
                     ai_confidence Float32 DEFAULT 0.0,
                     keywords_found Array(String) DEFAULT [],
                     sentiment_score Float32 DEFAULT 0.0,
-                    published_date DateTime DEFAULT now(),
+                    tension_score Float32 DEFAULT 0.0,
                     published_date DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
                 ORDER BY (published_date, id)

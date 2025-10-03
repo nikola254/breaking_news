@@ -373,6 +373,11 @@ def create_category_tables(client):
                             message_link String,
                             source String DEFAULT 'telegram',
                             category String DEFAULT '{category}',
+                            relevance_score Float32 DEFAULT 0.0,
+                            ai_confidence Float32 DEFAULT 0.0,
+                            keywords_found Array(String) DEFAULT [],
+                            sentiment_score Float32 DEFAULT 0.0,
+                            tension_score Float32 DEFAULT 0.0,
                             published_date DateTime DEFAULT now()
                         ) ENGINE = MergeTree()
                         ORDER BY (published_date, id)
