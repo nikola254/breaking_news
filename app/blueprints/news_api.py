@@ -67,7 +67,7 @@ def get_news():
             union_query = f"""
                 SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                 FROM news.{table_name}
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
             """
             custom_tables_unions.append(union_query)
         
@@ -80,37 +80,17 @@ def get_news():
                     id, title, content, source, category, published_date, '' as link,
                     '' as telegram_channel
                 FROM news.{table_name}
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'all' and category == 'all':
             # Все источники, все категории
-            # Получаем список всех telegram таблиц динамически
-            check_telegram_tables_query = """
-                SELECT name 
-                FROM system.tables 
-                WHERE database = 'news' 
-                AND name LIKE 'telegram_%'
-                AND name NOT IN ('telegram_headlines', 'telegram_channels_stats', 
-                                 'telegram_classification_analytics', 'telegram_messages_classified',
-                                 'telegram_training_dataset')
-                ORDER BY name
-            """
-            
-            telegram_tables_result = client.query(check_telegram_tables_query)
-            telegram_tables = [row[0] for row in telegram_tables_result.result_rows]
-            
-            # Формируем UNION для всех telegram таблиц
-            telegram_unions = []
-            for table_name in telegram_tables:
-                telegram_unions.append(f'''
-                    SELECT id, title, content, source, category, published_date, message_link, channel 
-                    FROM news.{table_name}
-                ''')
-            
-            # Объединяем все telegram запросы
-            telegram_union_query = ' UNION ALL '.join(telegram_unions) if telegram_unions else "SELECT NULL as id, '' as title, '' as content, '' as source, '' as category, now() as published_date, '' as message_link, '' as channel WHERE 1=0"
+            # Для Telegram используем таблицу telegram_headlines
+            telegram_union_query = '''
+                SELECT id, title, message_link as link, content, source, category, published_date, message_link, channel 
+                FROM news.telegram_headlines
+            '''
             
             query = f'''
                 SELECT 
@@ -311,7 +291,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.ria_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -333,7 +313,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.israil_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -349,61 +329,24 @@ def get_news():
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'telegram' and category == 'all':
-            # Только Telegram, все категории
-            # Проверяем, какие telegram таблицы существуют
-            check_telegram_tables_query = """
-                SELECT name 
-                FROM system.tables 
-                WHERE database = 'news' 
-                AND name LIKE 'telegram_%'
-                AND name NOT IN ('telegram_headlines', 'telegram_channels_stats', 
-                                 'telegram_classification_analytics', 'telegram_messages_classified',
-                                 'telegram_training_dataset')
-                ORDER BY name
-            """
-            
-            telegram_tables_result = client.query(check_telegram_tables_query)
-            telegram_tables = [row[0] for row in telegram_tables_result.result_rows]
-            
-            if not telegram_tables:
-                # Если нет таблиц, возвращаем пустой результат
-                return jsonify({
-                    'status': 'success',
-                    'data': [],
-                    'total': 0,
-                    'limit': limit,
-                    'offset': offset,
-                    'current_page': 1,
-                    'total_pages': 0
-                })
-            
-            # Формируем UNION для всех существующих telegram таблиц
-            telegram_unions = []
-            for table_name in telegram_tables:
-                telegram_unions.append(f'''
-                    SELECT id, title, content, source, category, published_date, message_link, channel 
-                    FROM news.{table_name}
-                ''')
-            
+            # Только Telegram, все категории - читаем из telegram_headlines
             query = f'''
                 SELECT 
-                    id, title, message_link as link, content, source, category, published_date,
+                    id, title, content, source, category, published_date, message_link as link,
                     channel as telegram_channel
-                FROM (
-                    {' UNION ALL '.join(telegram_unions)}
-                )
+                FROM news.telegram_headlines
                 {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
         elif source == 'telegram' and category != 'all':
-            # РўРѕР»СЊРєРѕ Telegram, РєРѕРЅРєСЂРµС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
+            # Только Telegram, конкретная категория - фильтруем по category
             query = f'''
                 SELECT 
-                    id, title, message_link as link, content, source, category, published_date,
+                    id, title, content, source, category, published_date, message_link as link,
                     channel as telegram_channel
-                FROM news.telegram_{category}
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                FROM news.telegram_headlines
+                WHERE category = '{category}' {f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')" if search else ""}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -414,7 +357,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.lenta_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -436,7 +379,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.rbc_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -458,7 +401,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.cnn_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -480,7 +423,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.aljazeera_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -502,7 +445,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.tsn_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -524,7 +467,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.unian_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -546,7 +489,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.rt_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -568,7 +511,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.euronews_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -590,7 +533,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.reuters_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -612,7 +555,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.france24_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -634,7 +577,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.dw_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -656,7 +599,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.bbc_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -678,7 +621,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.gazeta_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -700,7 +643,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.kommersant_headlines
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -722,7 +665,7 @@ def get_news():
                     id, title, content, source, category, published_date, link,
                     '' as telegram_channel
                 FROM news.{category}
-                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else ""}
+                {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                 ORDER BY published_date DESC
                 LIMIT {limit} OFFSET {offset}
             '''
@@ -934,7 +877,7 @@ def get_statistics():
     try:
         client = get_clickhouse_client()
         
-        # РџРѕР»СѓС‡Р°РµРј РѕР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚Р°С‚РµР№ РёР· РІСЃРµС… РёСЃС‚РѕС‡РЅРёРєРѕРІ (РІРєР»СЋС‡Р°СЏ СЃС‚Р°СЂС‹Рµ)
+        # РџРѕР»СѓС‡Р°РµРј РѕР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚Р°С‚РµР№ РёР· РІСЃРµС… РёСЃС‚РѕС‡РЅРёРєРѕРІ
         total_query = """
             SELECT COUNT(*) as total FROM (
                 SELECT id FROM news.ria_headlines
@@ -969,33 +912,7 @@ def get_statistics():
                 UNION ALL
                 SELECT id FROM news.israil_headlines
                 UNION ALL
-                SELECT id FROM news.telegram_ukraine
-                UNION ALL
-                SELECT id FROM news.telegram_middle_east
-                UNION ALL
-                SELECT id FROM news.telegram_fake_news
-                UNION ALL
-                SELECT id FROM news.telegram_info_war
-                UNION ALL
-                SELECT id FROM news.telegram_europe
-                UNION ALL
-                SELECT id FROM news.telegram_usa
-                UNION ALL
-                SELECT id FROM news.telegram_other
-                UNION ALL
-                SELECT id FROM news.universal_ukraine
-                UNION ALL
-                SELECT id FROM news.universal_middle_east
-                UNION ALL
-                SELECT id FROM news.universal_fake_news
-                UNION ALL
-                SELECT id FROM news.universal_info_war
-                UNION ALL
-                SELECT id FROM news.universal_europe
-                UNION ALL
-                SELECT id FROM news.universal_usa
-                UNION ALL
-                SELECT id FROM news.universal_other
+                SELECT id FROM news.telegram_headlines
             )
         """
         
@@ -1028,11 +945,18 @@ def get_statistics():
                       'cnn', 'aljazeera', 'reuters', 'france24', 'dw', 'euronews', 'bbc', 'israil']
             
             # РЎС‚СЂРѕРёРј Р·Р°РїСЂРѕСЃ С‚РѕР»СЊРєРѕ РґР»СЏ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… С‚Р°Р±Р»РёС†
+            # Считаем ТОЛЬКО из _headlines таблиц, так как они содержат все данные
             union_parts = []
+            
+            # Добавляем основные таблицы _headlines с фильтром по category
             for source in sources:
-                table_name = f"{source}_{category_key}"
+                table_name = f"{source}_headlines"
                 if table_name in existing_tables:
-                    union_parts.append(f"SELECT id FROM news.{table_name}")
+                    union_parts.append(f"SELECT id FROM news.{table_name} WHERE category = '{category_key}'")
+            
+            # Добавляем telegram_headlines с фильтром по category
+            if 'telegram_headlines' in existing_tables:
+                union_parts.append(f"SELECT id FROM news.telegram_headlines WHERE category = '{category_key}'")
             
             if union_parts:
                 category_query = f"""

@@ -1,13 +1,30 @@
 /* Стили для главной страницы */
 
+/* Панель категорий */
 .news-types {
     background-color: #0d2b50;
     padding: 15px 20px;
     display: flex;
     overflow-x: auto;
     white-space: nowrap;
+    min-height: 50px;
 }
 
+.news-types:empty {
+    min-height: 50px;
+    background-color: #0d2b50;
+}
+
+.news-types.loading::after {
+    content: "Загрузка категорий...";
+    color: #4fc3f7;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Кнопки категорий */
 .news-type-btn {
     background-color: #4fc3f7;
     color: #0a1f3d;
@@ -32,6 +49,7 @@
     color: white;
 }
 
+/* Таблица новостей */
 .news-table {
     width: 100%;
     border-collapse: collapse;
@@ -50,6 +68,10 @@
 .news-table td {
     padding: 12px 15px;
     border-bottom: 1px solid #2d4a7a;
+    max-height: 300px;
+    overflow: hidden;
+    vertical-align: top;
+    word-wrap: break-word;
 }
 
 .news-table tr:last-child td {
@@ -59,7 +81,19 @@
 .news-table tr:hover {
     background-color: #2d4a7a;
 }
+    
+/* Стили для заголовка новости */
+.news-title {
+    cursor: pointer;
+    color: #e0e0e0;
+}
 
+.news-title:hover {
+    color: #4fc3f7;
+    text-decoration: underline;
+}
+
+/* Пагинация */
 .pagination {
     display: flex;
     justify-content: center;
@@ -88,29 +122,7 @@
     font-weight: bold;
 }
 
-.date-col {
-    width: 120px;
-}
-
-.source-col {
-    width: 150px;
-}
-
-.title-col {
-    width: 250px;
-}
-
-.news-title {
-    cursor: pointer;
-    color: #e0e0e0;
-    text-decoration: none;
-}
-
-.news-title:hover {
-    color: #bbb;
-}
-
-/* Стили для модального окна */
+/* Модальное окно */
 .modal {
     display: none;
     position: fixed;
@@ -129,6 +141,7 @@
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
+    max-width: 900px;
     border-radius: 8px;
     color: #e0e0e0;
 }

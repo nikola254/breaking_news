@@ -37,7 +37,12 @@ TELEGRAM_CHANNELS = [
     'genshtab24',
     'new_militarycolumnist',
     'inosmichannel',
-    'operline_ru'
+    'operline_ru',
+    'rian_ru',           # РИА Новости
+    'bbcrussian',        # BBC Russian
+    'meduzalive',        # Медуза
+    'breakingmash',      # Mash
+    'readovkanews'       # Readovka
     # Add more channels as needed
 ]
 
@@ -115,24 +120,39 @@ def clean_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-def determine_category(channel):
-    """Определение категории новостей на основе канала.
+def determine_category(title, content, channel):
+    """Определение категории новостей с использованием классификатора.
     
     Args:
+        title (str): Заголовок новости
+        content (str): Содержание новости
         channel (str): Имя канала
     
     Returns:
-        str: Категория новостей
+        str: Категория новостей или None для категории 'other'
     """
-    military_channels = ['infantmilitario', 'genshtab24', 'new_militarycolumnist', 'operline_ru']
-    international_channels = ['inosmichannel']
-    
-    if channel in military_channels:
-        return 'military'
-    elif channel in international_channels:
-        return 'international'
-    else:
-        return 'other'
+    try:
+        # Импортируем классификатор
+        from parsers.improved_classifier import classifier
+        
+        # Классифицируем текст (передаем title и content отдельно)
+        category = classifier.classify(title, content)
+        
+        # Пропускаем статьи категории "other"
+        if category == 'other':
+            return None
+            
+        return category
+        
+    except Exception as e:
+        print(f"Error classifying message: {e}")
+        # В случае ошибки используем базовую логику по каналам
+        military_channels = ['infantmilitario', 'genshtab24', 'new_militarycolumnist', 'operline_ru']
+        
+        if channel in military_channels:
+            return 'military_operations'
+        else:
+            return 'information_social'
 
 async def parse_telegram_channels():
     """Основная функция парсинга Telegram каналов.
@@ -170,8 +190,7 @@ async def parse_telegram_channels():
         for channel in TELEGRAM_CHANNELS:
             try:
                 result = clickhouse_client.execute(
-                    'SELECT message_id FROM news.telegram_headlines WHERE channel = %s',
-                    [channel]
+                    f"SELECT message_id FROM news.telegram_headlines WHERE channel = '{channel}'"
                 )
                 existing_messages[channel] = {row[0] for row in result}
             except Exception as e:
@@ -184,17 +203,15 @@ async def parse_telegram_channels():
                 print(f"\nParsing channel: {channel}")
                 
                 # Get messages from channel
-                messages, entity = await get_telegram_messages(client, channel, limit=50)
+                messages, entity = await get_telegram_messages(client, channel, limit=100)
                 
                 if not messages or not entity:
                     print(f"Could not get messages from {channel}")
                     continue
                 
-                # Determine category based on channel
-                category = determine_category(channel)
-                
                 headlines_data = []
                 skipped_count = 0
+                skipped_other_count = 0
                 
                 for message in messages:
                     # Skip empty messages
@@ -212,10 +229,19 @@ async def parse_telegram_channels():
                     title = clean_text(title_match.group(1)) if title_match else "No title"
                     content = clean_text(message_text)
                     
+                    # Determine category using classifier
+                    category = determine_category(title, content, channel)
+                    
+                    # Skip if category is None (other category)
+                    if category is None:
+                        skipped_other_count += 1
+                        continue
+                    
                     # Create message link
                     message_link = f"https://t.me/{entity.username}/{message.id}" if hasattr(entity, 'username') else ""
                     
                     print(f"Title: {title[:50]}{'...' if len(title) > 50 else ''}")
+                    print(f"Category: {category}")
                     print(f"Message ID: {message.id}")
                     print("-" * 40)
                     
@@ -241,6 +267,9 @@ async def parse_telegram_channels():
                 
                 if skipped_count > 0:
                     print(f"Skipped {skipped_count} duplicates from channel {channel}")
+                
+                if skipped_other_count > 0:
+                    print(f"Skipped {skipped_other_count} 'other' category messages from channel {channel}")
                 
             except Exception as e:
                 print(f"Error processing channel {channel}: {e}")

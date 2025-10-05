@@ -177,6 +177,11 @@ def parse_politics_headlines():
             
             print(f"Категория: {category}")
             
+            # Пропускаем статьи с категорией 'other' - они не нужны в БД
+            if category == 'other':
+                print(f"Пропущено (категория 'other'): {title[:50]}...")
+                continue
+            
             # Add to data for insertion with ukraine relevance data
             headlines_data.append({
                 'title': title,

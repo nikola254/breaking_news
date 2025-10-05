@@ -215,7 +215,15 @@ def parse_reuters_news():
             logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
             
             # Используем категорию из фильтра релевантности
-            category = relevance_result['category']
+            category = relevance_result.get('category', 'other')
+
+            if not category or category is None:
+                category = 'other'
+            
+            # Пропускаем статьи с категорией 'other' - они не нужны в БД
+            if category == 'other':
+                logger.info(f"Пропущено (категория 'other'): {title[:50]}...")
+                continue
             
             # Сохранение в основную таблицу
             client.execute(

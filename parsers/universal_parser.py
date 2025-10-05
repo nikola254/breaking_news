@@ -287,7 +287,14 @@ class UniversalParser:
             
             # Используем категорию из результата релевантности
             category = relevance_result.get('category', 'other')
+            if not category or category is None:
+                category = 'other'
             logger.info(f"Категория: {category}")
+            
+            # Пропускаем статьи с категорией 'other' - они не нужны в БД
+            if category == 'other':
+                logger.info(f"Пропущено (категория 'other'): {title[:50]}...")
+                return None
             
             # Определяем язык (простая эвристика)
             language = 'en'  # По умолчанию английский
@@ -429,6 +436,13 @@ class UniversalParser:
                 articles_by_category = {}
                 for article in new_articles:
                     category = article.get('category', 'other')
+                    if not category or category is None:
+                        category = 'other'
+                    
+                    # Пропускаем статьи с категорией 'other'
+                    if category == 'other':
+                        continue
+                    
                     if category not in articles_by_category:
                         articles_by_category[category] = []
                     

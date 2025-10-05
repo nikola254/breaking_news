@@ -23,6 +23,7 @@ from clickhouse_driver import Client
 from config import Config
 from app.utils.ukraine_sentiment_analyzer import get_ukraine_sentiment_analyzer
 from app.utils.social_tension_analyzer import get_tension_analyzer
+from app.analytics.tension_chart_generator import chart_generator
 
 # Создаем Blueprint для API украинской аналитики
 ukraine_analytics_bp = Blueprint('ukraine_analytics', __name__, url_prefix='/api/ukraine_analytics')
@@ -115,8 +116,7 @@ def get_statistics():
         # Запрос для получения статистики
         query = f"""
         SELECT 
-            COUNT(*) as total_news,
-            AVG(sentiment_score) as avg_sentiment
+            COUNT(*) as total_news
         FROM {table_source}
         WHERE published_date >= today() - {days}
         {category_condition}
@@ -125,11 +125,11 @@ def get_statistics():
         result = client.execute(query)
         
         if result:
-            total_news, avg_sentiment = result[0]
+            total_news = result[0][0]
             return jsonify({
                 'status': 'success',
                 'total_news': total_news,
-                'avg_sentiment': float(avg_sentiment) if avg_sentiment else 0.0
+                'avg_sentiment': 0.0  # Пока нет данных о sentiment
             })
         else:
             return jsonify({
@@ -1205,3 +1205,111 @@ def create_tension_chart(tension_data, chart_type, category, days):
         current_app.logger.error(f"Error creating tension chart: {str(e)}")
         plt.close()
         return None
+
+
+@ukraine_analytics_bp.route('/real_tension_chart', methods=['GET'])
+def get_real_tension_chart():
+    """
+    Получение реального графика социальной напряженности с прогнозом
+    
+    Query Parameters:
+        category (str): Категория новостей ('all' или конкретная категория)
+        days (int): Период в днях (по умолчанию 14)
+        forecast_days (int): Количество дней прогноза (по умолчанию 5)
+    
+    Returns:
+        JSON с base64-encoded изображением графика
+    """
+    try:
+        category = request.args.get('category', 'all')
+        days = int(request.args.get('days', 14))
+        forecast_days = int(request.args.get('forecast_days', 5))
+        
+        client = get_clickhouse_client()
+        tension_analyzer = get_tension_analyzer()
+        
+        # Получение таблицы для категории
+        table_source = get_table_for_category(category)
+        
+        # Запрос данных за указанный период
+        query = f"""
+        SELECT title, content, published_date, category, source
+        FROM {table_source}
+        WHERE published_date >= now() - INTERVAL {days} DAY
+        ORDER BY published_date ASC
+        """
+        
+        results = client.execute(query)
+        client.close()
+        
+        if not results or len(results) == 0:
+            return jsonify({
+                'status': 'error',
+                'message': 'Нет данных для построения графика'
+            }), 404
+        
+        # Группируем данные по дням и вычисляем средний индекс напряженности
+        daily_tension = {}
+        
+        for title, content, pub_date, cat, source in results:
+            if not pub_date:
+                continue
+                
+            # Приводим к дате без времени
+            date_key = pub_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            # Анализируем напряженность
+            text = f"{title} {content or ''}"
+            metrics = tension_analyzer.analyze_text_tension(text, title)
+            
+            # Нормализуем score от 0 до 1 (было 0-100)
+            normalized_score = metrics.tension_score / 100.0
+            
+            if date_key not in daily_tension:
+                daily_tension[date_key] = []
+            
+            daily_tension[date_key].append(normalized_score)
+        
+        # Вычисляем среднее значение для каждого дня
+        historical_data = []
+        for date_key in sorted(daily_tension.keys()):
+            avg_tension = sum(daily_tension[date_key]) / len(daily_tension[date_key])
+            historical_data.append((date_key, avg_tension))
+        
+        # Генерируем прогноз
+        forecast_data = chart_generator.simple_forecast(historical_data, forecast_days)
+        
+        # Создаем график
+        chart_base64 = chart_generator.generate_tension_forecast_chart(
+            historical_data,
+            forecast_data,
+            title=f"Интегральный индекс социальной напряженности - {get_category_name_ru(category)}"
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'chart': chart_base64,
+            'historical_points': len(historical_data),
+            'forecast_points': len(forecast_data),
+            'avg_tension': round(sum([d[1] for d in historical_data]) / len(historical_data), 3) if historical_data else 0
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error generating real tension chart: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+def get_category_name_ru(category):
+    """Возвращает русское название категории"""
+    categories = {
+        'all': 'Все категории',
+        'military_operations': 'Военные операции',
+        'humanitarian_crisis': 'Гуманитарный кризис',
+        'economic_consequences': 'Экономические последствия',
+        'political_decisions': 'Политические решения',
+        'information_social': 'Информационно-социальные аспекты',
+        'other': 'Прочее'
+    }
+    return categories.get(category, category)

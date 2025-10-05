@@ -3,24 +3,26 @@
 {% block title %}NewsAnalytics - Отчеты по новостным сводкам{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}?v=2.0">
 {% endblock %}
 
 {% block content %}
 <div class="news-types">
-    <button class="news-type-btn active" data-category="military_operations">Военные операции</button>
-    <button class="news-type-btn" data-category="humanitarian_crisis">Гуманитарный кризис</button>
-    <button class="news-type-btn" data-category="economic_consequences">Экономические последствия</button>
-    <button class="news-type-btn" data-category="political_decisions">Политические решения</button>
-    <button class="news-type-btn" data-category="information_social">Информационно-социальные аспекты</button>
+    <!-- Кнопки категорий загружаются динамически через JavaScript -->
 </div>
 
 <table class="news-table">
+    <colgroup>
+        <col style="width: 120px;">
+        <col style="width: 150px;">
+        <col style="width: 300px;">
+        <col style="width: auto;">
+    </colgroup>
     <thead>
         <tr>
-            <th class="date-col">Дата</th>
-            <th class="source-col">Ресурс</th>
-            <th class="title-col">Заголовок</th>
+            <th>Дата</th>
+            <th>Ресурс</th>
+            <th>Заголовок</th>
             <th>Содержание</th>
         </tr>
     </thead>

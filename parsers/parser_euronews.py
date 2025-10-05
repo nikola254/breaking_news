@@ -279,7 +279,14 @@ def parse_euronews_news():
             
             # Используем категорию из результата релевантности
             category = relevance_result.get('category', 'other')
+            if not category or category is None:
+                category = 'other'
             logger.info(f"Категория: {category}")
+            
+            # Пропускаем статьи с категорией 'other' - они не нужны в БД
+            if category == 'other':
+                logger.info(f"Пропущено (категория 'other'): {title[:50]}...")
+                continue
             
             # Сохранение в основную таблицу
             client.execute(

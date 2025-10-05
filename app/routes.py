@@ -14,6 +14,11 @@ from app.models import get_clickhouse_client
 def index():
     return render_template('index.html')
 
+@app.route('/favicon.ico')
+def favicon():
+    """Обработчик для favicon.ico - предотвращает ошибки 404 в логах"""
+    return '', 204  # Возвращаем пустой ответ с кодом 204 No Content
+
 @app.route('/analytics')
 def analytics():
     return render_template('analytics.html')

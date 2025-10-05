@@ -1,0 +1,582 @@
+/* Стили для страницы аналитики */
+
+/* Заголовок страницы */
+.analytics-header {
+    background-color: #0d2b50;
+    color: #e0e0e0;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Карточки статистики */
+.stats-card {
+    background-color: #1e3a6a;
+    color: #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    transition: all 0.3s;
+    border: 1px solid #4fc3f7;
+}
+
+.stats-card:hover {
+    background-color: #2d4a7a;
+    transform: translateY(-2px);
+}
+
+.stats-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #4fc3f7;
+}
+
+.stats-label {
+    font-size: 0.9rem;
+    color: #bbdefb;
+}
+
+/* Карточка фильтров */
+.filter-card {
+    background-color: #1e3a6a;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border: none;
+    color: #e0e0e0;
+}
+
+/* Карточки графиков */
+.chart-card {
+    background-color: #1e3a6a;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border: none;
+    margin-bottom: 2rem;
+    color: #e0e0e0;
+}
+
+.chart-card .card-header {
+    background-color: #0288d1;
+    color: white;
+    border-radius: 8px 8px 0 0;
+    border: none;
+}
+
+/* Карточки предупреждений */
+.alert-card {
+    background-color: #1e3a6a;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border: none;
+    margin-bottom: 2rem;
+    color: #e0e0e0;
+}
+
+.alert-card .card-header {
+    background-color: #0288d1;
+    color: white;
+    border-radius: 8px 8px 0 0;
+    border: none;
+}
+
+/* Предупреждения о напряженности */
+.tension-alert {
+    background-color: #2d4a7a;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border: none;
+    color: #bbdefb;
+}
+
+.tension-alert.critical {
+    background-color: #d32f2f;
+    color: white;
+}
+
+.tension-alert.high {
+    background-color: #f57c00;
+    color: white;
+}
+
+/* Бейджи */
+.tension-badge {
+    background-color: #0288d1;
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.category-badge {
+    background-color: #4fc3f7;
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Таблица новостей */
+.news-table {
+    background-color: #1e3a6a;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border: none;
+}
+
+.news-table th {
+    background-color: #0288d1;
+    color: #ffffff;
+    border: none;
+    padding: 1.2rem;
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.news-table td {
+    background-color: #1e3a6a;
+    color: #ffffff;
+    border: none;
+    padding: 1.2rem;
+    border-bottom: 2px solid rgba(79, 195, 247, 0.2);
+    vertical-align: middle;
+}
+
+.news-table tbody tr {
+    transition: all 0.3s ease;
+}
+
+.news-table tbody tr:hover {
+    background-color: #2d4a7a;
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.news-table a {
+    transition: all 0.3s ease;
+}
+
+/* Спиннер загрузки */
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    flex-direction: column;
+}
+
+.spinner-custom {
+    width: 3rem;
+    height: 3rem;
+    border: 0.3rem solid #f3f3f3;
+    border-top: 0.3rem solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Кнопка аналитики */
+.btn-analytics {
+    background: linear-gradient(135deg, #0288d1 0%, #1976d2 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-analytics:hover {
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(25, 118, 210, 0.4);
+    color: white;
+}
+
+/* Элементы формы */
+.form-control {
+    background-color: #2d4a7a;
+    border: 1px solid #4fc3f7;
+    border-radius: 4px;
+    color: #e0e0e0;
+    padding: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    background-color: #2d4a7a;
+    border-color: #0288d1;
+    box-shadow: 0 0 0 0.2rem rgba(79, 195, 247, 0.25);
+    color: #e0e0e0;
+}
+
+/* Тестовая категория */
+.test-category-highlight {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    border-left: 4px solid #667eea;
+    padding: 0.5rem;
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+}
+
+/* Стили для демо-графиков */
+.chart-placeholder {
+    padding: 2rem;
+    text-align: center;
+}
+
+.chart-demo {
+    position: relative;
+    height: 200px;
+    background-color: #2d4a7a;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    border: 1px solid #4fc3f7;
+}
+
+.chart-line {
+    position: relative;
+    height: 100%;
+    background: linear-gradient(to right, #667eea, #764ba2);
+    opacity: 0.1;
+}
+
+.chart-point {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #667eea;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Анимации */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.chart-labels {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 1rem;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.pie-chart-demo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+}
+
+.pie-slice {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    border-radius: 5px;
+    background: var(--color);
+    color: white;
+    font-weight: bold;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.heatmap-demo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+}
+
+.heatmap-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.source-label {
+    min-width: 100px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #666;
+}
+
+.heat-cell {
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    margin: 0 2px;
+}
+
+.heat-cell.high {
+    background: #e74c3c;
+    animation: glow-red 2s infinite;
+}
+
+.heat-cell.medium {
+    background: #f39c12;
+    animation: glow-orange 2s infinite;
+}
+
+.heat-cell.low {
+    background: #2ecc71;
+    animation: glow-green 2s infinite;
+}
+
+@keyframes glow-red {
+    0%, 100% { box-shadow: 0 0 5px rgba(231, 76, 60, 0.5); }
+    50% { box-shadow: 0 0 15px rgba(231, 76, 60, 0.8); }
+}
+
+@keyframes glow-orange {
+    0%, 100% { box-shadow: 0 0 5px rgba(243, 156, 18, 0.5); }
+    50% { box-shadow: 0 0 15px rgba(243, 156, 18, 0.8); }
+}
+
+@keyframes glow-green {
+    0%, 100% { box-shadow: 0 0 5px rgba(46, 204, 113, 0.5); }
+    50% { box-shadow: 0 0 15px rgba(46, 204, 113, 0.8); }
+}
+
+/* Стили для информационного баннера */
+.alert-info {
+    background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+    border: 2px solid #667eea;
+    border-radius: 12px;
+    color: #e0e0e0;
+}
+
+.alert-info hr {
+    border-color: #667eea;
+    opacity: 0.3;
+}
+
+.alert-info .alert-heading {
+    color: #667eea;
+    font-weight: bold;
+}
+
+/* Модальное окно для просмотра статьи */
+.news-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.8);
+    animation: fadeIn 0.3s ease;
+}
+
+.news-modal.show {
+    display: block;
+}
+
+.news-modal-content {
+    background: linear-gradient(135deg, #1e3a6a 0%, #2d4a7a 100%);
+    margin: 3% auto;
+    padding: 0;
+    border: 2px solid #4fc3f7;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 900px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    animation: slideDown 0.4s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.news-modal-header {
+    background: linear-gradient(135deg, #0288d1 0%, #1976d2 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #4fc3f7;
+}
+
+.news-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    flex: 1;
+    padding-right: 1rem;
+}
+
+.news-modal-close {
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.news-modal-close:hover,
+.news-modal-close:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.news-modal-body {
+    padding: 2rem;
+    color: #ffffff;
+}
+
+.news-modal-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid rgba(79, 195, 247, 0.3);
+}
+
+.news-modal-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.news-modal-meta-item i {
+    color: #4fc3f7;
+    font-size: 1.2rem;
+}
+
+.news-modal-meta-item strong {
+    color: #4fc3f7;
+}
+
+.news-modal-content-text {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #e0e0e0;
+    text-align: justify;
+}
+
+.news-modal-footer {
+    padding: 1.5rem 2rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-top: 2px solid rgba(79, 195, 247, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 0 0 10px 10px;
+}
+
+.news-modal-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #0288d1 0%, #1976d2 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.news-modal-link:hover {
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(25, 118, 210, 0.4);
+    color: white;
+}
+
+.news-modal-badges {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Анимации для модального окна */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Скроллбар для модального окна */
+.news-modal-content::-webkit-scrollbar {
+    width: 10px;
+}
+
+.news-modal-content::-webkit-scrollbar-track {
+    background: #1e3a6a;
+    border-radius: 10px;
+}
+
+.news-modal-content::-webkit-scrollbar-thumb {
+    background: #4fc3f7;
+    border-radius: 10px;
+}
+
+.news-modal-content::-webkit-scrollbar-thumb:hover {
+    background: #0288d1;
+}
+
+/* Курсор pointer для кликабельных заголовков */
+.news-table tbody tr {
+    cursor: pointer;
+}
