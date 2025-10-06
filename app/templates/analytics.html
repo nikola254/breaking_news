@@ -13,6 +13,121 @@
 .stats-label {
     font-size: 12px !important;
 }
+
+.news-container {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.news-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.news-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.news-card-header {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.news-card-body {
+    padding: 20px;
+    color: white;
+}
+
+.news-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.news-title a {
+    color: white;
+    text-decoration: none;
+}
+
+.news-title a:hover {
+    color: #f8f9fa;
+    text-decoration: underline;
+}
+
+.news-content {
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.news-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.news-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.news-category {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.news-tension {
+    background: rgba(231, 76, 60, 0.3);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.news-source {
+    background: rgba(52, 152, 219, 0.3);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.news-time {
+    background: rgba(46, 204, 113, 0.3);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.no-news {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.no-news i {
+    font-size: 48px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
 </style>
 {% endblock %}
 
@@ -152,36 +267,21 @@
         </div>
     </div>
     
-    <!-- Таблица последних новостей -->
+    <!-- Визуализация последних новостей -->
     <div class="row">
-        <div>
+        <div class="col-12">
             <div class="card chart-card">
                 <div class="card-header">
                     <h5 class="mb-0">📰 Последние новости</h5>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table news-table" id="newsTable">
-                            <thead>
-                                <tr>
-                                    <th>⏰ Время</th>
-                                    <th>📰 Заголовок</th>
-                                    <th>🏷️ Категория</th>
-                                    <th>🌡️ Напряженность</th>
-                                    <th>📡 Источник</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="5" class="text-center">
-                                        <div class="loading-spinner">
-                                            <div class="spinner-custom"></div>
-                                            <p class="mt-2 text-muted">Загрузка новостей...</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div id="newsContainer" class="news-container">
+                        <div class="text-center py-4">
+                            <div class="loading-spinner">
+                                <div class="spinner-custom"></div>
+                                <p class="mt-2 text-muted">Загрузка новостей...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -252,7 +352,7 @@ function updateAnalytics() {
     // Загружаем графики
     loadCharts(category, dateRange);
     
-    // Загружаем таблицу новостей
+    // Загружаем последние новости
     loadNewsTable(category, dateRange);
 }
 
@@ -393,15 +493,15 @@ function loadCharts(category, dateRange) {
 }
 
 function loadTestCharts(dateRange) {
-    // График распределения по категориям с реалистичными данными
-    document.getElementById('categoryChart').innerHTML = `
+    // График распределения по территориям с реалистичными данными
+    document.getElementById('territoryChart').innerHTML = `
         <div class="chart-placeholder">
-            <canvas id="testCategoryCanvas" width="700" height="450"></canvas>
+            <canvas id="testTerritoryCanvas" width="700" height="450"></canvas>
         </div>
     `;
     
     // Рисуем улучшенную круговую диаграмму
-    const canvas = document.getElementById('testCategoryCanvas');
+    const canvas = document.getElementById('testTerritoryCanvas');
     if (canvas) {
         const ctx = canvas.getContext('2d');
         const centerX = canvas.width / 2;
@@ -409,10 +509,10 @@ function loadTestCharts(dateRange) {
         const radius = 130;
         
         const data = [
-            { label: 'Боевые действия', value: 437, percent: 35, color: '#e74c3c' },
-            { label: 'Военная техника', value: 312, percent: 25, color: '#3498db' },
-            { label: 'Стратегия и тактика', value: 249, percent: 20, color: '#f39c12' },
-            { label: 'Мобилизация', value: 249, percent: 20, color: '#2ecc71' }
+            { label: 'Центральный', value: 437, percent: 35, color: '#e74c3c' },
+            { label: 'Восточный', value: 312, percent: 25, color: '#3498db' },
+            { label: 'Южный', value: 249, percent: 20, color: '#f39c12' },
+            { label: 'Западный', value: 249, percent: 20, color: '#2ecc71' }
         ];
         
         // Заливка фона
@@ -423,7 +523,7 @@ function loadTestCharts(dateRange) {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 18px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Распределение новостей по подкатегориям', centerX, 30);
+        ctx.fillText('Распределение новостей по территориям', centerX, 30);
         
         // Рисуем круговую диаграмму с тенями
         let currentAngle = -Math.PI / 2;
@@ -977,92 +1077,217 @@ function createRealHeatmap(sources, days, data) {
     });
 }
 
+// Функция для отображения карточек новостей
+function renderNewsCards(newsData, container) {
+    newsData.forEach(news => {
+        const isTestCategory = news.category && news.category.startsWith('test_');
+        // Генерируем случайный tension_score для демонстрации
+        const tensionScore = Math.random() * 10;
+        
+        const newsCard = document.createElement('div');
+        newsCard.className = 'news-card';
+        newsCard.innerHTML = `
+            <div class="news-card-body">
+                <div class="news-title">
+                    <a href="${news.link || '#'}" target="_blank">${news.title}</a>
+                </div>
+                ${news.content ? `<div class="news-content">${news.content.substring(0, 150)}...</div>` : ''}
+                <div class="news-meta">
+                    <div class="news-meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span class="news-time">${formatDate(news.published_date)}</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-tag"></i>
+                        <span class="news-category">${getCategoryName(news.category)}</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-thermometer-half"></i>
+                        <span class="news-tension">${tensionScore.toFixed(1)}%</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-rss"></i>
+                        <span class="news-source">${news.source}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(newsCard);
+    });
+}
+
+// Функция для отображения сообщения об отсутствии новостей
+function showNoNewsMessage(container) {
+    container.innerHTML = `
+        <div class="no-news">
+            <i class="fas fa-inbox"></i>
+            <h5>Нет данных для отображения</h5>
+            <p>Попробуйте изменить фильтры или период времени</p>
+        </div>
+    `;
+}
+
 function loadNewsTable(category, dateRange) {
-    const tbody = document.querySelector('#newsTable tbody');
+    const container = document.getElementById('newsContainer');
     
     // Проверяем, является ли это тестовой категорией
     if (category === 'military_operations_test') {
-        loadTestNewsTable(tbody);
+        loadTestNewsCards(container);
         return;
     }
     
-    // Используем правильный API эндпоинт
-    const apiUrl = category === 'all' ? '/api/news?limit=20' : `/api/news?category=${category}&limit=20`;
+    // Используем правильный API эндпоинт с учетом категории
+    let apiUrl = '/api/news?limit=20';
+    if (category !== 'all' && category !== 'military_operations_test') {
+        // Маппинг категорий аналитики на источники API
+        const sourceMapping = {
+            'military_operations': 'universal_military_operations',
+            'humanitarian_crisis': 'universal_humanitarian_crisis', 
+            'political_decisions': 'universal_political_decisions'
+        };
+        const apiSource = sourceMapping[category] || 'all';
+        apiUrl = `/api/news?source=${apiSource}&limit=20`;
+    } else if (category === 'military_operations_test') {
+        // Для тестовой категории используем все новости
+        apiUrl = '/api/news?limit=20';
+    }
+    
+    console.log('Loading news for category:', category, 'API URL:', apiUrl);
     
     fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
+            console.log('News API response:', data);
             if (data.data && Array.isArray(data.data)) {
-                tbody.innerHTML = '';
+                container.innerHTML = '';
                 
                 if (data.data.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="5" class="text-center">
-                                <div class="py-4">
-                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                                    <p class="text-muted">Нет данных для отображения</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                    return;
+                    // Если нет данных в специфическом источнике, попробуем загрузить все новости
+                    if (category !== 'all' && !apiUrl.includes('source=all')) {
+                        console.log('No data in specific source, trying all news...');
+                        fetch('/api/news?limit=20')
+                            .then(response => response.json())
+                            .then(fallbackData => {
+                                console.log('Fallback news response:', fallbackData);
+                                if (fallbackData.data && fallbackData.data.length > 0) {
+                                    // Показываем новости с пометкой
+                                    container.innerHTML = `
+                                        <div class="alert alert-info mb-3">
+                                            <i class="fas fa-info-circle"></i>
+                                            Новости для категории "${getCategoryName(category)}" не найдены. Показаны последние новости:
+                                        </div>
+                                    `;
+                                    renderNewsCards(fallbackData.data, container);
+                                } else {
+                                    showNoNewsMessage(container);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error loading fallback news:', error);
+                                showNoNewsMessage(container);
+                            });
+                        return;
+                    } else {
+                        showNoNewsMessage(container);
+                        return;
+                    }
                 }
                 
-                data.data.forEach(news => {
-                    const row = document.createElement('tr');
-                    const isTestCategory = news.category && news.category.startsWith('test_');
-                    // Генерируем случайный tension_score для демонстрации
-                    const tensionScore = Math.random() * 10;
-                    
-                    row.innerHTML = `
-                        <td>
-                            <small class="text-muted">${formatDate(news.published_date)}</small>
-                        </td>
-                        <td>
-                            <div class="fw-bold">
-                                <a href="${news.link || '#'}" target="_blank" class="text-decoration-none">${news.title}</a>
-                            </div>
-                            ${news.content ? `<small class="text-muted">${news.content.substring(0, 100)}...</small>` : ''}
-                        </td>
-                        <td>
-                            <span class="category-badge ${isTestCategory ? 'test-category' : ''}">${getCategoryName(news.category)}</span>
-                        </td>
-                        <td>
-                            <span class="tension-badge ${getTensionColorClass(tensionScore)}">${tensionScore.toFixed(1)}%</span>
-                        </td>
-                        <td>
-                            <small class="text-muted">${news.source}</small>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
+                renderNewsCards(data.data, container);
             } else {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center">
-                            <div class="py-4">
-                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">Нет данных для отображения</p>
-                            </div>
-                        </td>
-                    </tr>
+                container.innerHTML = `
+                    <div class="no-news">
+                        <i class="fas fa-inbox"></i>
+                        <h5>Нет данных для отображения</h5>
+                        <p>Попробуйте изменить фильтры или период времени</p>
+                    </div>
                 `;
             }
         })
         .catch(error => {
             console.error('Error loading news table:', error);
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="text-center">
-                        <div class="py-4 text-danger">
-                            <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
-                            <p>Ошибка загрузки данных</p>
-                        </div>
-                    </td>
-                </tr>
+            container.innerHTML = `
+                <div class="no-news">
+                    <i class="fas fa-exclamation-triangle text-danger"></i>
+                    <h5>Ошибка загрузки данных</h5>
+                    <p>Попробуйте обновить страницу</p>
+                </div>
             `;
         });
+}
+
+function loadTestNewsCards(container) {
+    const testNews = [
+        {
+            date: new Date(Date.now() - 1000 * 60 * 30),
+            title: 'Успешное контрнаступление в восточном направлении: освобождены три населенных пункта',
+            content: 'По данным Генштаба, в результате успешной операции подразделения ВСУ освободили три стратегически важных населенных пункта в восточном направлении. Операция проводилась в течение 48 часов с привлечением механизированных подразделений и артиллерии. Противник понес значительные потери в живой силе и технике. Местные жители встречают украинских военных с цветами и слезами радости. Командование отмечает высокий моральный дух бойцов и эффективность новой тактики ведения боевых действий.',
+            source: 'РИА Новости',
+            tension: 82.4
+        },
+        {
+            date: new Date(Date.now() - 1000 * 60 * 90),
+            title: 'Поставка новой партии военной техники из стран НАТО',
+            content: 'В рамках программы военной помощи Украине из стран НАТО прибыла новая партия военной техники. В состав поставки входят современные системы ПВО, боевые машины пехоты и боеприпасы. Техника уже направляется в зоны боевых действий для усиления оборонительных позиций. Эксперты отмечают, что поставки соответствуют текущим потребностям украинской армии и помогут укрепить обороноспособность страны.',
+            source: 'BBC News',
+            tension: 75.2
+        },
+        {
+            date: new Date(Date.now() - 1000 * 60 * 150),
+            title: 'Эвакуация мирных жителей из прифронтовых районов',
+            content: 'Продолжается масштабная операция по эвакуации мирных жителей из прифронтовых районов. За последние сутки из опасных зон вывезено более 2000 человек, включая детей и пожилых людей. Эвакуация проводится под прикрытием военных подразделений с соблюдением всех мер безопасности. Все эвакуированные размещены во временных центрах помощи, где им предоставляется медицинская помощь и психологическая поддержка.',
+            source: 'CNN',
+            tension: 68.7
+        },
+        {
+            date: new Date(Date.now() - 1000 * 60 * 200),
+            title: 'Международная конференция по поддержке Украины',
+            content: 'В Брюсселе проходит международная конференция по поддержке Украины, в которой принимают участие представители более 40 стран. На повестке дня - вопросы военной помощи, экономической поддержки и восстановления инфраструктуры. Участники конференции выразили единодушную поддержку Украине и подтвердили готовность продолжать оказывать всестороннюю помощь в борьбе за суверенитет и территориальную целостность.',
+            source: 'Reuters',
+            tension: 45.3
+        },
+        {
+            date: new Date(Date.now() - 1000 * 60 * 250),
+            title: 'Работа гуманитарных коридоров для доставки помощи',
+            content: 'Продолжается работа гуманитарных коридоров для доставки гуманитарной помощи в зоны, пострадавшие от боевых действий. За последнюю неделю через коридоры доставлено более 500 тонн продовольствия, медикаментов и предметов первой необходимости. Международные организации координируют работу коридоров совместно с украинскими властями для обеспечения безопасности доставки помощи.',
+            source: 'Associated Press',
+            tension: 52.1
+        }
+    ];
+    
+    container.innerHTML = '';
+    
+    testNews.forEach(news => {
+        const newsCard = document.createElement('div');
+        newsCard.className = 'news-card';
+        newsCard.innerHTML = `
+            <div class="news-card-body">
+                <div class="news-title">
+                    <a href="#" target="_blank">${news.title}</a>
+                </div>
+                <div class="news-content">${news.content}</div>
+                <div class="news-meta">
+                    <div class="news-meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span class="news-time">${formatDate(news.date)}</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-tag"></i>
+                        <span class="news-category">Военные операции</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-thermometer-half"></i>
+                        <span class="news-tension">${news.tension}%</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-rss"></i>
+                        <span class="news-source">${news.source}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(newsCard);
+    });
 }
 
 function loadTestNewsTable(tbody) {
@@ -1259,10 +1484,14 @@ function loadRealTensionChart(category, dateRange) {
     `;
     
     // Загружаем данные для Canvas-графика
-    fetch(`/api/ukraine_analytics/tension_data?category=${category}&days=${dateRange}&forecast_days=5`)
+    const tensionUrl = `/api/ukraine_analytics/tension_data?category=${category}&days=${dateRange}&forecast_days=5`;
+    console.log('Loading tension data from:', tensionUrl);
+    
+    fetch(tensionUrl)
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success' && data.historical_data.length > 0) {
+            console.log('Tension data response:', data);
+            if (data.status === 'success' && data.historical_data && data.historical_data.length > 0) {
                 createRealTensionChart(data, chartContainer);
             } else {
                 chartContainer.innerHTML = `
@@ -1282,59 +1511,36 @@ function createRealTensionChart(data, container) {
     // Создаем Canvas для графика интегрального индекса
     container.innerHTML = `
         <div class="chart-placeholder">
-            <canvas id="realTensionCanvas" width="1000" height="600"></canvas>
+            <canvas id="realTensionCanvas" width="1200" height="500"></canvas>
+            <div class="mt-3" style="color: #ffffff;">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <strong style="color: #4fc3f7;">📊 Исторических точек:</strong><br>${data.historical_data ? data.historical_data.length : 0}
+                    </div>
+                    <div class="col-md-3">
+                        <strong style="color: #9b59b6;">🔮 Прогнозных точек:</strong><br>${data.forecast_data ? data.forecast_data.length : 0}
+                    </div>
+                    <div class="col-md-3">
+                        <strong style="color: #f39c12;">📈 Средняя напряженность:</strong><br>${data.avg_tension || '0'}%
+                    </div>
+                    <div class="col-md-3">
+                        <strong style="color: #e74c3c;">📉 Тренд:</strong><br>${data.trend || 'Стабильный'} (${data.trend_percent > 0 ? '+' : ''}${data.trend_percent || '0'}%)
+                    </div>
+                </div>
+            </div>
         </div>
     `;
     
+    // Рисуем график напряженности
     const canvas = document.getElementById('realTensionCanvas');
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    const margin = { top: 60, right: 80, bottom: 80, left: 150 };
-    const chartWidth = canvas.width - margin.left - margin.right;
-    const chartHeight = canvas.height - margin.top - margin.bottom;
-    
-    // Заливка фона
-    ctx.fillStyle = '#1e3a6a';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Заголовок
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('Интегральный индекс социальной напряженности', canvas.width / 2, 30);
-    
-    // Рисуем зоны напряженности
-    data.zones.forEach(zone => {
-        const y1 = margin.top + (100 - zone.max) / 100 * chartHeight;
-        const y2 = margin.top + (100 - zone.min) / 100 * chartHeight;
-        
-        ctx.fillStyle = zone.color + '30'; // Прозрачность
-        ctx.fillRect(margin.left, y1, chartWidth, y2 - y1);
-        
-        // Подписи зон
-        ctx.fillStyle = zone.color;
-        ctx.font = 'bold 12px Arial';
-        ctx.textAlign = 'right';
-        ctx.fillText(zone.name, margin.left - 30, y1 + 15);
-    });
-    
-    // Сетка
-    ctx.strokeStyle = '#4a90e2';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 10; i++) {
-        const y = margin.top + (i / 10) * chartHeight;
-        ctx.beginPath();
-        ctx.moveTo(margin.left, y);
-        ctx.lineTo(margin.left + chartWidth, y);
-        ctx.stroke();
-        
-        // Подписи Y
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'right';
-        ctx.fillText((100 - i * 10) + '%', margin.left - 30, y + 5);
-    }
+    const width = canvas.width;
+    const height = canvas.height;
+    const padding = 80;
+    const chartWidth = width - 2 * padding;
+    const chartHeight = height - 2 * padding;
     
     // Подготовка данных
     const historicalData = data.historical_data.map(d => ({
@@ -1351,118 +1557,166 @@ function createRealTensionChart(data, container) {
     
     const minDate = Math.min(...allData.map(d => d.date.getTime()));
     const maxDate = Math.max(...allData.map(d => d.date.getTime()));
+    const totalDays = allData.length;
     
-    // Функция для преобразования координат
-    const x = (date) => margin.left + ((date.getTime() - minDate) / (maxDate - minDate)) * chartWidth;
-    const y = (value) => margin.top + ((100 - value) / 100) * chartHeight;
+    // Заливка фона темным цветом
+    ctx.fillStyle = '#1e3a6a';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Заголовок
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Интегральный индекс социальной напряженности', width / 2, 35);
+    
+    // Рисуем сетку
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 5; i++) {
+        const y = padding + (chartHeight / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+        
+        // Подписи по Y (белым цветом)
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText((100 - i * 20) + '%', padding - 15, y + 5);
+    }
+    
+    // Вертикальные линии сетки
+    const gridSteps = Math.min(totalDays, 10);
+    for (let i = 0; i <= gridSteps; i++) {
+        const x = padding + (chartWidth / gridSteps) * i;
+        ctx.beginPath();
+        ctx.moveTo(x, padding);
+        ctx.lineTo(x, height - padding);
+        ctx.stroke();
+    }
     
     // Рисуем исторические данные
-    if (historicalData.length > 0) {
-        ctx.strokeStyle = '#3498db';
-        ctx.lineWidth = 3;
+    ctx.strokeStyle = '#667eea';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    historicalData.forEach((point, i) => {
+        const x = padding + (chartWidth / totalDays) * i;
+        const y = padding + chartHeight - (point.value / 100) * chartHeight;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    
+    // Рисуем точки на исторических данных
+    ctx.fillStyle = '#667eea';
+    historicalData.forEach((point, i) => {
+        const x = padding + (chartWidth / totalDays) * i;
+        const y = padding + chartHeight - (point.value / 100) * chartHeight;
         ctx.beginPath();
-        
-        historicalData.forEach((point, index) => {
-            const px = x(point.date);
-            const py = y(point.value);
-            
-            if (index === 0) {
-                ctx.moveTo(px, py);
-            } else {
-                ctx.lineTo(px, py);
-            }
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+    });
+    
+    // Рисуем прогнозные данные (пунктиром)
+    if (forecastData.length > 0) {
+        ctx.strokeStyle = '#764ba2';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        const lastHistX = padding + (chartWidth / totalDays) * (historicalData.length - 1);
+        const lastHistY = padding + chartHeight - (historicalData[historicalData.length - 1].value / 100) * chartHeight;
+        ctx.moveTo(lastHistX, lastHistY);
+        forecastData.forEach((point, i) => {
+            const x = padding + (chartWidth / totalDays) * (historicalData.length + i);
+            const y = padding + chartHeight - (point.value / 100) * chartHeight;
+            ctx.lineTo(x, y);
         });
         ctx.stroke();
+        ctx.setLineDash([]);
         
-        // Точки данных
-        ctx.fillStyle = '#3498db';
-        historicalData.forEach(point => {
-            const px = x(point.date);
-            const py = y(point.value);
-            
+        // Рисуем точки на прогнозе
+        ctx.fillStyle = '#764ba2';
+        forecastData.forEach((point, i) => {
+            const x = padding + (chartWidth / totalDays) * (historicalData.length + i);
+            const y = padding + chartHeight - (point.value / 100) * chartHeight;
             ctx.beginPath();
-            ctx.arc(px, py, 6, 0, 2 * Math.PI);
+            ctx.arc(x, y, 4, 0, 2 * Math.PI);
             ctx.fill();
-            
-            // Белая обводка
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
         });
     }
     
-    // Рисуем прогноз
+    // Зоны напряженности (полупрозрачные)
+    ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
+    ctx.fillRect(padding, padding, chartWidth, chartHeight * 0.2);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('🔴 Критическая зона (80-100%)', padding + 10, padding + 20);
+    
+    ctx.fillStyle = 'rgba(243, 156, 18, 0.15)';
+    ctx.fillRect(padding, padding + chartHeight * 0.2, chartWidth, chartHeight * 0.2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('🟠 Высокая зона (60-80%)', padding + 10, padding + chartHeight * 0.2 + 20);
+    
+    ctx.fillStyle = 'rgba(241, 196, 15, 0.1)';
+    ctx.fillRect(padding, padding + chartHeight * 0.4, chartWidth, chartHeight * 0.2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('🟡 Средняя зона (40-60%)', padding + 10, padding + chartHeight * 0.4 + 20);
+    
+    ctx.fillStyle = 'rgba(46, 204, 113, 0.1)';
+    ctx.fillRect(padding, padding + chartHeight * 0.6, chartWidth, chartHeight * 0.4);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('🟢 Низкая зона (0-40%)', padding + 10, padding + chartHeight * 0.6 + 20);
+    
+    // Легенда в правом верхнем углу
+    const legendX = width - 220;
+    const legendY = 60;
+    
+    // Фон для легенды
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(legendX - 10, legendY - 10, 210, 70);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(legendX - 10, legendY - 10, 210, 70);
+    
+    // Исторические данные
+    ctx.strokeStyle = '#667eea';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(legendX, legendY + 5);
+    ctx.lineTo(legendX + 30, legendY + 5);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#667eea';
+    ctx.beginPath();
+    ctx.arc(legendX + 15, legendY + 5, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('Исторические данные', legendX + 40, legendY + 10);
+    
+    // Прогноз
     if (forecastData.length > 0) {
         ctx.strokeStyle = '#9b59b6';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([10, 5]);
+        ctx.lineWidth = 4;
+        ctx.setLineDash([8, 4]);
         ctx.beginPath();
-        
-        // Соединяем с последней исторической точкой
-        if (historicalData.length > 0) {
-            const lastHist = historicalData[historicalData.length - 1];
-            ctx.moveTo(x(lastHist.date), y(lastHist.value));
-        }
-        
-        forecastData.forEach((point, index) => {
-            const px = x(point.date);
-            const py = y(point.value);
-            ctx.lineTo(px, py);
-        });
+        ctx.moveTo(legendX, legendY + 35);
+        ctx.lineTo(legendX + 30, legendY + 35);
         ctx.stroke();
         ctx.setLineDash([]);
         
-        // Точки прогноза
         ctx.fillStyle = '#9b59b6';
-        forecastData.forEach(point => {
-            const px = x(point.date);
-            const py = y(point.value);
-            
-            ctx.beginPath();
-            ctx.arc(px, py, 6, 0, 2 * Math.PI);
-            ctx.fill();
-            
-            // Белая обводка
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        });
-    }
-    
-    // Легенда
-    const legendY = margin.top + chartHeight + 40;
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'left';
-    
-    if (historicalData.length > 0) {
-        ctx.fillStyle = '#3498db';
-        ctx.fillRect(margin.left, legendY - 10, 20, 3);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText('Исторические данные', margin.left + 30, legendY);
-    }
-    
-    if (forecastData.length > 0) {
-        ctx.fillStyle = '#9b59b6';
-        ctx.fillRect(margin.left + 200, legendY - 10, 20, 3);
-        ctx.setLineDash([10, 5]);
         ctx.beginPath();
-        ctx.moveTo(margin.left + 200, legendY - 8);
-        ctx.lineTo(margin.left + 220, legendY - 8);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.arc(legendX + 15, legendY + 35, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('Прогноз (5 дней)', margin.left + 230, legendY);
+        ctx.fillText('Прогноз (5 дней)', legendX + 40, legendY + 40);
     }
-    
-    // Статистика
-    const statsY = legendY + 30;
-    ctx.fillStyle = '#bbdefb';
-    ctx.font = '12px Arial';
-    ctx.fillText(`Исторических точек: ${data.historical_points}`, margin.left, statsY);
-    ctx.fillText(`Прогнозных точек: ${data.forecast_points}`, margin.left + 200, statsY);
-    ctx.fillText(`Средняя напряженность: ${data.avg_tension}%`, margin.left + 400, statsY);
-    ctx.fillText(`Тренд: ${data.trend} (${data.trend_percent > 0 ? '+' : ''}${data.trend_percent}%)`, margin.left + 600, statsY);
 }
 
 function loadTestTensionChart(container, dateRange) {
