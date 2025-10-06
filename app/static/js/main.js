@@ -174,10 +174,13 @@ function updatePagination(data) {
 // Функция открытия модального окна
 function openModal(news) {
     const modal = document.getElementById('news-modal');
-    document.getElementById('modal-title').textContent = news.title;
-    document.getElementById('modal-source').innerHTML = `<strong>Источник:</strong> ${news.source}`;
-    document.getElementById('modal-date').innerHTML = `<strong>Дата:</strong> ${news.published_date}`;
-    document.getElementById('modal-content').textContent = news.content;
+    document.getElementById('modal-title').textContent = news.title || 'Без заголовка';
+    document.getElementById('modal-source').innerHTML = `<strong>Источник:</strong> ${news.source || 'Неизвестно'}`;
+    document.getElementById('modal-date').innerHTML = `<strong>Дата:</strong> ${news.published_date || 'Неизвестно'}`;
+    
+    // Проверяем наличие контента
+    const content = news.content && news.content !== '-' ? news.content : 'Содержимое статьи недоступно';
+    document.getElementById('modal-content').textContent = content;
 
     // Определяем ссылку в зависимости от источника
     let linkUrl = '';

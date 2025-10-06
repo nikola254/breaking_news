@@ -724,9 +724,6 @@ def get_news():
         print(f"Error: {str(e)}")
         print(f"Traceback:\n{error_details}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
-    finally:
-        if 'client' in locals():
-            client.close()
 
 @news_api_bp.route('/social_media', methods=['GET'])
 def get_social_media_data():
@@ -1010,9 +1007,6 @@ def get_statistics():
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-    finally:
-        if 'client' in locals():
-            client.close()
 
 @news_api_bp.route('/categories', methods=['GET'])
 def get_categories():
@@ -1066,9 +1060,6 @@ def get_categories():
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-    finally:
-        if 'client' in locals():
-            client.close()
 
 # API-СЌРЅРґРїРѕРёРЅС‚ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С… РёР· telegram_headlines
 @news_api_bp.route('/telegram', methods=['GET'])
@@ -1203,9 +1194,6 @@ def get_telegram_headlines():
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-    finally:
-        if 'client' in locals():
-            client.close()
 
 @news_api_bp.route('/sources', methods=['GET'])
 def get_available_sources():
@@ -1284,6 +1272,3 @@ def get_available_sources():
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
-    finally:
-        if 'client' in locals():
-            client.close()

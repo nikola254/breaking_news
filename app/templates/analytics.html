@@ -4,6 +4,16 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/analytics.css') }}">
+<style>
+.stats-number {
+    font-size: 18px !important;
+    font-weight: bold;
+}
+
+.stats-label {
+    font-size: 12px !important;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -112,10 +122,10 @@
         <div class="col-md-6">
             <div class="card chart-card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">🥧 Распределение по категориям</h5>
+                    <h5 class="mb-0">🗺️ По территориям</h5>
                 </div>
                 <div class="card-body">
-                    <div id="categoryChart" class="text-center">
+                    <div id="territoryChart" class="text-center">
                         <div class="loading-spinner">
                             <div class="spinner-custom"></div>
                             <p class="mt-2 text-muted">Загрузка данных...</p>
@@ -128,7 +138,7 @@
         <div class="col-md-6">
             <div class="card chart-card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">🔥 Тепловая карта напряженности</h5>
+                    <h5 class="mb-0">🔥 Тепловая карта</h5>
                 </div>
                 <div class="card-body">
                     <div id="sourcesChart" class="text-center">
@@ -255,7 +265,7 @@ function showLoadingSpinners() {
             <p class="mt-2">Загрузка данных...</p>
         </div>`;
     
-    document.getElementById('categoryChart').innerHTML = `
+    document.getElementById('territoryChart').innerHTML = `
         <div class="text-center">
             <div class="spinner-border" role="status">
                 <span class="sr-only">Загрузка...</span>
@@ -289,17 +299,21 @@ function loadStatistics(category, dateRange) {
         return;
     }
     
-    // Загружаем базовую статистику
-    fetch(`/api/ukraine_analytics/statistics?category=${category}&days=${dateRange}`)
+    // Загружаем полную статистику (включая тренд и социальную активность)
+    fetch(`/api/ukraine_analytics/full_statistics?category=${category}&days=${dateRange}`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
                 document.getElementById('totalNews').textContent = data.total_news || '0';
+                document.getElementById('trendIndicator').textContent = data.trend || '→ Стабильно';
+                document.getElementById('socialActivity').textContent = data.social_activity || 'Нет данных';
             }
         })
         .catch(error => {
-            console.error('Error loading statistics:', error);
+            console.error('Error loading full statistics:', error);
             document.getElementById('totalNews').textContent = 'Ошибка';
+            document.getElementById('trendIndicator').textContent = 'Ошибка';
+            document.getElementById('socialActivity').textContent = 'Ошибка';
         });
     
     // Загружаем статистику социальной напряженности
@@ -638,49 +652,329 @@ function shadeColor(color, percent) {
 }
 
 function loadRealCharts(category, dateRange) {
-    // Загружаем график распределения по категориям
-    fetch(`/api/ukraine_analytics/category_chart?days=${dateRange}`)
+    // Загружаем данные для круговой диаграммы по территориям
+    fetch(`/api/ukraine_analytics/territory_data?days=${dateRange}`)
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success' && data.chart_url) {
-                document.getElementById('categoryChart').innerHTML = `
-                    <img src="${data.chart_url}" alt="Распределение по категориям" 
-                         style="max-width: 100%; height: auto;">
-                `;
+            if (data.status === 'success' && data.data.length > 0) {
+                createRealTerritoryChart(data.data, data.total_news);
             } else {
-                document.getElementById('categoryChart').innerHTML = `
+                document.getElementById('territoryChart').innerHTML = `
                     <div class="alert alert-info">Нет данных для отображения</div>
                 `;
             }
         })
         .catch(error => {
-            console.error('Error loading category chart:', error);
-            document.getElementById('categoryChart').innerHTML = `
-                <div class="alert alert-danger">Ошибка загрузки графика</div>
+            console.error('Error loading territory data:', error);
+            document.getElementById('territoryChart').innerHTML = `
+                <div class="alert alert-danger">Ошибка загрузки данных</div>
             `;
         });
     
-    // Загружаем график источников
-    fetch(`/api/ukraine_analytics/sources_chart?category=${category}&days=${dateRange}`)
+    // Загружаем данные для тепловой карты
+    fetch(`/api/ukraine_analytics/heatmap_data?days=${dateRange}`)
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success' && data.chart_url) {
-                document.getElementById('sourcesChart').innerHTML = `
-                    <img src="${data.chart_url}" alt="Топ источников" 
-                         style="max-width: 100%; height: auto;">
-                `;
+            if (data.status === 'success' && data.data.length > 0) {
+                createRealHeatmap(data.sources, data.days, data.data);
             } else {
                 document.getElementById('sourcesChart').innerHTML = `
-                    <div class="alert alert-info">Нет данных для отображения</div>
+                    <div class="alert alert-info">Нет данных для отображения тепловой карты</div>
                 `;
             }
         })
         .catch(error => {
-            console.error('Error loading sources chart:', error);
+            console.error('Error loading heatmap data:', error);
             document.getElementById('sourcesChart').innerHTML = `
-                <div class="alert alert-danger">Ошибка загрузки графика</div>
+                <div class="alert alert-danger">Ошибка загрузки тепловой карты</div>
             `;
         });
+}
+
+function createRealCategoryChart(data, totalNews) {
+    // Создаем Canvas для круговой диаграммы
+    document.getElementById('categoryChart').innerHTML = `
+        <div class="chart-placeholder">
+            <canvas id="realCategoryCanvas" width="700" height="450"></canvas>
+        </div>
+    `;
+    
+    const canvas = document.getElementById('realCategoryCanvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2 - 20;
+    const radius = 130;
+    
+    // Заливка фона
+    ctx.fillStyle = '#1e3a6a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Заголовок
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Распределение новостей по категориям (${totalNews.toLocaleString()} всего)`, centerX, 30);
+    
+    // Рисуем круговую диаграмму
+    let currentAngle = -Math.PI / 2;
+    data.forEach((item, index) => {
+        const sliceAngle = (item.percent / 100) * 2 * Math.PI;
+        
+        // Тень
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+        
+        // Сектор
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = item.color;
+        ctx.fill();
+        ctx.restore();
+        
+        // Белая обводка
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Подписи процентов внутри секторов
+        const midAngle = currentAngle + sliceAngle / 2;
+        const textX = centerX + Math.cos(midAngle) * (radius * 0.7);
+        const textY = centerY + Math.sin(midAngle) * (radius * 0.7);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.percent + '%', textX, textY);
+        
+        currentAngle += sliceAngle;
+    });
+    
+    // Легенда снизу
+    const legendY = centerY + radius + 50;
+    const legendItemWidth = 140;
+    const startX = (canvas.width - (legendItemWidth * 2)) / 2;
+    
+    data.forEach((item, index) => {
+        const row = Math.floor(index / 2);
+        const col = index % 2;
+        const x = startX + col * legendItemWidth;
+        const y = legendY + row * 30;
+        
+        // Цветной квадрат
+        ctx.fillStyle = item.color;
+        ctx.fillRect(x, y - 10, 20, 20);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y - 10, 20, 20);
+        
+        // Текст
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.name, x + 28, y);
+        ctx.font = '11px Arial';
+        ctx.fillStyle = '#bbdefb';
+        ctx.fillText(item.count.toLocaleString() + ' новостей', x + 28, y + 12);
+    });
+}
+
+function createRealTerritoryChart(data, totalNews) {
+    // Создаем Canvas для круговой диаграммы по территориям
+    document.getElementById('territoryChart').innerHTML = `
+        <div class="chart-placeholder">
+            <canvas id="realTerritoryCanvas" width="700" height="450"></canvas>
+        </div>
+    `;
+    
+    const canvas = document.getElementById('realTerritoryCanvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2 - 20;
+    const radius = 130;
+    
+    // Заливка фона
+    ctx.fillStyle = '#1e3a6a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Заголовок
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Распределение новостей по территориям (${totalNews.toLocaleString()} всего)`, centerX, 30);
+    
+    // Рисуем круговую диаграмму
+    let currentAngle = -Math.PI / 2;
+    data.forEach((item, index) => {
+        const sliceAngle = (item.percent / 100) * 2 * Math.PI;
+        
+        // Тень
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+        
+        // Сектор
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = item.color;
+        ctx.fill();
+        ctx.restore();
+        
+        // Белая обводка
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Подписи процентов внутри секторов
+        const midAngle = currentAngle + sliceAngle / 2;
+        const textX = centerX + Math.cos(midAngle) * (radius * 0.7);
+        const textY = centerY + Math.sin(midAngle) * (radius * 0.7);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.percent + '%', textX, textY);
+        
+        currentAngle += sliceAngle;
+    });
+    
+    // Легенда снизу
+    const legendY = centerY + radius + 50;
+    const legendItemWidth = 140;
+    const startX = (canvas.width - (legendItemWidth * 2)) / 2;
+    
+    data.forEach((item, index) => {
+        const row = Math.floor(index / 2);
+        const col = index % 2;
+        const x = startX + col * legendItemWidth;
+        const y = legendY + row * 30;
+        
+        // Цветной квадрат
+        ctx.fillStyle = item.color;
+        ctx.fillRect(x, y - 10, 20, 20);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y - 10, 20, 20);
+        
+        // Текст
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.territory, x + 28, y);
+        ctx.font = '11px Arial';
+        ctx.fillStyle = '#bbdefb';
+        ctx.fillText(item.count.toLocaleString() + ' новостей', x + 28, y + 12);
+    });
+}
+
+function createRealHeatmap(sources, days, data) {
+    // Создаем Canvas для тепловой карты
+    document.getElementById('sourcesChart').innerHTML = `
+        <div class="chart-placeholder">
+            <canvas id="realHeatmapCanvas" width="850" height="450"></canvas>
+        </div>
+    `;
+    
+    const canvas = document.getElementById('realHeatmapCanvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const cellWidth = 70;
+    const cellHeight = 45;
+    const startX = 140;
+    const startY = 80;
+    
+    // Заливка фона
+    ctx.fillStyle = '#1e3a6a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Заголовок
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Интенсивность публикаций по источникам', canvas.width / 2, 30);
+    
+    // Рисуем заголовки дней
+    ctx.font = 'bold 11px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    days.forEach((day, i) => {
+        ctx.fillText(day, startX + i * cellWidth + cellWidth / 2, startY - 20);
+    });
+    
+    // Рисуем источники и ячейки
+    sources.forEach((source, i) => {
+        // Название источника
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(source, startX - 10, startY + i * cellHeight + cellHeight / 2);
+        
+        days.forEach((day, j) => {
+            const value = data[i][j];
+            
+            // Определяем цвет по интенсивности
+            let color;
+            if (value < 5) color = '#2ecc71';
+            else if (value < 15) color = '#f1c40f';
+            else if (value < 30) color = '#f39c12';
+            else color = '#e74c3c';
+            
+            // Рисуем ячейку с градиентом
+            const gradient = ctx.createLinearGradient(
+                startX + j * cellWidth, 
+                startY + i * cellHeight,
+                startX + j * cellWidth + cellWidth - 4, 
+                startY + i * cellHeight + cellHeight - 4
+            );
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, shadeColor(color, -20));
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(
+                startX + j * cellWidth, 
+                startY + i * cellHeight, 
+                cellWidth - 4, 
+                cellHeight - 4
+            );
+            
+            // Белая рамка
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+                startX + j * cellWidth, 
+                startY + i * cellHeight, 
+                cellWidth - 4, 
+                cellHeight - 4
+            );
+            
+            // Значение в ячейке
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(value.toString(), 
+                startX + j * cellWidth + cellWidth / 2, 
+                startY + i * cellHeight + cellHeight / 2);
+        });
+    });
 }
 
 function loadNewsTable(category, dateRange) {
@@ -964,40 +1258,211 @@ function loadRealTensionChart(category, dateRange) {
         </div>
     `;
     
-    fetch(`/api/ukraine_analytics/real_tension_chart?category=${category}&days=${dateRange}&forecast_days=5`)
+    // Загружаем данные для Canvas-графика
+    fetch(`/api/ukraine_analytics/tension_data?category=${category}&days=${dateRange}&forecast_days=5`)
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                // Отображаем график
-                chartContainer.innerHTML = `
-                    <img src="${data.chart}" alt="График социальной напряженности" 
-                         style="max-width: 100%; height: auto; border-radius: 8px;">
-                    <div class="mt-3">
-                        <small class="text-muted">
-                            📊 Исторических точек: ${data.historical_points} | 
-                            🔮 Прогнозных точек: ${data.forecast_points} | 
-                            📈 Средняя напряженность: ${(data.avg_tension * 100).toFixed(1)}%
-                        </small>
-                    </div>
-                `;
+            if (data.status === 'success' && data.historical_data.length > 0) {
+                createRealTensionChart(data, chartContainer);
             } else {
                 chartContainer.innerHTML = `
-                    <div class="alert alert-warning" role="alert">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        ${data.message || 'Ошибка загрузки графика'}
-                    </div>
+                    <div class="alert alert-info">Нет данных для построения графика</div>
                 `;
             }
         })
         .catch(error => {
-            console.error('Error loading tension chart:', error);
+            console.error('Error loading tension data:', error);
             chartContainer.innerHTML = `
-                <div class="alert alert-danger" role="alert">
-                    <i class="fas fa-times-circle"></i>
-                    Ошибка загрузки графика: ${error.message}
-                </div>
+                <div class="alert alert-danger">Ошибка загрузки данных</div>
             `;
         });
+}
+
+function createRealTensionChart(data, container) {
+    // Создаем Canvas для графика интегрального индекса
+    container.innerHTML = `
+        <div class="chart-placeholder">
+            <canvas id="realTensionCanvas" width="1000" height="600"></canvas>
+        </div>
+    `;
+    
+    const canvas = document.getElementById('realTensionCanvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const margin = { top: 60, right: 80, bottom: 80, left: 150 };
+    const chartWidth = canvas.width - margin.left - margin.right;
+    const chartHeight = canvas.height - margin.top - margin.bottom;
+    
+    // Заливка фона
+    ctx.fillStyle = '#1e3a6a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Заголовок
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Интегральный индекс социальной напряженности', canvas.width / 2, 30);
+    
+    // Рисуем зоны напряженности
+    data.zones.forEach(zone => {
+        const y1 = margin.top + (100 - zone.max) / 100 * chartHeight;
+        const y2 = margin.top + (100 - zone.min) / 100 * chartHeight;
+        
+        ctx.fillStyle = zone.color + '30'; // Прозрачность
+        ctx.fillRect(margin.left, y1, chartWidth, y2 - y1);
+        
+        // Подписи зон
+        ctx.fillStyle = zone.color;
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(zone.name, margin.left - 30, y1 + 15);
+    });
+    
+    // Сетка
+    ctx.strokeStyle = '#4a90e2';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) {
+        const y = margin.top + (i / 10) * chartHeight;
+        ctx.beginPath();
+        ctx.moveTo(margin.left, y);
+        ctx.lineTo(margin.left + chartWidth, y);
+        ctx.stroke();
+        
+        // Подписи Y
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText((100 - i * 10) + '%', margin.left - 30, y + 5);
+    }
+    
+    // Подготовка данных
+    const historicalData = data.historical_data.map(d => ({
+        date: new Date(d.date),
+        value: d.value
+    }));
+    const forecastData = data.forecast_data.map(d => ({
+        date: new Date(d.date),
+        value: d.value
+    }));
+    
+    const allData = [...historicalData, ...forecastData];
+    if (allData.length === 0) return;
+    
+    const minDate = Math.min(...allData.map(d => d.date.getTime()));
+    const maxDate = Math.max(...allData.map(d => d.date.getTime()));
+    
+    // Функция для преобразования координат
+    const x = (date) => margin.left + ((date.getTime() - minDate) / (maxDate - minDate)) * chartWidth;
+    const y = (value) => margin.top + ((100 - value) / 100) * chartHeight;
+    
+    // Рисуем исторические данные
+    if (historicalData.length > 0) {
+        ctx.strokeStyle = '#3498db';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        
+        historicalData.forEach((point, index) => {
+            const px = x(point.date);
+            const py = y(point.value);
+            
+            if (index === 0) {
+                ctx.moveTo(px, py);
+            } else {
+                ctx.lineTo(px, py);
+            }
+        });
+        ctx.stroke();
+        
+        // Точки данных
+        ctx.fillStyle = '#3498db';
+        historicalData.forEach(point => {
+            const px = x(point.date);
+            const py = y(point.value);
+            
+            ctx.beginPath();
+            ctx.arc(px, py, 6, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Белая обводка
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+    }
+    
+    // Рисуем прогноз
+    if (forecastData.length > 0) {
+        ctx.strokeStyle = '#9b59b6';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
+        ctx.beginPath();
+        
+        // Соединяем с последней исторической точкой
+        if (historicalData.length > 0) {
+            const lastHist = historicalData[historicalData.length - 1];
+            ctx.moveTo(x(lastHist.date), y(lastHist.value));
+        }
+        
+        forecastData.forEach((point, index) => {
+            const px = x(point.date);
+            const py = y(point.value);
+            ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Точки прогноза
+        ctx.fillStyle = '#9b59b6';
+        forecastData.forEach(point => {
+            const px = x(point.date);
+            const py = y(point.value);
+            
+            ctx.beginPath();
+            ctx.arc(px, py, 6, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Белая обводка
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+    }
+    
+    // Легенда
+    const legendY = margin.top + chartHeight + 40;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'left';
+    
+    if (historicalData.length > 0) {
+        ctx.fillStyle = '#3498db';
+        ctx.fillRect(margin.left, legendY - 10, 20, 3);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('Исторические данные', margin.left + 30, legendY);
+    }
+    
+    if (forecastData.length > 0) {
+        ctx.fillStyle = '#9b59b6';
+        ctx.fillRect(margin.left + 200, legendY - 10, 20, 3);
+        ctx.setLineDash([10, 5]);
+        ctx.beginPath();
+        ctx.moveTo(margin.left + 200, legendY - 8);
+        ctx.lineTo(margin.left + 220, legendY - 8);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('Прогноз (5 дней)', margin.left + 230, legendY);
+    }
+    
+    // Статистика
+    const statsY = legendY + 30;
+    ctx.fillStyle = '#bbdefb';
+    ctx.font = '12px Arial';
+    ctx.fillText(`Исторических точек: ${data.historical_points}`, margin.left, statsY);
+    ctx.fillText(`Прогнозных точек: ${data.forecast_points}`, margin.left + 200, statsY);
+    ctx.fillText(`Средняя напряженность: ${data.avg_tension}%`, margin.left + 400, statsY);
+    ctx.fillText(`Тренд: ${data.trend} (${data.trend_percent > 0 ? '+' : ''}${data.trend_percent}%)`, margin.left + 600, statsY);
 }
 
 function loadTestTensionChart(container, dateRange) {

@@ -57,8 +57,33 @@ class TensionChartGenerator:
             hist_dates = [d[0] for d in historical_data]
             hist_values = [d[1] for d in historical_data]
             
+            # Добавляем сглаживание для лучшей визуализации
+            if len(hist_values) > 1:
+                from scipy import interpolate
+                import numpy as np
+                
+                # Создаем более плотную сетку для сглаживания
+                hist_dates_numeric = [d.timestamp() for d in hist_dates]
+                hist_dates_numeric = np.array(hist_dates_numeric)
+                hist_values = np.array(hist_values)
+                
+                # Интерполяция для сглаживания
+                if len(hist_dates_numeric) >= 3:
+                    f = interpolate.interp1d(hist_dates_numeric, hist_values, 
+                                           kind='cubic', bounds_error=False, fill_value='extrapolate')
+                    dense_times = np.linspace(hist_dates_numeric.min(), hist_dates_numeric.max(), 100)
+                    dense_values = f(dense_times)
+                    dense_dates = [datetime.fromtimestamp(t) for t in dense_times]
+                    
+                    ax1.plot(dense_dates, dense_values, 
+                            linewidth=3, alpha=0.7,
+                            color=self.colors['historical'],
+                            label='Исторические данные (сглаженные)',
+                            zorder=2)
+            
+            # Основная линия с точками
             ax1.plot(hist_dates, hist_values, 
-                    marker='o', linewidth=2, markersize=6,
+                    marker='o', linewidth=2, markersize=8,
                     color=self.colors['historical'],
                     label='Исторические данные',
                     zorder=3)
