@@ -5,12 +5,12 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/analytics.css') }}">
 <style>
-.stats-number {
+    .stats-number {
     font-size: 18px !important;
-    font-weight: bold;
-}
-
-.stats-label {
+        font-weight: bold;
+    }
+    
+    .stats-label {
     font-size: 12px !important;
 }
 
@@ -21,7 +21,7 @@
 
 .news-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
+        border: none;
     border-radius: 12px;
     margin-bottom: 15px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -42,18 +42,18 @@
 
 .news-card-body {
     padding: 20px;
-    color: white;
+        color: white;
 }
 
 .news-title {
     font-size: 16px;
-    font-weight: bold;
+        font-weight: bold;
     margin-bottom: 10px;
     line-height: 1.4;
-}
-
+    }
+    
 .news-title a {
-    color: white;
+        color: white;
     text-decoration: none;
 }
 
@@ -70,16 +70,16 @@
 }
 
 .news-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     flex-wrap: wrap;
     gap: 10px;
 }
 
 .news-meta-item {
-    display: flex;
-    align-items: center;
+        display: flex;
+        align-items: center;
     gap: 5px;
     font-size: 12px;
     opacity: 0.8;
@@ -90,7 +90,7 @@
     padding: 4px 8px;
     border-radius: 12px;
     font-size: 11px;
-    font-weight: bold;
+        font-weight: bold;
 }
 
 .news-tension {
@@ -127,7 +127,7 @@
     font-size: 48px;
     margin-bottom: 20px;
     opacity: 0.5;
-}
+    }
 </style>
 {% endblock %}
 
@@ -206,6 +206,24 @@
                                 <div class="stats-label">🔥 Социальная активность</div>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="stats-card">
+                                <div class="stats-number" id="newsVelocity">-</div>
+                                <div class="stats-label">⚡ Скорость новостей/час</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="stats-card">
+                                <div class="stats-number" id="peakHour">-</div>
+                                <div class="stats-label">🕐 Пиковый час</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="stats-card">
+                                <div class="stats-number" id="sentimentTrend">-</div>
+                                <div class="stats-label">📊 Тренд тональности</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -277,10 +295,10 @@
                 <div class="card-body">
                     <div id="newsContainer" class="news-container">
                         <div class="text-center py-4">
-                            <div class="loading-spinner">
-                                <div class="spinner-custom"></div>
-                                <p class="mt-2 text-muted">Загрузка новостей...</p>
-                            </div>
+                                        <div class="loading-spinner">
+                                            <div class="spinner-custom"></div>
+                                            <p class="mt-2 text-muted">Загрузка новостей...</p>
+                                        </div>
                         </div>
                     </div>
                 </div>
@@ -390,12 +408,18 @@ function loadStatistics(category, dateRange) {
         document.getElementById('avgTension').textContent = '67.3%';
         document.getElementById('trendIndicator').textContent = '↗ Растет';
         document.getElementById('socialActivity').textContent = 'Высокая';
+        document.getElementById('newsVelocity').textContent = '12.4';
+        document.getElementById('peakHour').textContent = '14:00';
+        document.getElementById('sentimentTrend').textContent = '↗ Позитивный';
         
         // Добавляем анимацию
         document.getElementById('totalNews').classList.add('fade-in-up');
         document.getElementById('avgTension').classList.add('fade-in-up');
         document.getElementById('trendIndicator').classList.add('fade-in-up');
         document.getElementById('socialActivity').classList.add('fade-in-up');
+        document.getElementById('newsVelocity').classList.add('fade-in-up');
+        document.getElementById('peakHour').classList.add('fade-in-up');
+        document.getElementById('sentimentTrend').classList.add('fade-in-up');
         return;
     }
     
@@ -407,6 +431,9 @@ function loadStatistics(category, dateRange) {
                 document.getElementById('totalNews').textContent = data.total_news || '0';
                 document.getElementById('trendIndicator').textContent = data.trend || '→ Стабильно';
                 document.getElementById('socialActivity').textContent = data.social_activity || 'Нет данных';
+                document.getElementById('newsVelocity').textContent = data.news_velocity || '0';
+                document.getElementById('peakHour').textContent = data.peak_hour || '00:00';
+                document.getElementById('sentimentTrend').textContent = data.sentiment_trend || '→ Стабильный';
             }
         })
         .catch(error => {
@@ -497,7 +524,7 @@ function loadTestCharts(dateRange) {
     document.getElementById('territoryChart').innerHTML = `
         <div class="chart-placeholder">
             <canvas id="testTerritoryCanvas" width="700" height="450"></canvas>
-        </div>
+                </div>
     `;
     
     // Рисуем улучшенную круговую диаграмму
@@ -509,10 +536,10 @@ function loadTestCharts(dateRange) {
         const radius = 130;
         
         const data = [
-            { label: 'Центральный', value: 437, percent: 35, color: '#e74c3c' },
-            { label: 'Восточный', value: 312, percent: 25, color: '#3498db' },
-            { label: 'Южный', value: 249, percent: 20, color: '#f39c12' },
-            { label: 'Западный', value: 249, percent: 20, color: '#2ecc71' }
+            { label: 'Центральный', value: 437, percent: 35, color: '#6c7b95' },
+            { label: 'Восточный', value: 312, percent: 25, color: '#8b9dc3' },
+            { label: 'Южный', value: 249, percent: 20, color: '#a8b5c4' },
+            { label: 'Западный', value: 249, percent: 20, color: '#c7d2da' }
         ];
         
         // Заливка фона
@@ -654,12 +681,12 @@ function loadTestCharts(dateRange) {
             days.forEach((day, j) => {
                 const value = heatData[i][j];
                 
-                // Определяем цвет по интенсивности
-                let color;
-                if (value < 30) color = '#2ecc71';
-                else if (value < 50) color = '#f1c40f';
-                else if (value < 70) color = '#f39c12';
-                else color = '#e74c3c';
+            // Определяем цвет по интенсивности (приглушенные тона)
+            let color;
+            if (value < 30) color = '#7fb069';
+            else if (value < 50) color = '#b5a565';
+            else if (value < 70) color = '#d4a574';
+            else color = '#c77d6a';
                 
                 // Рисуем ячейку с градиентом
                 const gradient = ctx.createLinearGradient(
@@ -712,10 +739,10 @@ function loadTestCharts(dateRange) {
         ctx.fillText('Уровень активности:', legendX, legendY);
         
         const legendItems = [
-            { label: 'Низкая (0-29)', color: '#2ecc71' },
-            { label: 'Умеренная (30-49)', color: '#f1c40f' },
-            { label: 'Средняя (50-69)', color: '#f39c12' },
-            { label: 'Высокая (70+)', color: '#e74c3c' }
+            { label: 'Низкая (0-29)', color: '#7fb069' },
+            { label: 'Умеренная (30-49)', color: '#b5a565' },
+            { label: 'Средняя (50-69)', color: '#d4a574' },
+            { label: 'Высокая (70+)', color: '#c77d6a' }
         ];
         
         legendItems.forEach((item, i) => {
@@ -796,7 +823,7 @@ function createRealCategoryChart(data, totalNews) {
     document.getElementById('categoryChart').innerHTML = `
         <div class="chart-placeholder">
             <canvas id="realCategoryCanvas" width="700" height="450"></canvas>
-        </div>
+            </div>
     `;
     
     const canvas = document.getElementById('realCategoryCanvas');
@@ -988,7 +1015,7 @@ function createRealHeatmap(sources, days, data) {
     document.getElementById('sourcesChart').innerHTML = `
         <div class="chart-placeholder">
             <canvas id="realHeatmapCanvas" width="850" height="450"></canvas>
-        </div>
+                </div>
     `;
     
     const canvas = document.getElementById('realHeatmapCanvas');
@@ -1081,21 +1108,21 @@ function createRealHeatmap(sources, days, data) {
 function renderNewsCards(newsData, container) {
     newsData.forEach(news => {
         const isTestCategory = news.category && news.category.startsWith('test_');
-        // Генерируем случайный tension_score для демонстрации
-        const tensionScore = Math.random() * 10;
+        // Используем реальный tension_score если есть, иначе генерируем случайный
+        const tensionScore = news.tension_score || news.tension || Math.random() * 10;
         
         const newsCard = document.createElement('div');
         newsCard.className = 'news-card';
         newsCard.innerHTML = `
             <div class="news-card-body">
                 <div class="news-title">
-                    <a href="${news.link || '#'}" target="_blank">${news.title}</a>
+                    <a href="${news.url || news.link || '#'}" target="_blank">${news.title}</a>
                 </div>
                 ${news.content ? `<div class="news-content">${news.content.substring(0, 150)}...</div>` : ''}
                 <div class="news-meta">
                     <div class="news-meta-item">
                         <i class="fas fa-clock"></i>
-                        <span class="news-time">${formatDate(news.published_date)}</span>
+                        <span class="news-time">${formatDate(news.published_date || news.date)}</span>
                     </div>
                     <div class="news-meta-item">
                         <i class="fas fa-tag"></i>
@@ -1139,14 +1166,8 @@ function loadNewsTable(category, dateRange) {
     // Используем правильный API эндпоинт с учетом категории
     let apiUrl = '/api/news?limit=20';
     if (category !== 'all' && category !== 'military_operations_test') {
-        // Маппинг категорий аналитики на источники API
-        const sourceMapping = {
-            'military_operations': 'universal_military_operations',
-            'humanitarian_crisis': 'universal_humanitarian_crisis', 
-            'political_decisions': 'universal_political_decisions'
-        };
-        const apiSource = sourceMapping[category] || 'all';
-        apiUrl = `/api/news?source=${apiSource}&limit=20`;
+        // Для реальных категорий используем API аналитики
+        apiUrl = `/api/ukraine_analytics/recent_news?category=${category}&days=${dateRange}&limit=20`;
     } else if (category === 'military_operations_test') {
         // Для тестовой категории используем все новости
         apiUrl = '/api/news?limit=20';
@@ -1158,51 +1179,52 @@ function loadNewsTable(category, dateRange) {
         .then(response => response.json())
         .then(data => {
             console.log('News API response:', data);
+            let newsData = [];
+            
+            // Обрабатываем разные форматы ответов
             if (data.data && Array.isArray(data.data)) {
-                container.innerHTML = '';
-                
-                if (data.data.length === 0) {
-                    // Если нет данных в специфическом источнике, попробуем загрузить все новости
-                    if (category !== 'all' && !apiUrl.includes('source=all')) {
-                        console.log('No data in specific source, trying all news...');
-                        fetch('/api/news?limit=20')
-                            .then(response => response.json())
-                            .then(fallbackData => {
-                                console.log('Fallback news response:', fallbackData);
-                                if (fallbackData.data && fallbackData.data.length > 0) {
-                                    // Показываем новости с пометкой
-                                    container.innerHTML = `
-                                        <div class="alert alert-info mb-3">
-                                            <i class="fas fa-info-circle"></i>
-                                            Новости для категории "${getCategoryName(category)}" не найдены. Показаны последние новости:
-                                        </div>
-                                    `;
-                                    renderNewsCards(fallbackData.data, container);
-                                } else {
-                                    showNoNewsMessage(container);
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error loading fallback news:', error);
-                                showNoNewsMessage(container);
-                            });
-                        return;
-                    } else {
-                        showNoNewsMessage(container);
-                        return;
-                    }
-                }
-                
-                renderNewsCards(data.data, container);
-            } else {
-                container.innerHTML = `
-                    <div class="no-news">
-                        <i class="fas fa-inbox"></i>
-                        <h5>Нет данных для отображения</h5>
-                        <p>Попробуйте изменить фильтры или период времени</p>
-                    </div>
-                `;
+                newsData = data.data;
+            } else if (data.news && Array.isArray(data.news)) {
+                newsData = data.news;
+            } else if (Array.isArray(data)) {
+                newsData = data;
             }
+            
+            container.innerHTML = '';
+            
+            if (newsData.length === 0) {
+                // Если нет данных в специфическом источнике, попробуем загрузить все новости
+                if (category !== 'all' && !apiUrl.includes('source=all')) {
+                    console.log('No data in specific source, trying all news...');
+                    fetch('/api/news?limit=20')
+                        .then(response => response.json())
+                        .then(fallbackData => {
+                            console.log('Fallback news response:', fallbackData);
+                            if (fallbackData.data && fallbackData.data.length > 0) {
+                                // Показываем новости с пометкой
+                                container.innerHTML = `
+                                    <div class="alert alert-info mb-3">
+                                        <i class="fas fa-info-circle"></i>
+                                        Новости для категории "${getCategoryName(category)}" не найдены. Показаны последние новости:
+                                    </div>
+                                `;
+                                renderNewsCards(fallbackData.data, container);
+                            } else {
+                                showNoNewsMessage(container);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading fallback news:', error);
+                            showNoNewsMessage(container);
+                        });
+                    return;
+                } else {
+                    showNoNewsMessage(container);
+                    return;
+                }
+            }
+            
+            renderNewsCards(newsData, container);
         })
         .catch(error => {
             console.error('Error loading news table:', error);
@@ -1366,33 +1388,33 @@ function loadTestNewsTable(tbody) {
     
     tbody.innerHTML = '';
     testNews.forEach(news => {
-        const row = document.createElement('tr');
+                    const row = document.createElement('tr');
         row.classList.add('fade-in-up');
-        
-        row.innerHTML = `
-            <td>
+                    
+                    row.innerHTML = `
+                        <td>
                 <small style="color: #ffffff; font-weight: 500;">${formatDate(news.date)}</small>
-            </td>
-            <td>
-                <div class="fw-bold">
+                        </td>
+                        <td>
+                            <div class="fw-bold">
                     <span class="text-decoration-none" style="color: #4fc3f7; font-size: 1.05rem; cursor: pointer;">${news.title}</span>
-                </div>
+                            </div>
                 <small style="color: #e0e0e0; line-height: 1.5;">${news.content}</small>
-            </td>
-            <td>
+                        </td>
+                        <td>
                 <span class="category-badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-size: 0.9rem;">
                     🎯 Военные операции
                 </span>
-            </td>
-            <td>
+                        </td>
+                        <td>
                 <span class="tension-badge" style="background-color: ${getTensionColorForValue(news.tension)}; font-size: 0.95rem; padding: 0.5rem 1rem;">
                     ${news.tension.toFixed(1)}%
                 </span>
-            </td>
-            <td>
+                        </td>
+                        <td>
                 <small style="color: #ffffff; font-weight: 600;">${news.source}</small>
-            </td>
-        `;
+                        </td>
+                    `;
         
         // Добавляем обработчик клика на строку
         row.addEventListener('click', function() {
@@ -1409,8 +1431,8 @@ function loadTestNewsTable(tbody) {
             });
         });
         
-        tbody.appendChild(row);
-    });
+                    tbody.appendChild(row);
+                });
 }
 
 function getTensionColorForValue(tension) {
@@ -1515,7 +1537,7 @@ function createRealTensionChart(data, container) {
             <div class="mt-3" style="color: #ffffff;">
                 <div class="row text-center">
                     <div class="col-md-3">
-                        <strong style="color: #4fc3f7;">📊 Исторических точек:</strong><br>${data.historical_data ? data.historical_data.length : 0}
+                        <strong style="color: #4fc3f7;">📊 Исторических точек:</strong><br>${data.historical_points || (data.historical_data ? data.historical_data.length : 0)} / ${data.target_points || 7}
                     </div>
                     <div class="col-md-3">
                         <strong style="color: #9b59b6;">🔮 Прогнозных точек:</strong><br>${data.forecast_data ? data.forecast_data.length : 0}
@@ -1528,8 +1550,8 @@ function createRealTensionChart(data, container) {
                     </div>
                 </div>
             </div>
-        </div>
-    `;
+                </div>
+            `;
     
     // Рисуем график напряженности
     const canvas = document.getElementById('realTensionCanvas');
@@ -1557,7 +1579,9 @@ function createRealTensionChart(data, container) {
     
     const minDate = Math.min(...allData.map(d => d.date.getTime()));
     const maxDate = Math.max(...allData.map(d => d.date.getTime()));
-    const totalDays = allData.length;
+    const totalPoints = allData.length;
+    const historicalPoints = historicalData.length;
+    const forecastPoints = forecastData.length;
     
     // Заливка фона темным цветом
     ctx.fillStyle = '#1e3a6a';
@@ -1587,7 +1611,7 @@ function createRealTensionChart(data, container) {
     }
     
     // Вертикальные линии сетки
-    const gridSteps = Math.min(totalDays, 10);
+    const gridSteps = Math.min(totalPoints, 10);
     for (let i = 0; i <= gridSteps; i++) {
         const x = padding + (chartWidth / gridSteps) * i;
         ctx.beginPath();
@@ -1601,7 +1625,7 @@ function createRealTensionChart(data, container) {
     ctx.lineWidth = 3;
     ctx.beginPath();
     historicalData.forEach((point, i) => {
-        const x = padding + (chartWidth / totalDays) * i;
+        const x = padding + (chartWidth / totalPoints) * i;
         const y = padding + chartHeight - (point.value / 100) * chartHeight;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
@@ -1611,7 +1635,7 @@ function createRealTensionChart(data, container) {
     // Рисуем точки на исторических данных
     ctx.fillStyle = '#667eea';
     historicalData.forEach((point, i) => {
-        const x = padding + (chartWidth / totalDays) * i;
+        const x = padding + (chartWidth / totalPoints) * i;
         const y = padding + chartHeight - (point.value / 100) * chartHeight;
         ctx.beginPath();
         ctx.arc(x, y, 4, 0, 2 * Math.PI);
@@ -1624,11 +1648,11 @@ function createRealTensionChart(data, container) {
         ctx.lineWidth = 3;
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
-        const lastHistX = padding + (chartWidth / totalDays) * (historicalData.length - 1);
+        const lastHistX = padding + (chartWidth / totalPoints) * (historicalData.length - 1);
         const lastHistY = padding + chartHeight - (historicalData[historicalData.length - 1].value / 100) * chartHeight;
         ctx.moveTo(lastHistX, lastHistY);
         forecastData.forEach((point, i) => {
-            const x = padding + (chartWidth / totalDays) * (historicalData.length + i);
+            const x = padding + (chartWidth / totalPoints) * (historicalData.length + i);
             const y = padding + chartHeight - (point.value / 100) * chartHeight;
             ctx.lineTo(x, y);
         });
@@ -1638,7 +1662,7 @@ function createRealTensionChart(data, container) {
         // Рисуем точки на прогнозе
         ctx.fillStyle = '#764ba2';
         forecastData.forEach((point, i) => {
-            const x = padding + (chartWidth / totalDays) * (historicalData.length + i);
+            const x = padding + (chartWidth / totalPoints) * (historicalData.length + i);
             const y = padding + chartHeight - (point.value / 100) * chartHeight;
             ctx.beginPath();
             ctx.arc(x, y, 4, 0, 2 * Math.PI);
@@ -1726,7 +1750,7 @@ function loadTestTensionChart(container, dateRange) {
             <div class="mt-3" style="color: #ffffff;">
                 <div class="row text-center">
                     <div class="col-md-3">
-                        <strong style="color: #4fc3f7;">📊 Исторических точек:</strong><br>${dateRange}
+                        <strong style="color: #4fc3f7;">📊 Исторических точек:</strong><br>${actualPoints}
                     </div>
                     <div class="col-md-3">
                         <strong style="color: #9b59b6;">🔮 Прогнозных точек:</strong><br>5
@@ -1752,14 +1776,22 @@ function loadTestTensionChart(container, dateRange) {
         const chartWidth = width - 2 * padding;
         const chartHeight = height - 2 * padding;
         
-        // Генерируем данные
+        // Генерируем данные на основе периода
         const historicalDays = parseInt(dateRange);
         const forecastDays = 5;
         const totalDays = historicalDays + forecastDays;
         
         const historicalData = [];
         let baseValue = 45;
-        for (let i = 0; i < historicalDays; i++) {
+        
+        // Для 7 дней - 7 точек, для 30 дней - 15 точек (каждые 2 дня), для 90 дней - 30 точек (каждые 3 дня)
+        let step = 1;
+        if (historicalDays === 30) step = 2;
+        else if (historicalDays === 90) step = 3;
+        
+        const actualPoints = Math.ceil(historicalDays / step);
+        
+        for (let i = 0; i < actualPoints; i++) {
             baseValue += (Math.random() - 0.4) * 8;
             baseValue = Math.max(30, Math.min(85, baseValue));
             historicalData.push(baseValue);
@@ -1815,7 +1847,7 @@ function loadTestTensionChart(container, dateRange) {
         ctx.lineWidth = 3;
         ctx.beginPath();
         historicalData.forEach((value, i) => {
-            const x = padding + (chartWidth / totalDays) * i;
+            const x = padding + (chartWidth / (actualPoints + forecastDays)) * i;
             const y = padding + chartHeight - (value / 100) * chartHeight;
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
@@ -1825,7 +1857,7 @@ function loadTestTensionChart(container, dateRange) {
         // Рисуем точки на исторических данных
         ctx.fillStyle = '#667eea';
         historicalData.forEach((value, i) => {
-            const x = padding + (chartWidth / totalDays) * i;
+            const x = padding + (chartWidth / (actualPoints + forecastDays)) * i;
             const y = padding + chartHeight - (value / 100) * chartHeight;
             ctx.beginPath();
             ctx.arc(x, y, 4, 0, 2 * Math.PI);
@@ -1837,11 +1869,11 @@ function loadTestTensionChart(container, dateRange) {
         ctx.lineWidth = 3;
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
-        const lastHistX = padding + (chartWidth / totalDays) * (historicalDays - 1);
+        const lastHistX = padding + (chartWidth / (actualPoints + forecastDays)) * (actualPoints - 1);
         const lastHistY = padding + chartHeight - (historicalData[historicalData.length - 1] / 100) * chartHeight;
         ctx.moveTo(lastHistX, lastHistY);
         forecastData.forEach((value, i) => {
-            const x = padding + (chartWidth / totalDays) * (historicalDays + i);
+            const x = padding + (chartWidth / (actualPoints + forecastDays)) * (actualPoints + i);
             const y = padding + chartHeight - (value / 100) * chartHeight;
             ctx.lineTo(x, y);
         });
@@ -1851,7 +1883,7 @@ function loadTestTensionChart(container, dateRange) {
         // Рисуем точки на прогнозе
         ctx.fillStyle = '#764ba2';
         forecastData.forEach((value, i) => {
-            const x = padding + (chartWidth / totalDays) * (historicalDays + i);
+            const x = padding + (chartWidth / (actualPoints + forecastDays)) * (actualPoints + i);
             const y = padding + chartHeight - (value / 100) * chartHeight;
             ctx.beginPath();
             ctx.arc(x, y, 4, 0, 2 * Math.PI);

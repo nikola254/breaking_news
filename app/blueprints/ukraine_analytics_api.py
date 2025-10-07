@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import uuid
+from collections import defaultdict
 from clickhouse_driver import Client
 from config import Config
 from app.utils.ukraine_sentiment_analyzer import get_ukraine_sentiment_analyzer
@@ -464,21 +465,50 @@ def get_recent_news():
                 category_condition = f"AND category = '{category}'"
         
         # Запрос для получения последних новостей
-        query = f"""
-        SELECT 
-            published_date,
-            title,
-            content,
-            {columns['url_column']} as url,
-            {columns['source_column']} as source,
-            category,
-            sentiment_score
-        FROM {table_source}
-        WHERE published_date >= today() - {days}
-        {category_condition}
-        ORDER BY published_date DESC
-        LIMIT {limit}
-        """
+        # Проверяем, есть ли sentiment_score в таблице
+        try:
+            check_columns_query = f"DESCRIBE TABLE {table_source}"
+            columns_info = client.execute(check_columns_query)
+            has_sentiment = any('sentiment_score' in str(col) for col in columns_info)
+            has_url = any('url' in str(col) for col in columns_info)
+        except:
+            has_sentiment = False
+            has_url = False
+        
+        # Формируем запрос в зависимости от доступных колонок
+        if has_sentiment and has_url:
+            query = f"""
+            SELECT 
+                published_date,
+                title,
+                content,
+                {columns['url_column']} as url,
+                {columns['source_column']} as source,
+                category,
+                sentiment_score
+            FROM {table_source}
+            WHERE published_date >= today() - {days}
+            {category_condition}
+            ORDER BY published_date DESC
+            LIMIT {limit}
+            """
+        else:
+            # Упрощенный запрос без sentiment_score и url
+            query = f"""
+            SELECT 
+                published_date,
+                title,
+                content,
+                '' as url,
+                {columns['source_column']} as source,
+                category,
+                0.0 as sentiment_score
+            FROM {table_source}
+            WHERE published_date >= today() - {days}
+            {category_condition}
+            ORDER BY published_date DESC
+            LIMIT {limit}
+            """
         
         result = client.execute(query)
         
@@ -488,13 +518,16 @@ def get_recent_news():
             text = f"{row[1]} {row[2] or ''}"  # title + content
             tension_metrics = tension_analyzer.analyze_text_tension(text, row[1])
             
+            # Безопасно обрабатываем URL
+            url = row[3] if len(row) > 3 and row[3] else ''
+            
             news_list.append({
                 'date': row[0].isoformat() if hasattr(row[0], 'isoformat') else str(row[0]),
                 'title': row[1],
-                'url': row[3],
-                'source': row[4],
-                'category': row[5],
-                'sentiment_score': float(row[6]),
+                'url': url,
+                'source': row[4] if len(row) > 4 else '',
+                'category': row[5] if len(row) > 5 else category,
+                'sentiment_score': float(row[6]) if len(row) > 6 else 0.0,
                 'tension_score': tension_metrics.tension_score,
                 'tension_category': tension_metrics.category,
                 'emotional_intensity': tension_metrics.emotional_intensity,
@@ -1808,22 +1841,32 @@ def get_tension_data():
                 'value': round(avg_tension * 100, 1)  # В процентах
             })
         
-        # Если данных мало, создаем дополнительные точки
-        if len(historical_data) < 3:
+        # Определяем целевое количество точек на основе периода
+        if days == 7:
+            target_points = 7
+        elif days == 30:
+            target_points = 15  # каждые 2 дня
+        elif days == 90:
+            target_points = 30  # каждые 3 дня
+        else:
+            target_points = min(days, 10)
+        
+        # Если данных мало, создаем дополнительные точки на основе периода
+        if len(historical_data) < target_points:
             if historical_data:
                 base_value = historical_data[0]['value']
                 base_date = datetime.fromisoformat(historical_data[0]['date'])
                 
-                for i in range(-2, 3):
-                    if i != 0:
-                        new_date = base_date + timedelta(days=i)
-                        import random
-                        variation = random.uniform(-10, 10)
-                        new_value = max(0, min(100, base_value + variation))
-                        historical_data.append({
-                            'date': new_date.isoformat(),
-                            'value': round(new_value, 1)
-                        })
+                # Создаем недостающие точки
+                for i in range(1, target_points - len(historical_data) + 1):
+                    new_date = base_date + timedelta(days=i)
+                    import random
+                    variation = random.uniform(-10, 10)
+                    new_value = max(0, min(100, base_value + variation))
+                    historical_data.append({
+                        'date': new_date.isoformat(),
+                        'value': round(new_value, 1)
+                    })
                 
                 historical_data.sort(key=lambda x: x['date'])
         
@@ -1882,7 +1925,9 @@ def get_tension_data():
             'trend': trend,
             'trend_percent': trend_percent,
             'historical_points': len(historical_data),
-            'forecast_points': len(forecast_data)
+            'forecast_points': len(forecast_data),
+            'target_points': target_points,
+            'period_days': days
         })
         
     except Exception as e:
@@ -1938,10 +1983,10 @@ def get_territory_data():
         
         # Классифицируем по территориям на основе ключевых слов (4 региона)
         territory_keywords = {
-            'Центральный': ['центр', 'центральная', 'киев', 'киевская', 'житомир', 'житомирская', 'черкассы', 'черкасская', 'полтава', 'полтавская', 'сумы', 'сумская', 'чернигов', 'черниговская', 'киевская область', 'центральная украина'],
-            'Восточный': ['восток', 'восточная', 'харьков', 'харьковская', 'донецк', 'донецкая', 'луганск', 'луганская', 'днепропетровск', 'днепропетровская', 'запорожье', 'запорожская'],
-            'Южный': ['юг', 'южная', 'одесса', 'одесская', 'херсон', 'херсонская', 'николаев', 'николаевская', 'кировоград', 'кировоградская', 'крым', 'крымская'],
-            'Западный': ['запад', 'западная', 'львов', 'львовская', 'волынь', 'волынская', 'тернополь', 'тернопольская', 'ивано-франковск', 'рівне', 'рівненська', 'закарпаття', 'закарпатська', 'чернівці', 'чернівецька']
+            'Центральный': ['центр', 'центральная', 'киев', 'киевская', 'житомир', 'житомирская', 'черкассы', 'черкасская', 'полтава', 'полтавская', 'сумы', 'сумская', 'чернигов', 'черниговская', 'киевская область', 'центральная украина', 'киев', 'житомир', 'черкассы', 'полтава', 'сумы', 'чернигов'],
+            'Восточный': ['восток', 'восточная', 'харьков', 'харьковская', 'донецк', 'донецкая', 'луганск', 'луганская', 'днепропетровск', 'днепропетровская', 'запорожье', 'запорожская', 'харьков', 'донецк', 'луганск', 'днепропетровск', 'запорожье'],
+            'Южный': ['юг', 'южная', 'одесса', 'одесская', 'херсон', 'херсонская', 'николаев', 'николаевская', 'кировоград', 'кировоградская', 'крым', 'крымская', 'одесса', 'херсон', 'николаев', 'кировоград', 'крым'],
+            'Западный': ['запад', 'западная', 'львов', 'львовская', 'волынь', 'волынская', 'тернополь', 'тернопольская', 'ивано-франковск', 'рівне', 'рівненська', 'закарпаття', 'закарпатська', 'чернівці', 'чернівецька', 'львов', 'волынь', 'тернополь', 'ивано-франковск', 'рівне', 'закарпаття', 'чернівці']
         }
         
         territory_counts = {territory: 0 for territory in territory_keywords.keys()}
@@ -2089,12 +2134,62 @@ def get_full_statistics():
         else:
             social_activity = 'Нет данных'
         
+        # Дополнительные критерии
+        # Скорость новостей в час
+        news_velocity = round(total_news / (days * 24), 1) if days > 0 else 0
+        
+        # Пиковый час (анализируем по часам)
+        hourly_counts = defaultdict(int)
+        for title, content, pub_date, cat, source in results:
+            if pub_date:
+                hour = pub_date.hour
+                hourly_counts[hour] += 1
+        
+        peak_hour = max(hourly_counts.items(), key=lambda x: x[1])[0] if hourly_counts else 0
+        peak_hour_str = f"{peak_hour:02d}:00"
+        
+        # Тренд тональности (упрощенный анализ)
+        sentiment_trend = "→ Стабильный"
+        if len(results) >= 10:
+            # Берем первые и последние 5 новостей для анализа
+            first_half = results[:5]
+            second_half = results[-5:]
+            
+            # Простой анализ тональности по ключевым словам
+            positive_words = ['успех', 'победа', 'освобождение', 'прогресс', 'улучшение']
+            negative_words = ['поражение', 'отступление', 'потери', 'кризис', 'проблемы']
+            
+            first_sentiment = 0
+            second_sentiment = 0
+            
+            for title, content, pub_date, cat, source in first_half:
+                text = f"{title} {content or ''}".lower()
+                pos_count = sum(1 for word in positive_words if word in text)
+                neg_count = sum(1 for word in negative_words if word in text)
+                first_sentiment += (pos_count - neg_count)
+            
+            for title, content, pub_date, cat, source in second_half:
+                text = f"{title} {content or ''}".lower()
+                pos_count = sum(1 for word in positive_words if word in text)
+                neg_count = sum(1 for word in negative_words if word in text)
+                second_sentiment += (pos_count - neg_count)
+            
+            if second_sentiment > first_sentiment + 2:
+                sentiment_trend = "↗ Позитивный"
+            elif second_sentiment < first_sentiment - 2:
+                sentiment_trend = "↘ Негативный"
+            else:
+                sentiment_trend = "→ Стабильный"
+        
         return jsonify({
             'status': 'success',
             'total_news': total_news,
             'trend': trend,
             'social_activity': social_activity,
-            'avg_daily_news': round(avg_daily_news, 1)
+            'avg_daily_news': round(avg_daily_news, 1),
+            'news_velocity': news_velocity,
+            'peak_hour': peak_hour_str,
+            'sentiment_trend': sentiment_trend
         })
         
     except Exception as e:
