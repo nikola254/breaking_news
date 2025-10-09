@@ -56,7 +56,6 @@ def create_ukraine_tables_if_not_exists():
                 ai_confidence Float32 DEFAULT 0.0,
                 keywords_found Array(String) DEFAULT [],
                 sentiment_score Float32 DEFAULT 0.0,
-                published_date DateTime DEFAULT now(),
                 published_date DateTime DEFAULT now()
             ) ENGINE = MergeTree()
             ORDER BY (published_date, id)
@@ -221,7 +220,7 @@ def parse_politics_headlines():
                     client.execute(
                         f'''INSERT INTO news.ria_{category} 
                         (title, link, content, source, category, relevance_score, ai_confidence, 
-                         keywords_found, sentiment_score, published_date, published_date) VALUES''',
+                         keywords_found, sentiment_score, published_date) VALUES''',
                         data
                     )
                     print(f"Добавлено {len(data)} записей в таблицу ria_{category}")

@@ -115,6 +115,12 @@ def clean_text(text):
     if not text:
         return ""
     
+    # Обработка кодировки
+    try:
+        text = str(text)
+    except UnicodeDecodeError:
+        text = text.encode('utf-8', errors='replace').decode('utf-8')
+    
     # Удаляем URL-адреса
     text = re.sub(r'https?://\S+', '', text)
     
@@ -284,8 +290,16 @@ async def parse_telegram_channels():
                     # Create message link
                     message_link = f"https://t.me/{entity.username}/{message.id}" if hasattr(entity, 'username') else ""
                     
-                    print(f"Title: {title[:50]}{'...' if len(title) > 50 else ''}")
-                    print(f"Category: {category}")
+                    # Безопасный вывод с обработкой кодировки
+                    try:
+                        safe_title = title[:50] + ('...' if len(title) > 50 else '')
+                        print(f"Title: {safe_title}")
+                        print(f"Category: {category}")
+                    except UnicodeEncodeError:
+                        # Если есть проблемы с кодировкой, заменяем проблемные символы
+                        safe_title = title.encode('utf-8', errors='replace').decode('utf-8')[:50]
+                        print(f"Title: {safe_title}{'...' if len(title) > 50 else ''}")
+                        print(f"Category: {category}")
                     print(f"Message ID: {message.id}")
                     print("-" * 40)
                     

@@ -95,7 +95,6 @@ class UniversalParser:
             content String,
             category String,
             published_date DateTime DEFAULT now(),
-            published_date DateTime DEFAULT now(),
             language String DEFAULT 'unknown',
             tags Array(String) DEFAULT [],
             metadata String DEFAULT '{}'

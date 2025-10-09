@@ -47,24 +47,59 @@ def get_table_for_category(category):
         category (str): Код категории
     
     Returns:
-        str: Название таблицы
+        str: Название таблицы или UNION ALL запрос
     """
     if category == 'all':
         # Для всех категорий используем telegram_headlines (содержит все данные)
         return "news.telegram_headlines"
     elif category == 'military' or category == 'military_operations':
         return "news.telegram_headlines"
-    elif category == 'humanitarian' or category == 'humanitarian_crisis':
-        return "news.telegram_headlines"
-    elif category == 'economic' or category == 'economic_consequences':
-        return "news.telegram_headlines"
-    elif category == 'political' or category == 'political_decisions':
-        return "news.telegram_headlines"
     elif category == 'information' or category == 'information_social':
         return "news.telegram_headlines"
     else:
-        # Для остальных категорий используем telegram_headlines
-        return "news.telegram_headlines"
+        # Для остальных категорий используем UNION ALL из всех таблиц источников
+        return "all_sources"
+
+def build_union_query_for_category(category, days):
+    """Построение UNION ALL запроса для категории из всех таблиц источников.
+    
+    Args:
+        category (str): Код категории
+        days (int): Количество дней для анализа
+    
+    Returns:
+        str: UNION ALL запрос
+    """
+    # Список основных таблиц источников
+    source_tables = [
+        'telegram_headlines',
+        'ria_headlines', 
+        'lenta_headlines',
+        'rbc_headlines',
+        'cnn_headlines',
+        'reuters_headlines',
+        'aljazeera_headlines',
+        'bbc_headlines',
+        'dw_headlines',
+        'euronews_headlines',
+        'france24_headlines',
+        'gazeta_headlines',
+        'kommersant_headlines',
+        'rt_headlines',
+        'tsn_headlines',
+        'unian_headlines'
+    ]
+    
+    union_parts = []
+    for table in source_tables:
+        union_parts.append(f"""
+            SELECT title, content, published_date, category, source, COALESCE(link, '') as link
+            FROM news.{table}
+            WHERE published_date >= today() - {days}
+            AND category = '{category}'
+        """)
+    
+    return " UNION ALL ".join(union_parts)
 
 def get_table_columns(category):
     """Получение правильных столбцов для таблицы категории.
@@ -110,19 +145,29 @@ def get_statistics():
         # Получаем правильную таблицу для категории
         table_source = get_table_for_category(category)
         
-        # Формируем условие для категории
-        category_condition = ""
-        if category != 'all':
-            category_condition = f"AND category = '{category}'"
-        
-        # Запрос для получения статистики
-        query = f"""
-        SELECT 
-            COUNT(*) as total_news
-        FROM {table_source}
-        WHERE published_date >= today() - {days}
-        {category_condition}
-        """
+        # Формируем запрос в зависимости от типа таблицы
+        if table_source == "all_sources":
+            # Используем UNION ALL запрос для всех источников
+            query = f"""
+            SELECT COUNT(*) as total_news
+            FROM (
+                {build_union_query_for_category(category, days)}
+            )
+            """
+        else:
+            # Формируем условие для категории
+            category_condition = ""
+            if category != 'all':
+                category_condition = f"AND category = '{category}'"
+            
+            # Запрос для получения статистики
+            query = f"""
+            SELECT 
+                COUNT(*) as total_news
+            FROM {table_source}
+            WHERE published_date >= today() - {days}
+            {category_condition}
+            """
         
         result = client.execute(query)
         
@@ -456,59 +501,71 @@ def get_recent_news():
         table_source = get_table_for_category(category)
         columns = get_table_columns(category)
         
-        # Формируем условие для категории
-        category_condition = ""
-        if category != 'all':
-            if category == 'military':
-                category_condition = f"AND category = 'military_operations'"
-            else:
-                category_condition = f"AND category = '{category}'"
-        
-        # Запрос для получения последних новостей
-        # Проверяем, есть ли sentiment_score в таблице
-        try:
-            check_columns_query = f"DESCRIBE TABLE {table_source}"
-            columns_info = client.execute(check_columns_query)
-            has_sentiment = any('sentiment_score' in str(col) for col in columns_info)
-            has_url = any('url' in str(col) for col in columns_info)
-        except:
-            has_sentiment = False
-            has_url = False
-        
-        # Формируем запрос в зависимости от доступных колонок
-        if has_sentiment and has_url:
+        # Формируем запрос в зависимости от типа таблицы
+        if table_source == "all_sources":
+            # Используем UNION ALL запрос для всех источников
             query = f"""
-            SELECT 
-                published_date,
-                title,
-                content,
-                {columns['url_column']} as url,
-                {columns['source_column']} as source,
-                category,
-                sentiment_score
-            FROM {table_source}
-            WHERE published_date >= today() - {days}
-            {category_condition}
+            SELECT published_date, title, content, category, source, link
+            FROM (
+                {build_union_query_for_category(category, days)}
+            )
             ORDER BY published_date DESC
             LIMIT {limit}
             """
         else:
-            # Упрощенный запрос без sentiment_score и url
-            query = f"""
-            SELECT 
-                published_date,
-                title,
-                content,
-                '' as url,
-                {columns['source_column']} as source,
-                category,
-                0.0 as sentiment_score
-            FROM {table_source}
-            WHERE published_date >= today() - {days}
-            {category_condition}
-            ORDER BY published_date DESC
-            LIMIT {limit}
-            """
+            # Запрос для получения последних новостей
+            # Проверяем, есть ли sentiment_score в таблице
+            try:
+                check_columns_query = f"DESCRIBE TABLE {table_source}"
+                columns_info = client.execute(check_columns_query)
+                has_sentiment = any('sentiment_score' in str(col) for col in columns_info)
+                has_url = any('url' in str(col) for col in columns_info)
+            except:
+                has_sentiment = False
+                has_url = False
+            
+            # Формируем условие для категории
+            category_condition = ""
+            if category != 'all':
+                if category == 'military':
+                    category_condition = f"AND category = 'military_operations'"
+                else:
+                    category_condition = f"AND category = '{category}'"
+            
+            # Формируем запрос в зависимости от доступных колонок
+            if has_sentiment and has_url:
+                query = f"""
+                SELECT 
+                    published_date,
+                    title,
+                    content,
+                    {columns['url_column']} as url,
+                    {columns['source_column']} as source,
+                    category,
+                    sentiment_score
+                FROM {table_source}
+                WHERE published_date >= today() - {days}
+                {category_condition}
+                ORDER BY published_date DESC
+                LIMIT {limit}
+                """
+            else:
+                # Упрощенный запрос без sentiment_score и url
+                query = f"""
+                SELECT 
+                    published_date,
+                    title,
+                    content,
+                    '' as url,
+                    {columns['source_column']} as source,
+                    category,
+                    0.0 as sentiment_score
+                FROM {table_source}
+                WHERE published_date >= today() - {days}
+                {category_condition}
+                ORDER BY published_date DESC
+                LIMIT {limit}
+                """
         
         result = client.execute(query)
         
@@ -1662,36 +1719,50 @@ def get_heatmap_data():
     
     Query Parameters:
         days (int): Количество дней для анализа (по умолчанию 7)
+        category (str): Категория новостей (по умолчанию 'all')
     
     Returns:
         JSON: Данные для тепловой карты в формате для Canvas
     """
     try:
         days = int(request.args.get('days', 7))
+        category = request.args.get('category', 'all')
         
         client = get_clickhouse_client()
         
-        # Получаем данные по источникам и дням
+        # Получаем правильную таблицу для категории
+        table_source = get_table_for_category(category)
+        
+        # Формируем условие для категории
+        category_condition = ""
+        if category != 'all':
+            category_condition = f"AND category = '{category}'"
+        
+        # Получаем данные по источникам и дням с нормализацией названий источников
         query = f"""
         SELECT 
-            source,
+            CASE 
+                WHEN source = 'lenta.ru' THEN 'lenta'
+                WHEN source = 'gazeta.ru' THEN 'gazeta'
+                ELSE source
+            END as normalized_source,
             toDate(published_date) as day,
             count() as news_count
         FROM (
-            SELECT source, published_date FROM news.ria_headlines WHERE published_date >= today() - {days}
+            SELECT source, published_date, category FROM news.ria_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT source, published_date FROM news.lenta_headlines WHERE published_date >= today() - {days}
+            SELECT source, published_date, category FROM news.lenta_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT source, published_date FROM news.rbc_headlines WHERE published_date >= today() - {days}
+            SELECT source, published_date, category FROM news.rbc_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT source, published_date FROM news.gazeta_headlines WHERE published_date >= today() - {days}
+            SELECT source, published_date, category FROM news.gazeta_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT source, published_date FROM news.kommersant_headlines WHERE published_date >= today() - {days}
+            SELECT source, published_date, category FROM news.kommersant_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT source, published_date FROM news.telegram_headlines WHERE published_date >= today() - {days}
+            SELECT source, published_date, category FROM news.telegram_headlines WHERE published_date >= today() - {days} {category_condition}
         )
-        GROUP BY source, day
-        ORDER BY source, day
+        GROUP BY normalized_source, day
+        ORDER BY normalized_source, day
         """
         
         result = client.execute(query)
@@ -1722,17 +1793,29 @@ def get_heatmap_data():
                 row.append(count)
             heatmap_data.append(row)
         
-        # Преобразуем даты в названия дней недели
+        # Преобразуем даты в названия дней недели на русском языке
+        day_names_ru = {
+            'Monday': 'Понедельник',
+            'Tuesday': 'Вторник', 
+            'Wednesday': 'Среда',
+            'Thursday': 'Четверг',
+            'Friday': 'Пятница',
+            'Saturday': 'Суббота',
+            'Sunday': 'Воскресенье'
+        }
+        
         day_names = []
         for day in days:
             if hasattr(day, 'strftime'):
-                day_names.append(day.strftime('%A'))
+                day_name_en = day.strftime('%A')
+                day_names.append(day_names_ru.get(day_name_en, day_name_en))
             else:
                 from datetime import datetime
                 if isinstance(day, str):
                     try:
                         day_obj = datetime.fromisoformat(day)
-                        day_names.append(day_obj.strftime('%A'))
+                        day_name_en = day_obj.strftime('%A')
+                        day_names.append(day_names_ru.get(day_name_en, day_name_en))
                     except:
                         day_names.append(str(day))
                 else:
@@ -1775,19 +1858,30 @@ def get_tension_data():
         # Получаем правильную таблицу для категории
         table_source = get_table_for_category(category)
         
-        # Формируем условие для категории
-        category_filter = ""
-        if category != 'all':
-            category_filter = f"AND category = '{category}'"
-        
-        # Запрос данных за указанный период
-        query = f"""
-        SELECT title, content, published_date, category, source
-        FROM {table_source}
-        WHERE published_date >= now() - INTERVAL {days} DAY
-        {category_filter}
-        ORDER BY published_date ASC
-        """
+        # Формируем запрос в зависимости от типа таблицы
+        if table_source == "all_sources":
+            # Используем UNION ALL запрос для всех источников
+            query = f"""
+            SELECT title, content, published_date, category, source
+            FROM (
+                {build_union_query_for_category(category, days)}
+            )
+            ORDER BY published_date ASC
+            """
+        else:
+            # Формируем условие для категории
+            category_filter = ""
+            if category != 'all':
+                category_filter = f"AND category = '{category}'"
+            
+            # Запрос данных за указанный период
+            query = f"""
+            SELECT title, content, published_date, category, source
+            FROM {table_source}
+            WHERE published_date >= now() - INTERVAL {days} DAY
+            {category_filter}
+            ORDER BY published_date ASC
+            """
         
         results = client.execute(query)
         
@@ -1904,16 +1998,26 @@ def get_tension_data():
             second_half = historical_data[len(historical_data)//2:]
             first_avg = sum(d['value'] for d in first_half) / len(first_half)
             second_avg = sum(d['value'] for d in second_half) / len(second_half)
-            trend_percent = round(((second_avg - first_avg) / first_avg) * 100, 1) if first_avg > 0 else 0
             
-            if trend_percent > 5:
-                trend = 'Возрастающий'
-            elif trend_percent < -5:
-                trend = 'Убывающий'
+            # Исправленный расчет тренда с защитой от деления на ноль и больших процентов
+            if first_avg > 0.1:  # Минимальный порог для избежания огромных процентов
+                trend_percent = round(((second_avg - first_avg) / first_avg) * 100, 1)
+                # Ограничиваем максимальный процент изменения
+                trend_percent = max(-100, min(100, trend_percent))
             else:
-                trend = 'Стабильный'
+                # Если первое значение слишком маленькое, считаем абсолютное изменение
+                trend_percent = round((second_avg - first_avg) * 10, 1)  # Умножаем на 10 для масштабирования
+                trend_percent = max(-50, min(50, trend_percent))  # Ограничиваем в разумных пределах
+            
+            # Используем ту же логику, что и в get_full_statistics
+            if trend_percent > 20:
+                trend = '↗ Растет'
+            elif trend_percent < -20:
+                trend = '↘ Снижается'
+            else:
+                trend = '→ Стабильно'
         else:
-            trend = 'Стабильный'
+            trend = '→ Стабильно'
             trend_percent = 0
         
         return jsonify({
@@ -1939,35 +2043,42 @@ def get_tension_data():
 
 @ukraine_analytics_bp.route('/territory_data', methods=['GET'])
 def get_territory_data():
-    """Получение данных по территориальной классификации.
+    """Получение данных для диаграммы по территориям.
     
     Query Parameters:
         days (int): Количество дней для анализа (по умолчанию 7)
+        category (str): Категория новостей (по умолчанию 'all')
     
     Returns:
-        JSON: Данные по территориям для Canvas-графиков
+        JSON: Данные для диаграммы по территориям
     """
     try:
         days = int(request.args.get('days', 7))
+        category = request.args.get('category', 'all')
         
         client = get_clickhouse_client()
         
-        # Получаем данные из всех таблиц
+        # Формируем условие для категории
+        category_condition = ""
+        if category != 'all':
+            category_condition = f"AND category = '{category}'"
+        
+        # Получаем данные из всех таблиц с учетом категории
         query = f"""
         SELECT 
             title, content, published_date, category, source
         FROM (
-            SELECT title, content, published_date, category, source FROM news.ria_headlines WHERE published_date >= today() - {days}
+            SELECT title, content, published_date, category, source FROM news.ria_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT title, content, published_date, category, source FROM news.lenta_headlines WHERE published_date >= today() - {days}
+            SELECT title, content, published_date, category, source FROM news.lenta_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT title, content, published_date, category, source FROM news.rbc_headlines WHERE published_date >= today() - {days}
+            SELECT title, content, published_date, category, source FROM news.rbc_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT title, content, published_date, category, source FROM news.gazeta_headlines WHERE published_date >= today() - {days}
+            SELECT title, content, published_date, category, source FROM news.gazeta_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT title, content, published_date, category, source FROM news.kommersant_headlines WHERE published_date >= today() - {days}
+            SELECT title, content, published_date, category, source FROM news.kommersant_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT title, content, published_date, category, source FROM news.telegram_headlines WHERE published_date >= today() - {days}
+            SELECT title, content, published_date, category, source FROM news.telegram_headlines WHERE published_date >= today() - {days} {category_condition}
         )
         ORDER BY published_date DESC
         """
@@ -2066,19 +2177,30 @@ def get_full_statistics():
         # Получаем правильную таблицу для категории
         table_source = get_table_for_category(category)
         
-        # Формируем условие для категории
-        category_filter = ""
-        if category != 'all':
-            category_filter = f"AND category = '{category}'"
-        
-        # Запрос для получения новостей за период
-        query = f"""
-        SELECT title, content, published_date, category, source
-        FROM {table_source}
-        WHERE published_date >= today() - {days}
-        {category_filter}
-        ORDER BY published_date DESC
-        """
+        # Формируем запрос в зависимости от типа таблицы
+        if table_source == "all_sources":
+            # Используем UNION ALL запрос для всех источников
+            query = f"""
+            SELECT title, content, published_date, category, source
+            FROM (
+                {build_union_query_for_category(category, days)}
+            )
+            ORDER BY published_date DESC
+            """
+        else:
+            # Формируем условие для категории
+            category_filter = ""
+            if category != 'all':
+                category_filter = f"AND category = '{category}'"
+            
+            # Запрос для получения новостей за период
+            query = f"""
+            SELECT title, content, published_date, category, source
+            FROM {table_source}
+            WHERE published_date >= today() - {days}
+            {category_filter}
+            ORDER BY published_date DESC
+            """
         
         results = client.execute(query)
         

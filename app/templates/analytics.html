@@ -123,11 +123,37 @@
     color: #6c757d;
 }
 
-.no-news i {
+    .no-news i {
     font-size: 48px;
     margin-bottom: 20px;
     opacity: 0.5;
     }
+
+/* Исправления для переполнения */
+.chart-card {
+    overflow: hidden;
+}
+
+.chart-placeholder {
+    overflow: auto;
+    max-width: 100%;
+}
+
+.chart-placeholder canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Исправления для тепловой карты */
+#sourcesChart canvas {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Исправления для круговой диаграммы */
+#territoryChart canvas {
+    max-width: 100%;
+}
 </style>
 {% endblock %}
 
@@ -157,7 +183,6 @@
                             <option value="economic_consequences">Экономические последствия</option>
                             <option value="political_decisions">Политические решения</option>
                             <option value="information_social">Информационно-социальные аспекты</option>
-                            <option value="other">Прочее</option>
                         </select>
                     </div>
                     <div class="form-group mb-3">
@@ -610,12 +635,12 @@ function loadTestCharts(dateRange) {
             ctx.lineWidth = 2;
             ctx.strokeRect(x, y - 10, 20, 20);
             
-            // Текст
+            // Текст с процентами
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText(item.label, x + 28, y);
+            ctx.fillText(item.label + ' - ' + item.percent + '%', x + 28, y);
             ctx.font = '11px Arial';
             ctx.fillStyle = '#bbdefb';
             ctx.fillText(item.value + ' новостей', x + 28, y + 12);
@@ -625,7 +650,7 @@ function loadTestCharts(dateRange) {
     // Тепловая карта источников с реалистичными данными
     document.getElementById('sourcesChart').innerHTML = `
         <div class="chart-placeholder">
-            <canvas id="testHeatmapCanvas" width="850" height="450"></canvas>
+            <canvas id="testHeatmapCanvas" width="950" height="450"></canvas>
         </div>
     `;
     
@@ -633,9 +658,9 @@ function loadTestCharts(dateRange) {
     const heatCanvas = document.getElementById('testHeatmapCanvas');
     if (heatCanvas) {
         const ctx = heatCanvas.getContext('2d');
-        const sources = ['РИА Новости', 'Lenta.ru', 'РБК', 'Газета.ru', 'Коммерсантъ', 'Reuters', 'CNN'];
+        const sources = ['РИА Новости', 'Lenta', 'РБК', 'Газета', 'Коммерсантъ', 'Reuters', 'CNN'];
         const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
-        const cellWidth = 70;
+        const cellWidth = 80;
         const cellHeight = 45;
         const startX = 140;
         const startY = 80;
@@ -780,7 +805,7 @@ function shadeColor(color, percent) {
 
 function loadRealCharts(category, dateRange) {
     // Загружаем данные для круговой диаграммы по территориям
-    fetch(`/api/ukraine_analytics/territory_data?days=${dateRange}`)
+    fetch(`/api/ukraine_analytics/territory_data?days=${dateRange}&category=${category}`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success' && data.data.length > 0) {
@@ -799,7 +824,7 @@ function loadRealCharts(category, dateRange) {
         });
     
     // Загружаем данные для тепловой карты
-    fetch(`/api/ukraine_analytics/heatmap_data?days=${dateRange}`)
+    fetch(`/api/ukraine_analytics/heatmap_data?days=${dateRange}&category=${category}`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success' && data.data.length > 0) {
@@ -870,16 +895,7 @@ function createRealCategoryChart(data, totalNews) {
         ctx.lineWidth = 3;
         ctx.stroke();
         
-        // Подписи процентов внутри секторов
-        const midAngle = currentAngle + sliceAngle / 2;
-        const textX = centerX + Math.cos(midAngle) * (radius * 0.7);
-        const textY = centerY + Math.sin(midAngle) * (radius * 0.7);
-        
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(item.percent + '%', textX, textY);
+        // Убираем проценты с диаграммы - они будут в легенде
         
         currentAngle += sliceAngle;
     });
@@ -966,16 +982,7 @@ function createRealTerritoryChart(data, totalNews) {
         ctx.lineWidth = 3;
         ctx.stroke();
         
-        // Подписи процентов внутри секторов
-        const midAngle = currentAngle + sliceAngle / 2;
-        const textX = centerX + Math.cos(midAngle) * (radius * 0.7);
-        const textY = centerY + Math.sin(midAngle) * (radius * 0.7);
-        
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(item.percent + '%', textX, textY);
+        // Убираем проценты с диаграммы - они будут в легенде
         
         currentAngle += sliceAngle;
     });
@@ -998,12 +1005,12 @@ function createRealTerritoryChart(data, totalNews) {
         ctx.lineWidth = 2;
         ctx.strokeRect(x, y - 10, 20, 20);
         
-        // Текст
+        // Текст с процентами
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(item.territory, x + 28, y);
+        ctx.fillText(item.territory + ' - ' + item.percent + '%', x + 28, y);
         ctx.font = '11px Arial';
         ctx.fillStyle = '#bbdefb';
         ctx.fillText(item.count.toLocaleString() + ' новостей', x + 28, y + 12);
@@ -1011,18 +1018,19 @@ function createRealTerritoryChart(data, totalNews) {
 }
 
 function createRealHeatmap(sources, days, data) {
-    // Создаем Canvas для тепловой карты
+    // Создаем Canvas для тепловой карты с адаптивным размером
+    const canvasWidth = Math.max(850, days.length * 80 + 200);
     document.getElementById('sourcesChart').innerHTML = `
         <div class="chart-placeholder">
-            <canvas id="realHeatmapCanvas" width="850" height="450"></canvas>
-                </div>
+            <canvas id="realHeatmapCanvas" width="${canvasWidth}" height="450"></canvas>
+        </div>
     `;
     
     const canvas = document.getElementById('realHeatmapCanvas');
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    const cellWidth = 70;
+    const cellWidth = Math.max(60, (canvasWidth - 200) / days.length);
     const cellHeight = 45;
     const startX = 140;
     const startY = 80;
@@ -1035,7 +1043,7 @@ function createRealHeatmap(sources, days, data) {
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Интенсивность публикаций по источникам', canvas.width / 2, 30);
+    ctx.fillText('Интенсивность публикаций по источникам за неделю', canvas.width / 2, 30);
     
     // Рисуем заголовки дней
     ctx.font = 'bold 11px Arial';
@@ -1470,8 +1478,7 @@ function getCategoryName(category) {
         'humanitarian_crisis': 'Гуманитарный кризис',
         'economic_consequences': 'Экономические последствия',
         'political_decisions': 'Политические решения',
-        'information_social': 'Информационно-социальные аспекты',
-        'other': 'Прочее'
+        'information_social': 'Информационно-социальные аспекты'
     };
     return categories[category] || category;
 }

@@ -251,7 +251,7 @@ def get_news():
                     ''')
                 else:
                     unions.append(f'''
-                        SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
+                    SELECT id, title, link, content, source, category, published_date, '' as message_link, '' as channel
                         FROM news.{table_name}
                         {f"WHERE title ILIKE '%{search}%' OR content ILIKE '%{search}%'" if search else "WHERE 1=1"}
                     ''')
