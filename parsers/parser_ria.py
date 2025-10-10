@@ -4,9 +4,9 @@ from clickhouse_driver import Client
 from datetime import datetime
 import time
 import random
-from ai_news_classifier import classify_news_ai
-from news_categories import classify_news, create_category_tables
-from ukraine_relevance_filter import filter_ukraine_relevance
+from parsers.gen_api_classifier import GenApiNewsClassifier
+from parsers.news_categories import classify_news, create_category_tables
+from parsers.ukraine_relevance_filter import filter_ukraine_relevance
 import sys
 import os
 
@@ -169,7 +169,7 @@ def parse_politics_headlines():
             
             # Классифицируем новость по украинским категориям
             try:
-                category = classify_news_ai(title, content)
+                category = GenApiNewsClassifier().classify(title, content)
             except Exception as e:
                 print(f"AI классификация не удалась: {e}")
                 category = 'other'  # Fallback категория

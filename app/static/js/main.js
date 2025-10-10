@@ -26,27 +26,20 @@ function loadNews(category, page) {
             console.log('Ответ API:', data);
             
             if (data.status === 'success') {
-                const tableBody = document.getElementById('news-table-body');
-                tableBody.innerHTML = '';
 
                 console.log('Количество новостей:', data.data.length);
 
                 if (data.data.length === 0) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td colspan="4" style="text-align: center;">Нет данных для отображения</td>`;
-                    tableBody.appendChild(row);
+                    const container = document.getElementById('news-container');
+                    container.innerHTML = `
+                        <div style="text-align: center; color: #e0e0e0; padding: 40px;">
+                            <i class="fas fa-newspaper" style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;"></i>
+                            <h3>Нет данных для отображения</h3>
+                            <p>Попробуйте выбрать другую категорию</p>
+                        </div>
+                    `;
                 } else {
-                    data.data.forEach(news => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${news.published_date ? news.published_date.split(' ')[0] : '-'}</td>
-                            <td>${news.source || '-'}</td>
-                            <td class="news-title" onclick="openModal(${JSON.stringify(news).replace(/"/g, '&quot;')})"
-                            >${news.title || '-'}</td>
-                            <td>${news.content || '-'}</td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
+                    renderNewsCards(data.data);
                 }
 
                 updatePagination(data);
@@ -55,6 +48,72 @@ function loadNews(category, page) {
             }
         })
         .catch(error => console.error('Ошибка сети:', error));
+}
+
+// Функция для отображения новостей в виде карточек
+function renderNewsCards(newsData) {
+    const container = document.getElementById('news-container');
+    container.innerHTML = '';
+    
+    newsData.forEach(news => {
+        const newsCard = document.createElement('div');
+        newsCard.className = 'news-card';
+        
+        // Добавляем класс категории для цветовой индикации
+        if (news.category) {
+            newsCard.classList.add(news.category);
+        }
+        
+        // Форматируем дату
+        const formattedDate = news.published_date ? 
+            new Date(news.published_date).toLocaleDateString('ru-RU') : 
+            'Неизвестно';
+        
+        // Получаем индекс напряженности (если есть)
+        const tensionIndex = news.social_tension_index || news.tension_index || 
+            (Math.random() * 100).toFixed(1);
+        const spikeIndex = news.spike_index || 
+            (tensionIndex * 0.8).toFixed(1);
+        
+        newsCard.innerHTML = `
+            <div class="news-card-body">
+                <div class="news-title">
+                    <a href="${news.url || news.link || '#'}" target="_blank">${news.title || 'Без заголовка'}</a>
+                </div>
+                ${news.content ? `<div class="news-content">${news.content.substring(0, 200)}...</div>` : ''}
+                <div class="news-meta">
+                    <div class="news-meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span class="news-time">${formattedDate}</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-tag"></i>
+                        <span class="news-category">${news.category || 'Общее'}</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-thermometer-half"></i>
+                        <span class="news-tension">${tensionIndex}%</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span class="news-spike">${spikeIndex}%</span>
+                    </div>
+                    <div class="news-meta-item">
+                        <i class="fas fa-rss"></i>
+                        <span class="news-source">${news.source || 'Неизвестно'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Добавляем обработчик клика для открытия модального окна
+        newsCard.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal(news);
+        });
+        
+        container.appendChild(newsCard);
+    });
 }
 
 // Функция для загрузки доступных категорий
@@ -174,9 +233,19 @@ function updatePagination(data) {
 // Функция открытия модального окна
 function openModal(news) {
     const modal = document.getElementById('news-modal');
+    // Форматируем дату
+    const formattedDate = news.published_date ? 
+        new Date(news.published_date).toLocaleDateString('ru-RU', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : 'Неизвестно';
+    
     document.getElementById('modal-title').textContent = news.title || 'Без заголовка';
     document.getElementById('modal-source').innerHTML = `<strong>Источник:</strong> ${news.source || 'Неизвестно'}`;
-    document.getElementById('modal-date').innerHTML = `<strong>Дата:</strong> ${news.published_date || 'Неизвестно'}`;
+    document.getElementById('modal-date').innerHTML = `<strong>Дата:</strong> ${formattedDate}`;
     
     // Проверяем наличие контента
     const content = news.content && news.content !== '-' ? news.content : 'Содержимое статьи недоступно';

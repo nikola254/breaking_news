@@ -28,14 +28,14 @@ def get_news():
     Returns:
         JSON: РЎРїРёСЃРѕРє РЅРѕРІРѕСЃС‚РµР№ СЃ РјРµС‚Р°РґР°РЅРЅС‹РјРё РёР»Рё СЃРѕРѕР±С‰РµРЅРёРµ РѕР± РѕС€РёР±РєРµ
     """
-    source = request.args.get('source', 'universal_military_operations')
+    source = request.args.get('source', 'lenta')
     category = request.args.get('category', 'all')
     limit = request.args.get('limit', 100, type=int)
     offset = request.args.get('offset', 0, type=int)
     search = request.args.get('search', '')
     
     # Проверка валидности источников
-    valid_sources = ['all', 'ria', 'israil', 'telegram', 'twitter', 'lenta', 'rbc', 'cnn', 'aljazeera', 'tsn', 'unian', 'rt', 'euronews', 'reuters', 'france24', 'dw', 'bbc', 'gazeta', 'kommersant', 'universal_military_operations', 'universal_humanitarian_crisis', 'universal_economic_consequences', 'universal_political_decisions', 'universal_information_social']
+    valid_sources = ['all', 'ria', 'israil', 'telegram', 'twitter', 'lenta', 'rbc', 'cnn', 'aljazeera', 'tsn', 'unian', 'rt', 'euronews', 'reuters', 'france24', 'dw', 'bbc', 'gazeta', 'kommersant']
     
     if source not in valid_sources:
         return jsonify({'status': 'error', 'message': f'РќРµРґРѕРїСѓСЃС‚РёРјС‹Р№ РёСЃС‚РѕС‡РЅРёРє. Р”РѕРїСѓСЃС‚РёРјС‹Рµ РёСЃС‚РѕС‡РЅРёРєРё: {valid_sources}'}), 400

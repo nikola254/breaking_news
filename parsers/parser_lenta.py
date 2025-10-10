@@ -16,9 +16,9 @@ from clickhouse_driver import Client
 from datetime import datetime
 import time
 import random
-from ai_news_classifier import classify_news_ai
-from news_categories import classify_news, create_category_tables
-from ukraine_relevance_filter import filter_ukraine_relevance
+from parsers.gen_api_classifier import GenApiNewsClassifier
+from parsers.news_categories import classify_news, create_category_tables
+from parsers.ukraine_relevance_filter import filter_ukraine_relevance
 import sys
 import os
 import logging
@@ -199,8 +199,28 @@ def parse_lenta_news():
             logger.info(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f}, категория: {relevance_result['category']})")
             logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
             
-            # Используем категорию из фильтра релевантности
-            category = relevance_result.get('category', 'other')
+            # Дополнительная классификация через Gen-API для получения индексов напряженности
+            try:
+                classifier = GenApiNewsClassifier()
+                ai_result = classifier.classify(title, content)
+                
+                # Используем результаты Gen-API классификации
+                category = ai_result['category_name']
+                social_tension_index = ai_result['social_tension_index']
+                spike_index = ai_result['spike_index']
+                ai_confidence = ai_result['confidence']
+                ai_category = ai_result['category_name']
+                
+                logger.info(f"Gen-API классификация: {category} (напряженность: {social_tension_index}, всплеск: {spike_index})")
+                
+            except Exception as e:
+                logger.warning(f"Ошибка Gen-API классификации: {e}")
+                # Fallback к результатам фильтра релевантности
+                category = relevance_result.get('category', 'other')
+                social_tension_index = 0.0
+                spike_index = 0.0
+                ai_confidence = 0.0
+                ai_category = category
 
             if not category or category is None:
                 category = 'other'
@@ -210,18 +230,18 @@ def parse_lenta_news():
                 logger.info(f"Пропущено (категория 'other'): {title[:50]}...")
                 continue
             
-            # Сохранение в основную таблицу
+            # Сохранение в основную таблицу с новыми полями
             client.execute(
-                'INSERT INTO news.lenta_headlines (title, link, content, rubric, source, category) VALUES',
-                [(title, link, content, rubric, 'lenta.ru', category)]
+                'INSERT INTO news.lenta_headlines (title, link, content, rubric, source, category, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata) VALUES',
+                [(title, link, content, rubric, 'lenta.ru', category, social_tension_index, spike_index, ai_category, ai_confidence, 'gen_api_classification')]
             )
             
-            # Сохранение в категорийную таблицу
+            # Сохранение в категорийную таблицу с новыми полями
             category_table = f'news.lenta_{category}'
             try:
                 client.execute(
-                    f'INSERT INTO {category_table} (title, link, content, source, category, published_date) VALUES',
-                    [(title, link, content, 'lenta.ru', category, datetime.now())]
+                    f'INSERT INTO {category_table} (title, link, content, source, category, published_date, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata) VALUES',
+                    [(title, link, content, 'lenta.ru', category, datetime.now(), social_tension_index, spike_index, ai_category, ai_confidence, 'gen_api_classification')]
                 )
             except Exception as e:
                 logger.warning(f"Не удалось сохранить в категорийную таблицу {category_table}: {e}")

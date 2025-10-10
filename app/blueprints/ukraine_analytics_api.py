@@ -30,6 +30,15 @@ from app.analytics.tension_chart_generator import chart_generator
 # Создаем Blueprint для API украинской аналитики
 ukraine_analytics_bp = Blueprint('ukraine_analytics', __name__, url_prefix='/api/ukraine_analytics')
 
+def safe_float(value):
+    """Безопасное преобразование в float."""
+    try:
+        if value is None or value == '':
+            return 0.0
+        return float(value)
+    except (ValueError, TypeError):
+        return 0.0
+
 def get_clickhouse_client():
     """Получение клиента ClickHouse."""
     return Client(
@@ -50,15 +59,21 @@ def get_table_for_category(category):
         str: Название таблицы или UNION ALL запрос
     """
     if category == 'all':
-        # Для всех категорий используем telegram_headlines (содержит все данные)
-        return "news.telegram_headlines"
+        # Для всех категорий используем lenta_headlines (содержит данные с новыми полями)
+        return "news.lenta_headlines"
     elif category == 'military' or category == 'military_operations':
-        return "news.telegram_headlines"
+        return "news.lenta_headlines"
     elif category == 'information' or category == 'information_social':
-        return "news.telegram_headlines"
+        return "news.lenta_headlines"
+    elif category == 'political_decisions':
+        return "news.lenta_headlines"
+    elif category == 'economic_consequences':
+        return "news.lenta_headlines"
+    elif category == 'humanitarian_crisis':
+        return "news.lenta_headlines"
     else:
-        # Для остальных категорий используем UNION ALL из всех таблиц источников
-        return "all_sources"
+        # Для остальных категорий используем lenta_headlines как основную таблицу
+        return "news.lenta_headlines"
 
 def build_union_query_for_category(category, days):
     """Построение UNION ALL запроса для категории из всех таблиц источников.
@@ -214,11 +229,12 @@ def get_tension_chart():
         if category != 'all':
             category_condition = f"AND category = '{category}'"
         
-        # Запрос для получения данных по дням
+        # Запрос для получения данных по дням с новыми полями
         query = f"""
         SELECT 
             toDate(published_date) as day,
-            AVG(sentiment_score) as avg_sentiment,
+            AVG(COALESCE(social_tension_index, 0)) as avg_tension,
+            AVG(COALESCE(spike_index, 0)) as avg_spike,
             COUNT(*) as news_count
         FROM {table_source}
         WHERE published_date >= today() - {days}
@@ -241,16 +257,17 @@ def get_tension_chart():
         sns.set_style("whitegrid")
         
         dates = [row[0] for row in result]
-        sentiments = [float(row[1]) for row in result]
-        counts = [row[2] for row in result]
+        tensions = [float(row[1]) for row in result]
+        spikes = [float(row[2]) for row in result]
+        counts = [row[3] for row in result]
         
-        # Основной график настроений
+        # Основной график социальной напряженности
         plt.subplot(2, 1, 1)
-        plt.plot(dates, sentiments, marker='o', linewidth=3, color='#1976D2', markersize=8)
-        plt.title(f'Динамика настроений в новостях\n{get_category_name(category)}', 
+        plt.plot(dates, tensions, marker='o', linewidth=3, color='#e74c3c', markersize=8)
+        plt.title(f'Динамика социальной напряженности\n{get_category_name(category)}', 
                   fontsize=14, fontweight='bold')
-        plt.ylabel('Индекс настроений')
-        plt.ylim(-1, 1)
+        plt.ylabel('Индекс социальной напряженности')
+        plt.ylim(0, 100)
         plt.grid(True, alpha=0.3)
         
         # График количества новостей
@@ -859,9 +876,13 @@ def get_social_tension_statistics():
         if category != 'all':
             category_condition = f"AND category = '{category}'"
         
-        # Запрос для получения новостей
+        # Запрос для получения новостей с новыми полями
         query = f"""
-        SELECT title, content, published_date, category, source
+        SELECT title, content, published_date, category, source,
+               COALESCE(social_tension_index, 0) as tension_index,
+               COALESCE(spike_index, 0) as spike_index,
+               COALESCE(ai_category, category) as ai_category,
+               COALESCE(ai_confidence, 0) as ai_confidence
         FROM {table_source}
         WHERE published_date >= today() - {days}
         {category_condition}
@@ -876,6 +897,7 @@ def get_social_tension_statistics():
                 'status': 'success',
                 'total_news': 0,
                 'avg_tension': 0.0,
+                'avg_spike': 0.0,
                 'tension_distribution': {},
                 'trend': 'stable'
             })
@@ -894,17 +916,28 @@ def get_social_tension_statistics():
         
         # Анализ напряженности для каждой новости
         tension_scores = []
+        spike_scores = []
         tension_history = []
         
-        for title, content, pub_date, cat, site_name in results:
-            text = f"{title} {content or ''}"
-            metrics = tension_analyzer.analyze_text_tension(text, title)
-            safe_score = safe_float(metrics.tension_score) * 100  # Преобразуем в проценты (0-100%)
-            tension_scores.append(safe_score)
-            tension_history.append((pub_date, safe_score))
+        for title, content, pub_date, cat, site_name, tension_idx, spike_idx, ai_cat, ai_conf in results:
+            # Используем данные из базы, если они есть, иначе анализируем
+            if tension_idx > 0:
+                safe_tension = safe_float(tension_idx)
+                safe_spike = safe_float(spike_idx)
+            else:
+                # Fallback к анализу текста
+                text = f"{title} {content or ''}"
+                metrics = tension_analyzer.analyze_text_tension(text, title)
+                safe_tension = safe_float(metrics.tension_score) * 100
+                safe_spike = safe_tension * 0.8  # Примерное соотношение
+            
+            tension_scores.append(safe_tension)
+            spike_scores.append(safe_spike)
+            tension_history.append((pub_date, safe_tension))
         
         # Расчет статистики
         avg_tension = safe_float(sum(tension_scores) / len(tension_scores)) if tension_scores else 0.0
+        avg_spike = safe_float(sum(spike_scores) / len(spike_scores)) if spike_scores else 0.0
         
         # Подсчет распределения по уровням напряженности (значения уже в процентах)
         tension_distribution = {
@@ -938,10 +971,13 @@ def get_social_tension_statistics():
             'status': 'success',
             'total_news': len(results),
             'avg_tension': round(safe_float(avg_tension), 2),
+            'avg_spike': round(safe_float(avg_spike), 2),
             'tension_distribution': tension_distribution,
             'trend': trend,
             'max_tension': round(safe_float(max(tension_scores)), 2) if tension_scores else 0.0,
-            'min_tension': round(safe_float(min(tension_scores)), 2) if tension_scores else 0.0
+            'min_tension': round(safe_float(min(tension_scores)), 2) if tension_scores else 0.0,
+            'max_spike': round(safe_float(max(spike_scores)), 2) if spike_scores else 0.0,
+            'min_spike': round(safe_float(min(spike_scores)), 2) if spike_scores else 0.0
         })
         
     except Exception as e:
@@ -949,8 +985,69 @@ def get_social_tension_statistics():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-@ukraine_analytics_bp.route('/social_tension_chart', methods=['GET'])
-def get_social_tension_chart():
+@ukraine_analytics_bp.route('/latest_news', methods=['GET'])
+def get_latest_news():
+    """Получение последних новостей для отображения в разделе аналитики"""
+    try:
+        days = request.args.get('days', 7, type=int)
+        category = request.args.get('category', 'all')
+        
+        # Инициализируем клиент ClickHouse
+        client = get_clickhouse_client()
+        
+        # Определяем таблицу для запроса
+        if category == 'all':
+            # Используем таблицу с данными, если universal_ukraine пуста
+            table_source = 'news.lenta_headlines'
+        else:
+            # Для всех категорий используем lenta_headlines
+            table_source = 'news.lenta_headlines'
+        
+        # Условие для категории
+        category_condition = ""
+        if category != 'all':
+            category_condition = f"AND category = '{category}'"
+        
+        # Запрос для получения последних новостей с новыми полями
+        query = f"""
+        SELECT title, content, published_date, category, source,
+               COALESCE(social_tension_index, 0) as tension_index,
+               COALESCE(spike_index, 0) as spike_index,
+               COALESCE(ai_category, category) as ai_category,
+               COALESCE(ai_confidence, 0) as ai_confidence
+        FROM {table_source}
+        WHERE published_date >= today() - {days}
+        {category_condition}
+        ORDER BY published_date DESC
+        LIMIT 20
+        """
+        
+        result = client.execute(query)
+        
+        latest_news = []
+        for title, content, pub_date, cat, site_name, tension_idx, spike_idx, ai_cat, ai_conf in result:
+            latest_news.append({
+                'title': title,
+                'content': content[:200] + '...' if content and len(content) > 200 else content,
+                'published_date': pub_date.strftime('%Y-%m-%d %H:%M') if pub_date else 'Неизвестно',
+                'category': ai_cat or cat,
+                'source': site_name,
+                'tension_index': round(safe_float(tension_idx), 2),
+                'spike_index': round(safe_float(spike_idx), 2),
+                'ai_confidence': round(safe_float(ai_conf), 2)
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'latest_news': latest_news,
+            'total_count': len(latest_news)
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error getting latest news: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
     """Создание графика динамики социальной напряженности.
     
     Query Parameters:
@@ -1883,9 +1980,11 @@ def get_tension_data():
         
         # Формируем запрос в зависимости от типа таблицы
         if table_source == "all_sources":
-            # Используем UNION ALL запрос для всех источников
+            # Используем UNION ALL запрос для всех источников с новыми полями
             query = f"""
-            SELECT title, content, published_date, category, source
+            SELECT title, content, published_date, category, source,
+                   COALESCE(social_tension_index, 0) as tension_index,
+                   COALESCE(spike_index, 0) as spike_index
             FROM (
                 {build_union_query_for_category(category, days)}
             )
@@ -1897,9 +1996,11 @@ def get_tension_data():
             if category != 'all':
                 category_filter = f"AND category = '{category}'"
             
-            # Запрос данных за указанный период
+            # Запрос данных за указанный период с новыми полями
             query = f"""
-            SELECT title, content, published_date, category, source
+            SELECT title, content, published_date, category, source,
+                   COALESCE(social_tension_index, 0) as tension_index,
+                   COALESCE(spike_index, 0) as spike_index
             FROM {table_source}
             WHERE published_date >= now() - INTERVAL {days} DAY
             {category_filter}
@@ -1921,7 +2022,7 @@ def get_tension_data():
         # Группируем данные по дням и вычисляем средний индекс напряженности
         daily_tension = {}
         
-        for title, content, pub_date, cat, source in results:
+        for title, content, pub_date, cat, source, tension_idx, spike_idx in results:
             if not pub_date:
                 continue
                 
@@ -1937,10 +2038,14 @@ def get_tension_data():
                         continue
                 date_key = pub_date.date()
             
-            # Анализируем напряженность
-            text = f"{title} {content or ''}"
-            metrics = tension_analyzer.analyze_text_tension(text, title)
-            normalized_score = metrics.tension_score / 100.0
+            # Используем данные из базы, если они есть, иначе анализируем текст
+            if tension_idx > 0:
+                normalized_score = tension_idx / 100.0
+            else:
+                # Fallback к анализу текста
+                text = f"{title} {content or ''}"
+                metrics = tension_analyzer.analyze_text_tension(text, title)
+                normalized_score = metrics.tension_score / 100.0
             
             if date_key not in daily_tension:
                 daily_tension[date_key] = []

@@ -60,7 +60,7 @@ class Config:
     
     # Настройки GPT API для классификации новостей
     GEN_API_KEY = os.environ.get('GEN_API_KEY')
-    GEN_API_URL = os.environ.get('GEN_API_URL', 'https://api.gen-api.ru/api/v1/networks/chat-gpt-4-turbo')
+    GEN_API_URL = os.environ.get('GEN_API_URL', 'https://api.gen-api.ru/api/v1/networks/chat-gpt-3')
     GEN_API_MODEL = os.environ.get('GEN_API_MODEL', 'gpt-4o-2024-05-13')
     GEN_API_MAX_TOKENS = int(os.environ.get('GEN_API_MAX_TOKENS', '500'))
     GEN_API_TEMPERATURE = float(os.environ.get('GEN_API_TEMPERATURE', '0.1'))
@@ -71,6 +71,11 @@ class Config:
     CLOUD_RU_API_KEY = os.environ.get('CLOUD_RU_API_KEY') or os.environ.get('API_KEY')
     CLOUD_MODEL_URL = os.environ.get('CLOUD_MODEL_URL', 'https://foundation-models.api.cloud.ru/v1/chat/completions')
     CLOUD_MODEL_TOKEN = os.environ.get('CLOUD_MODEL_TOKEN') or os.environ.get('CLOUD_RU_API_KEY') or os.environ.get('API_KEY')
+    
+    # Настройки GigaChat API (Сбер)
+    GIGACHAT_KEY_ID = os.environ.get('GIGACHAT_KEY_ID')
+    GIGACHAT_SECRET = os.environ.get('GIGACHAT_SECRET')
+    GIGACHAT_PROJECT_ID = os.environ.get('GIGACHAT_PROJECT_ID')
     
     # Настройки API_CLOUD для анализа тональности
     API_CLOUD_URL = os.environ.get('API_CLOUD_URL')

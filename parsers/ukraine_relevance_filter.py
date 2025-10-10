@@ -17,17 +17,18 @@ class UkraineRelevanceFilter:
     
     def __init__(self):
         """Инициализация фильтра"""
-        self.api_key = os.environ.get("API_KEY")
-        self.base_url = "https://foundation-models.api.cloud.ru/v1"
+        self.api_key = os.environ.get("GEN_API_KEY")
+        self.base_url = "https://api.gen-api.ru/api/v1/networks/chat-gpt-3"
         
         if not self.api_key:
-            raise ValueError("API_KEY не найден в переменных окружения")
+            raise ValueError("GEN_API_KEY не найден в переменных окружения")
         
         self.headers = {
             'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         }
-        self.api_url = f"{self.base_url}/chat/completions"
+        self.api_url = self.base_url
         
         # Ключевые слова для 5 категорий украинского конфликта
         self.ukraine_keywords = {
@@ -260,17 +261,16 @@ class UkraineRelevanceFilter:
             prompt = self._create_relevance_prompt(title, content)
             
             data = {
-                "model": "openai/gpt-oss-120b",
-                "max_tokens": 150,
-                "temperature": 0.1,
-                "presence_penalty": 0,
-                "top_p": 0.95,
                 "messages": [
                     {
                         "role": "user",
                         "content": prompt
                     }
-                ]
+                ],
+                "is_sync": False,
+                "max_tokens": 150,
+                "temperature": 0.1,
+                "top_p": 0.95
             }
             
             response = requests.post(
@@ -284,7 +284,19 @@ class UkraineRelevanceFilter:
                 raise Exception(f"API вернул код {response.status_code}: {response.text}")
             
             response_data = response.json()
-            ai_response = response_data['choices'][0]['message']['content']
+            
+            # Получаем request_id для Long-Polling
+            request_id = response_data.get('request_id')
+            if not request_id:
+                raise Exception("Не получен request_id от API")
+            
+            # Ждем результат через Long-Polling
+            result = self._wait_for_result(request_id)
+            
+            if not result:
+                raise Exception("Не удалось получить результат от API")
+            
+            ai_response = result
             
             # Улучшенная обработка пустых ответов
             if not ai_response or ai_response.strip() == "":
@@ -302,6 +314,56 @@ class UkraineRelevanceFilter:
                 'relevance_score': 0.0,
                 'reason': f'Ошибка AI-анализа: {str(e)}'
             }
+    
+    def _wait_for_result(self, request_id: str) -> Optional[str]:
+        """Ожидает результат от Gen-API через Long-Polling"""
+        import time
+        
+        max_attempts = 12  # Максимум 1 минута ожидания
+        attempt = 0
+        
+        while attempt < max_attempts:
+            try:
+                status_url = f"https://api.gen-api.ru/api/v1/request/get/{request_id}"
+                
+                response = requests.get(
+                    status_url,
+                    headers=self.headers,
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    if data.get('status') == 'success':
+                        result = data.get('result', [])
+                        if result and len(result) > 0:
+                            return result[0]
+                        else:
+                            logger.warning("Получен пустой результат от API")
+                            return None
+                    elif data.get('status') == 'error':
+                        logger.error(f"Ошибка API: {data.get('error', 'Неизвестная ошибка')}")
+                        return None
+                    else:
+                        # Статус 'starting' или 'processing' - продолжаем ждать
+                        time.sleep(5)
+                        attempt += 1
+                        continue
+                else:
+                    logger.warning(f"Ошибка при проверке статуса: {response.status_code}")
+                    time.sleep(5)
+                    attempt += 1
+                    continue
+                    
+            except Exception as e:
+                logger.warning(f"Ошибка при проверке статуса: {e}")
+                time.sleep(5)
+                attempt += 1
+                continue
+        
+        logger.error("Превышено время ожидания результата от API")
+        return None
     
     def _create_relevance_prompt(self, title: str, content: str) -> str:
         """Создает промпт для анализа релевантности

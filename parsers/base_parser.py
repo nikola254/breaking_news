@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from clickhouse_driver import Client
 from config import Config
 from parsers.news_preprocessor import preprocessor
-from parsers.improved_classifier import classifier
+from parsers.gen_api_classifier import GenApiNewsClassifier
 from parsers.duplicate_checker import create_duplicate_checker
 
 # Импортируем анализатор тональности
@@ -162,7 +162,17 @@ class BaseNewsParser:
         if not self.enable_classification:
             return None, 0.0, {}
         
-        return classifier.classify(title, content)
+        try:
+            classifier = GenApiNewsClassifier()
+            result = classifier.classify(title, content)
+            
+            return result['category_name'], result['confidence'], {
+                'social_tension_index': result['social_tension_index'],
+                'spike_index': result['spike_index']
+            }
+        except Exception as e:
+            logger.error(f"Ошибка классификации: {e}")
+            return None, 0.0, {}
     
     def check_duplicate(
         self,
@@ -324,38 +334,25 @@ class BaseNewsParser:
             dict: Данные AI-классификации
         """
         try:
-            # Пытаемся использовать GPT-классификатор
-            from parsers.gpt_classifier import classify_news_with_gpt
-            from parsers.tension_calculator import calculate_both_indices
-            
-            # Классификация с помощью GPT
-            gpt_result = classify_news_with_gpt(title, content)
-            
-            # Расчет индексов напряженности с учетом AI-оценок
-            social_tension, spike_index = calculate_both_indices(
-                gpt_result['category_name'],
-                title,
-                content,
-                gpt_result['social_tension_index'],
-                gpt_result['spike_index']
-            )
+            # Используем Gen-API классификатор
+            classifier = GenApiNewsClassifier()
+            result = classifier.classify(title, content)
             
             # Формируем метаданные
             metadata = {
-                'gpt_category': gpt_result['category'],
-                'gpt_category_name': gpt_result['category_name'],
-                'gpt_confidence': gpt_result['confidence'],
-                'gpt_reasoning': gpt_result['reasoning'],
-                'processing_time': gpt_result['processing_time'],
-                'cached': gpt_result['cached']
+                'gen_api_category': result['category_name'],
+                'gen_api_category_id': result['category_id'],
+                'gen_api_confidence': result['confidence'],
+                'processing_time': 'gen_api',
+                'cached': result.get('cached', False)
             }
             
             return {
-                'social_tension_index': social_tension,
-                'spike_index': spike_index,
+                'social_tension_index': result['social_tension_index'],
+                'spike_index': result['spike_index'],
                 'ai_classification_metadata': str(metadata),
-                'ai_category': gpt_result['category_name'],
-                'ai_confidence': gpt_result['confidence']
+                'ai_category': result['category_name'],
+                'ai_confidence': result['confidence']
             }
             
         except Exception as e:

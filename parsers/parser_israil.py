@@ -17,9 +17,9 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 
-from ai_news_classifier import classify_news_ai
-from news_categories import classify_news, create_category_tables
-from ukraine_relevance_filter import filter_ukraine_relevance
+from parsers.gen_api_classifier import GenApiNewsClassifier
+from parsers.news_categories import classify_news, create_category_tables
+from parsers.ukraine_relevance_filter import filter_ukraine_relevance
 
 # Добавляем корневую директорию проекта в sys.path для импорта config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

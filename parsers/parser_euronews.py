@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from ai_news_classifier import classify_news_ai
-from news_categories import classify_news
-from ukraine_relevance_filter import filter_ukraine_relevance
+from parsers.gen_api_classifier import GenApiNewsClassifier
+from parsers.news_categories import classify_news
+from parsers.ukraine_relevance_filter import filter_ukraine_relevance
 """
 Парсер новостей с сайта Euronews.com
 

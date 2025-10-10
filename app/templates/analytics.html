@@ -20,83 +20,98 @@
 }
 
 .news-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    border-radius: 12px;
+    background: white;
+    border: none;
+    border-radius: 16px;
     margin-bottom: 15px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
     overflow: hidden;
+    cursor: pointer;
+    position: relative;
 }
 
 .news-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.news-card-header {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 15px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
 }
 
 .news-card-body {
-    padding: 20px;
-        color: white;
+    padding: 25px;
+    color: #2c3e50;
+    position: relative;
+    z-index: 2;
 }
 
 .news-title {
-    font-size: 16px;
-        font-weight: bold;
-    margin-bottom: 10px;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
     line-height: 1.4;
-    }
-    
+    color: #2c3e50;
+}
+
 .news-title a {
-        color: white;
+    color: #2c3e50;
     text-decoration: none;
+    transition: color 0.3s ease;
 }
 
 .news-title a:hover {
-    color: #f8f9fa;
-    text-decoration: underline;
+    color: #34495e;
 }
 
 .news-content {
-    font-size: 14px;
-    opacity: 0.9;
-    margin-bottom: 15px;
-    line-height: 1.5;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 18px;
+    color: #5a6c7d;
 }
 
 .news-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
+    font-size: 13px;
 }
 
 .news-meta-item {
-        display: flex;
-        align-items: center;
-    gap: 5px;
-    font-size: 12px;
-    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(108, 117, 125, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+    color: #6c757d;
+    transition: all 0.3s ease;
 }
 
-.news-category {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-        font-weight: bold;
+.news-meta-item:hover {
+    background: rgba(108, 117, 125, 0.15);
+    transform: translateY(-1px);
+}
+
+.news-meta-item i {
+    font-size: 12px;
+    color: #6c757d;
 }
 
 .news-tension {
-    background: rgba(231, 76, 60, 0.3);
-    padding: 4px 8px;
-    border-radius: 12px;
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.news-spike {
+    background: rgba(102, 16, 242, 0.1);
+    color: #6610f2;
+    padding: 6px 12px;
+    border-radius: 20px;
     font-size: 11px;
     font-weight: bold;
 }
@@ -177,7 +192,6 @@
                         <label for="categorySelect" class="form-label">Категория:</label>
                         <select class="form-control" id="categorySelect">
                             <option value="all">Все категории</option>
-                            <option value="military_operations_test" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">🎯 Военные операции</option>
                             <option value="military_operations">Военные операции</option>
                             <option value="humanitarian_crisis">Гуманитарный кризис</option>
                             <option value="economic_consequences">Экономические последствия</option>
@@ -221,17 +235,17 @@
                             </div>
                         </div>
                         
-                        <!-- Группа 2: Напряженность и тренд тональности -->
+                        <!-- Группа 2: Напряженность и индекс всплеска -->
                         <div class="col-md-6">
                             <div class="stats-card">
                                 <div class="stats-number" id="avgTension">-</div>
-                                <div class="stats-label">🌡️ Средняя напряженность</div>
+                                <div class="stats-label">🌡️ Интегральный индекс социальной напряженности</div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="stats-card">
-                                <div class="stats-number" id="sentimentTrend">-</div>
-                                <div class="stats-label">📊 Тренд тональности</div>
+                                <div class="stats-number" id="avgSpike">-</div>
+                                <div class="stats-label">📈 Индекс всплеска</div>
                             </div>
                         </div>
                         
@@ -383,7 +397,6 @@
         </div>
     </div>
 </div>
-
 <script>
 // Функция обновления аналитики
 function updateAnalytics() {
@@ -433,46 +446,40 @@ function showLoadingSpinners() {
 }
 
 function loadStatistics(category, dateRange) {
-    // Проверяем, является ли это тестовой категорией
-    if (category === 'military_operations_test') {
-        // Показываем идеальные демо-данные
-        document.getElementById('totalNews').textContent = '1,247';
-        document.getElementById('avgTension').textContent = '67.3%';
-        document.getElementById('trendIndicator').textContent = '↗ Растет';
-        document.getElementById('socialActivity').textContent = 'Высокая';
-        document.getElementById('newsVelocity').textContent = '12.4';
-        document.getElementById('peakHour').textContent = '14:00';
-        document.getElementById('sentimentTrend').textContent = '↗ Позитивный';
-        
-        // Добавляем анимацию
-        document.getElementById('totalNews').classList.add('fade-in-up');
-        document.getElementById('avgTension').classList.add('fade-in-up');
-        document.getElementById('trendIndicator').classList.add('fade-in-up');
-        document.getElementById('socialActivity').classList.add('fade-in-up');
-        document.getElementById('newsVelocity').classList.add('fade-in-up');
-        document.getElementById('peakHour').classList.add('fade-in-up');
-        document.getElementById('sentimentTrend').classList.add('fade-in-up');
-        return;
-    }
     
     // Загружаем полную статистику (включая тренд и социальную активность)
     fetch(`/api/ukraine_analytics/full_statistics?category=${category}&days=${dateRange}`)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                document.getElementById('totalNews').textContent = data.total_news || '0';
-                document.getElementById('trendIndicator').textContent = data.trend || '→ Стабильно';
-                document.getElementById('socialActivity').textContent = data.social_activity || 'Нет данных';
-                document.getElementById('newsVelocity').textContent = data.news_velocity || '0';
-                document.getElementById('peakHour').textContent = data.peak_hour || '00:00';
-                document.getElementById('sentimentTrend').textContent = data.sentiment_trend || '→ Стабильный';
+                const totalNewsElement = document.getElementById('totalNews');
+                const trendIndicatorElement = document.getElementById('trendIndicator');
+                const socialActivityElement = document.getElementById('socialActivity');
+                const newsVelocityElement = document.getElementById('newsVelocity');
+                const peakHourElement = document.getElementById('peakHour');
+                
+                if (totalNewsElement) totalNewsElement.textContent = data.total_news || '0';
+                if (trendIndicatorElement) trendIndicatorElement.textContent = data.trend || '→ Стабильно';
+                if (socialActivityElement) socialActivityElement.textContent = data.social_activity || 'Нет данных';
+                if (newsVelocityElement) newsVelocityElement.textContent = data.news_velocity || '0';
+                if (peakHourElement) peakHourElement.textContent = data.peak_hour || '00:00';
+                
+                // Обновляем sentimentTrend только если элемент существует
+                const sentimentTrendElement = document.getElementById('sentimentTrend');
+                if (sentimentTrendElement) {
+                    sentimentTrendElement.textContent = data.sentiment_trend || '→ Стабильный';
+                }
             }
         })
         .catch(error => {
             console.error('Error loading full statistics:', error);
-            document.getElementById('totalNews').textContent = 'Ошибка';
-            document.getElementById('trendIndicator').textContent = 'Ошибка';
-            document.getElementById('socialActivity').textContent = 'Ошибка';
+            const totalNewsElement = document.getElementById('totalNews');
+            const trendIndicatorElement = document.getElementById('trendIndicator');
+            const socialActivityElement = document.getElementById('socialActivity');
+            
+            if (totalNewsElement) totalNewsElement.textContent = 'Ошибка';
+            if (trendIndicatorElement) trendIndicatorElement.textContent = 'Ошибка';
+            if (socialActivityElement) socialActivityElement.textContent = 'Ошибка';
         });
     
     // Загружаем статистику социальной напряженности
@@ -480,10 +487,20 @@ function loadStatistics(category, dateRange) {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                document.getElementById('avgTension').textContent = 
-                    data.avg_tension ? data.avg_tension.toFixed(1) + '%' : '0%';
+                const avgTensionElement = document.getElementById('avgTension');
+                const avgSpikeElement = document.getElementById('avgSpike');
                 
-                // Обновляем индикатор тренда
+                if (avgTensionElement) {
+                    avgTensionElement.textContent = 
+                        data.avg_tension ? data.avg_tension.toFixed(1) + '%' : '0%';
+                }
+                
+                if (avgSpikeElement) {
+                    avgSpikeElement.textContent = 
+                        data.avg_spike ? data.avg_spike.toFixed(1) + '%' : '0%';
+                }
+                
+                // Обновляем индикатор тренда (если элемент существует)
                 const trendElement = document.getElementById('tensionTrend');
                 if (trendElement) {
                     trendElement.textContent = getTrendText(data.trend);
@@ -496,7 +513,11 @@ function loadStatistics(category, dateRange) {
         })
         .catch(error => {
             console.error('Error loading tension statistics:', error);
-            document.getElementById('avgTension').textContent = 'Ошибка';
+            const avgTensionElement = document.getElementById('avgTension');
+            const avgSpikeElement = document.getElementById('avgSpike');
+            
+            if (avgTensionElement) avgTensionElement.textContent = 'Ошибка';
+            if (avgSpikeElement) avgSpikeElement.textContent = 'Ошибка';
         });
 }
 
@@ -541,13 +562,7 @@ function updateTensionDistribution(distribution) {
 }
 
 function loadCharts(category, dateRange) {
-    // Проверяем, является ли это тестовой категорией
-    if (category === 'military_operations_test') {
-        loadTestCharts(dateRange);
-        return;
-    }
-    
-    // Загружаем реальные графики для других категорий
+    // Загружаем реальные графики для всех категорий
     loadRealCharts(category, dateRange);
 }
 
@@ -1128,6 +1143,7 @@ function renderNewsCards(newsData, container) {
         
         const newsCard = document.createElement('div');
         newsCard.className = 'news-card';
+        newsCard.style.cursor = 'pointer';
         newsCard.innerHTML = `
             <div class="news-card-body">
                 <div class="news-title">
@@ -1148,12 +1164,36 @@ function renderNewsCards(newsData, container) {
                         <span class="news-tension">${tensionScore.toFixed(1)}%</span>
                     </div>
                     <div class="news-meta-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span class="news-spike">${(news.spike_index || news.spike || tensionScore * 0.8).toFixed(1)}%</span>
+                    </div>
+                    <div class="news-meta-item">
                         <i class="fas fa-rss"></i>
                         <span class="news-source">${news.source}</span>
                     </div>
                 </div>
             </div>
         `;
+        
+        // Добавляем обработчик клика для открытия модального окна
+        newsCard.addEventListener('click', function(e) {
+            // Предотвращаем открытие ссылки при клике на карточку
+            e.preventDefault();
+            
+            // Открываем модальное окно с данными новости
+            openNewsModal({
+                title: news.title,
+                date: formatDate(news.published_date || news.date),
+                source: news.source,
+                category: news.category,
+                categoryName: getCategoryName(news.category),
+                tension: tensionScore.toFixed(1),
+                tensionColor: getTensionColorForValue(tensionScore),
+                content: news.content || 'Полный текст статьи недоступен. Перейдите на источник для чтения.',
+                url: news.url || news.link || '#'
+            });
+        });
+        
         container.appendChild(newsCard);
     });
 }
@@ -1173,19 +1213,12 @@ function loadNewsTable(category, dateRange) {
     const container = document.getElementById('newsContainer');
     
     // Проверяем, является ли это тестовой категорией
-    if (category === 'military_operations_test') {
-        loadTestNewsCards(container);
-        return;
-    }
     
     // Используем правильный API эндпоинт с учетом категории
-    let apiUrl = '/api/news?limit=20';
-    if (category !== 'all' && category !== 'military_operations_test') {
-        // Для реальных категорий используем API аналитики
-        apiUrl = `/api/ukraine_analytics/recent_news?category=${category}&days=${dateRange}&limit=20`;
-    } else if (category === 'military_operations_test') {
-        // Для тестовой категории используем все новости
-        apiUrl = '/api/news?limit=20';
+    let apiUrl = '/api/ukraine_analytics/latest_news?category=all&days=' + dateRange;
+    if (category !== 'all') {
+        // Для реальных категорий используем новый API эндпоинт latest_news
+        apiUrl = `/api/ukraine_analytics/latest_news?category=${category}&days=${dateRange}`;
     }
     
     console.log('Loading news for category:', category, 'API URL:', apiUrl);
@@ -1197,7 +1230,9 @@ function loadNewsTable(category, dateRange) {
             let newsData = [];
             
             // Обрабатываем разные форматы ответов
-            if (data.data && Array.isArray(data.data)) {
+            if (data.latest_news && Array.isArray(data.latest_news)) {
+                newsData = data.latest_news;
+            } else if (data.data && Array.isArray(data.data)) {
                 newsData = data.data;
             } else if (data.news && Array.isArray(data.news)) {
                 newsData = data.news;
@@ -1253,79 +1288,6 @@ function loadNewsTable(category, dateRange) {
         });
 }
 
-function loadTestNewsCards(container) {
-    const testNews = [
-        {
-            date: new Date(Date.now() - 1000 * 60 * 30),
-            title: 'Успешное контрнаступление в восточном направлении: освобождены три населенных пункта',
-            content: 'По данным Генштаба, в результате успешной операции подразделения ВСУ освободили три стратегически важных населенных пункта в восточном направлении. Операция проводилась в течение 48 часов с привлечением механизированных подразделений и артиллерии. Противник понес значительные потери в живой силе и технике. Местные жители встречают украинских военных с цветами и слезами радости. Командование отмечает высокий моральный дух бойцов и эффективность новой тактики ведения боевых действий.',
-            source: 'РИА Новости',
-            tension: 82.4
-        },
-        {
-            date: new Date(Date.now() - 1000 * 60 * 90),
-            title: 'Поставка новой партии военной техники из стран НАТО',
-            content: 'В рамках программы военной помощи Украине из стран НАТО прибыла новая партия военной техники. В состав поставки входят современные системы ПВО, боевые машины пехоты и боеприпасы. Техника уже направляется в зоны боевых действий для усиления оборонительных позиций. Эксперты отмечают, что поставки соответствуют текущим потребностям украинской армии и помогут укрепить обороноспособность страны.',
-            source: 'BBC News',
-            tension: 75.2
-        },
-        {
-            date: new Date(Date.now() - 1000 * 60 * 150),
-            title: 'Эвакуация мирных жителей из прифронтовых районов',
-            content: 'Продолжается масштабная операция по эвакуации мирных жителей из прифронтовых районов. За последние сутки из опасных зон вывезено более 2000 человек, включая детей и пожилых людей. Эвакуация проводится под прикрытием военных подразделений с соблюдением всех мер безопасности. Все эвакуированные размещены во временных центрах помощи, где им предоставляется медицинская помощь и психологическая поддержка.',
-            source: 'CNN',
-            tension: 68.7
-        },
-        {
-            date: new Date(Date.now() - 1000 * 60 * 200),
-            title: 'Международная конференция по поддержке Украины',
-            content: 'В Брюсселе проходит международная конференция по поддержке Украины, в которой принимают участие представители более 40 стран. На повестке дня - вопросы военной помощи, экономической поддержки и восстановления инфраструктуры. Участники конференции выразили единодушную поддержку Украине и подтвердили готовность продолжать оказывать всестороннюю помощь в борьбе за суверенитет и территориальную целостность.',
-            source: 'Reuters',
-            tension: 45.3
-        },
-        {
-            date: new Date(Date.now() - 1000 * 60 * 250),
-            title: 'Работа гуманитарных коридоров для доставки помощи',
-            content: 'Продолжается работа гуманитарных коридоров для доставки гуманитарной помощи в зоны, пострадавшие от боевых действий. За последнюю неделю через коридоры доставлено более 500 тонн продовольствия, медикаментов и предметов первой необходимости. Международные организации координируют работу коридоров совместно с украинскими властями для обеспечения безопасности доставки помощи.',
-            source: 'Associated Press',
-            tension: 52.1
-        }
-    ];
-    
-    container.innerHTML = '';
-    
-    testNews.forEach(news => {
-        const newsCard = document.createElement('div');
-        newsCard.className = 'news-card';
-        newsCard.innerHTML = `
-            <div class="news-card-body">
-                <div class="news-title">
-                    <a href="#" target="_blank">${news.title}</a>
-                </div>
-                <div class="news-content">${news.content}</div>
-                <div class="news-meta">
-                    <div class="news-meta-item">
-                        <i class="fas fa-clock"></i>
-                        <span class="news-time">${formatDate(news.date)}</span>
-                    </div>
-                    <div class="news-meta-item">
-                        <i class="fas fa-tag"></i>
-                        <span class="news-category">Военные операции</span>
-                    </div>
-                    <div class="news-meta-item">
-                        <i class="fas fa-thermometer-half"></i>
-                        <span class="news-tension">${news.tension}%</span>
-                    </div>
-                    <div class="news-meta-item">
-                        <i class="fas fa-rss"></i>
-                        <span class="news-source">${news.source}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-        container.appendChild(newsCard);
-    });
-}
 
 function loadTestNewsTable(tbody) {
     const testNews = [
@@ -1437,8 +1399,8 @@ function loadTestNewsTable(tbody) {
                 title: news.title,
                 date: formatDate(news.date),
                 source: news.source,
-                category: 'military_operations_test',
-                categoryName: '🎯 Военные операции',
+                category: 'military_operations',
+                categoryName: 'Военные операции',
                 tension: news.tension.toFixed(1),
                 tensionColor: getTensionColorForValue(news.tension),
                 content: news.content,
@@ -1472,14 +1434,6 @@ function getTensionColor(score) {
 
 function getCategoryName(category) {
     const categories = {
-        // Тестовая категория
-        'military_operations_test': '🎯 Военные операции-ТЕСТ',
-        // Тестовые категории
-        'test_military': '🎯 Тест: Военные',
-        'test_diplomatic': '🤝 Тест: Дипломатия',
-        'test_economic': '💰 Тест: Экономика',
-        'test_humanitarian': '❤️ Тест: Гуманитарные',
-        'test_information': '📱 Тест: Информационные',
         // Основные категории
         'military_operations': 'Военные операции',
         'humanitarian_crisis': 'Гуманитарный кризис',
@@ -1505,11 +1459,7 @@ function formatDate(dateString) {
 function loadRealTensionChart(category, dateRange) {
     const chartContainer = document.getElementById('tensionChart');
     
-    // Проверяем, является ли это тестовой категорией
-    if (category === 'military_operations_test') {
-        loadTestTensionChart(chartContainer, dateRange);
-        return;
-    }
+    // Загружаем реальный график для всех категорий
     
     // Показываем индикатор загрузки
     chartContainer.innerHTML = `
@@ -1551,16 +1501,16 @@ function createRealTensionChart(data, container) {
             <div class="mt-3" style="color: #ffffff;">
                 <div class="row text-center">
                     <div class="col-md-3">
-                        <strong style="color: #4fc3f7;">📊 Исторических точек:</strong><br>${data.historical_points || (data.historical_data ? data.historical_data.length : 0)} / ${data.target_points || 7}
+                        <strong style="color: #4a90e2;">📊 Исторических точек:</strong><br>${data.historical_points || (data.historical_data ? data.historical_data.length : 0)} / ${data.target_points || 7}
                     </div>
                     <div class="col-md-3">
-                        <strong style="color: #9b59b6;">🔮 Прогнозных точек:</strong><br>${data.forecast_data ? data.forecast_data.length : 0}
+                        <strong style="color: #7b68ee;">🔮 Прогнозных точек:</strong><br>${data.forecast_data ? data.forecast_data.length : 0}
                     </div>
                     <div class="col-md-3">
-                        <strong style="color: #f39c12;">📈 Средняя напряженность:</strong><br>${data.avg_tension || '0'}%
+                        <strong style="color: #6c757d;">📈 Средняя напряженность:</strong><br>${data.avg_tension || '0'}%
                     </div>
                     <div class="col-md-3">
-                        <strong style="color: #e74c3c;">📉 Тренд:</strong><br>${data.trend || 'Стабильный'} (${data.trend_percent > 0 ? '+' : ''}${data.trend_percent || '0'}%)
+                        <strong style="color: #5a6c7d;">📉 Тренд:</strong><br>${data.trend || 'Стабильный'} (${data.trend_percent > 0 ? '+' : ''}${data.trend_percent || '0'}%)
                     </div>
                 </div>
             </div>
@@ -1764,7 +1714,7 @@ function loadTestTensionChart(container, dateRange) {
             <div class="mt-3" style="color: #ffffff;">
                 <div class="row text-center">
                     <div class="col-md-3">
-                        <strong style="color: #4fc3f7;">📊 Исторических точек:</strong><br>${actualPoints}
+                        <strong style="color: #4a90e2;">📊 Исторических точек:</strong><br>${actualPoints}
                     </div>
                     <div class="col-md-3">
                         <strong style="color: #9b59b6;">🔮 Прогнозных точек:</strong><br>5
@@ -1992,11 +1942,7 @@ function openNewsModal(newsData) {
     // Бейджи
     const categoryBadge = document.getElementById('modalCategoryBadge');
     categoryBadge.textContent = newsData.categoryName;
-    if (newsData.category === 'military_operations_test') {
-        categoryBadge.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-    } else {
-        categoryBadge.style.background = '';
-    }
+    categoryBadge.style.background = '';
     
     const tensionBadge = document.getElementById('modalTensionBadge');
     tensionBadge.textContent = newsData.tension + '%';

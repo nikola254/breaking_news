@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AI-классификатор новостей на базе GigaChat API
+AI-классификатор новостей на базе gen-api.ru с Long-Polling
 
 Этот модуль содержит функции для:
-- Классификации новостей по категориям с помощью GigaChat
+- Классификации новостей по категориям с помощью gen-api.ru
 - Расчет индексов социальной напряженности и всплеска
 - Кэширование результатов для экономии токенов
-- Интеграция с GigaChat API от Сбера
+- Long-Polling для получения результатов
 """
 
 import os
@@ -15,6 +15,7 @@ import json
 import logging
 import hashlib
 import requests
+import time
 from typing import Dict, Optional, Tuple
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -24,49 +25,39 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-class GPTNewsClassifier:
-    """AI-классификатор новостей на базе GigaChat API"""
+class GenApiNewsClassifier:
+    """AI-классификатор новостей на базе gen-api.ru с Long-Polling"""
     
-    def __init__(self, key_id: Optional[str] = None, secret: Optional[str] = None, project_id: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None):
         """
         Инициализация классификатора
         
         Args:
-            key_id: Key ID для GigaChat API
-            secret: Key Secret для GigaChat API  
-            project_id: Project ID для GigaChat API
+            api_key: API ключ для gen-api.ru
         """
-        self.key_id = key_id or os.environ.get('GIGACHAT_KEY_ID', 'a2512b4c794de9b61a5971a31a831ab2')
-        self.secret = secret or os.environ.get('GIGACHAT_SECRET', '328eba3d08e4b929a5eeddad3110e7f7')
-        self.project_id = project_id or os.environ.get('GIGACHAT_PROJECT_ID', 'dce70218-e109-47f8-9909-79e869875ac7')
+        self.api_key = api_key or os.environ.get('GEN_API_KEY')
         
-        # Проверяем наличие учетных данных
-        if not all([self.key_id, self.secret]):
-            logger.warning("Не найдены учетные данные GigaChat, будет использоваться только fallback классификация")
-            self.key_id = None
-            self.secret = None
+        # Проверяем наличие API ключа
+        if not self.api_key:
+            logger.warning("Не найден API ключ gen-api.ru, будет использоваться только fallback классификация")
+            self.api_key = None
         
-        # Настройки для GigaChat API
-        self.auth_url = "https://auth.iam.sbercloud.ru/auth/system/openid/token"
-        self.api_url = "https://gigachat.api.cloud.ru/api/gigachat/v1/chat/completions"
-        self.access_token = None
-        self.token_expires_at = None
+        # Настройки для gen-api.ru
+        self.api_url = "https://api.gen-api.ru/api/v1/networks/chat-gpt-3"
+        self.status_url = "https://api.gen-api.ru/api/v1/requests"
         
-        # Категории новостей
+        # Категории новостей (5 категорий)
         self.categories = {
             '1': 'military_operations',
-            '2': 'political_decisions', 
-            '3': 'economic_impact',
-            '4': 'humanitarian_crisis',
-            '5': 'international_reaction',
-            '6': 'cyber_operations',
-            '7': 'propaganda_disinformation',
-            '8': 'other'
+            '2': 'humanitarian_crisis', 
+            '3': 'economic_consequences',
+            '4': 'political_decisions',
+            '5': 'information_social'
         }
         
         # Кэш для результатов классификации
         self.cache = {}
-        self.cache_file = "gpt_classifier_cache.json"
+        self.cache_file = "gen_api_classifier_cache.json"
         self.load_cache()
         
         # Статистика использования
@@ -74,43 +65,11 @@ class GPTNewsClassifier:
             'total_requests': 0,
             'cached_requests': 0,
             'tokens_used': 0,
-            'errors': 0
+            'errors': 0,
+            'api_requests': 0
         }
         
-        logger.info("GPTNewsClassifier инициализирован с GigaChat API")
-    
-    def _get_access_token(self) -> str:
-        """Получает токен доступа для GigaChat API"""
-        if not self.key_id or not self.secret:
-            raise Exception("Учетные данные GigaChat не настроены")
-            
-        try:
-            # Проверяем, не истек ли токен
-            if self.access_token and self.token_expires_at and datetime.now() < self.token_expires_at:
-                return self.access_token
-            
-            # Получаем новый токен
-            auth_data = {
-                'grant_type': 'access_key',
-                'client_id': self.key_id,
-                'client_secret': self.secret
-            }
-            
-            response = requests.post(self.auth_url, data=auth_data, timeout=30)
-            response.raise_for_status()
-            
-            token_data = response.json()
-            self.access_token = token_data['access_token']
-            
-            # Токен действует 1 час
-            self.token_expires_at = datetime.now() + timedelta(hours=1)
-            
-            logger.info("Получен новый токен доступа GigaChat")
-            return self.access_token
-            
-        except Exception as e:
-            logger.error(f"Ошибка при получении токена GigaChat: {e}")
-            raise Exception(f"Не удалось получить токен доступа: {e}")
+        logger.info("GenApiNewsClassifier инициализирован с gen-api.ru")
     
     def load_cache(self):
         """Загружает кэш из файла"""
@@ -146,13 +105,10 @@ class GPTNewsClassifier:
 
 КАТЕГОРИИ:
 1. military_operations - Военные операции, боевые действия, атаки
-2. political_decisions - Политические решения, заявления, дипломатия
-3. economic_impact - Экономические последствия, санкции, торговля
-4. humanitarian_crisis - Гуманитарные кризисы, беженцы, жертвы
-5. international_reaction - Международная реакция, поддержка, осуждение
-6. cyber_operations - Кибероперации, хакерские атаки, информационная безопасность
-7. propaganda_disinformation - Пропаганда, дезинформация, фейки
-8. other - Другие темы
+2. humanitarian_crisis - Гуманитарные кризисы, беженцы, жертвы
+3. economic_consequences - Экономические последствия, санкции, торговля
+4. political_decisions - Политические решения, заявления, дипломатия
+5. information_social - Информационно-социальные аспекты
 
 ИНДЕКСЫ (0-100):
 - social_tension_index: Насколько новость может вызвать социальную напряженность
@@ -164,15 +120,14 @@ class GPTNewsClassifier:
   "category_name": "название_категории",
   "social_tension_index": число_от_0_до_100,
   "spike_index": число_от_0_до_100,
-  "confidence": число_от_0_до_1,
-  "reasoning": "краткое объяснение выбора категории и индексов"
+  "confidence": число_от_0_до_1
 }}"""
         
         return prompt
     
     def _make_api_request(self, prompt: str) -> Dict:
         """
-        Отправляет запрос к GigaChat API
+        Отправляет запрос к gen-api.ru и получает результат через Long-Polling
         
         Args:
             prompt: Промпт для отправки
@@ -180,58 +135,133 @@ class GPTNewsClassifier:
         Returns:
             Dict: Ответ от API
         """
+        if not self.api_key:
+            raise Exception("API ключ gen-api.ru не настроен")
+        
         try:
-            # Получаем токен доступа
-            access_token = self._get_access_token()
-            
-            payload = {
+            # Создаем задачу на генерацию
+            input_data = {
                 "messages": [
                     {
                         "role": "user",
                         "content": prompt
                     }
                 ],
-                "model": "GigaChat",
-                "options": {
-                    "temperature": 0.3,
-                    "top_p": 0.95,
-                    "max_tokens": 1000,
-                    "repetition_penalty": 1.0,
-                    "max_alternatives": 1
-                },
-                "project_id": self.project_id
+                "is_sync": False,      # Асинхронный режим для Long-Polling
+                "max_tokens": 1000,
+                "temperature": 0.3,
+                "top_p": 0.95
             }
             
             headers = {
                 'Content-Type': 'application/json',
-                'Authorization': f'Bearer {access_token}'
+                'Accept': 'application/json',
+                'Authorization': f'Bearer {self.api_key}'
             }
             
-            response = requests.post(
-                self.api_url,
-                json=payload,
-                headers=headers,
-                timeout=60
-            )
+            logger.info("Отправляем запрос к gen-api.ru...")
+            response = requests.post(self.api_url, json=input_data, headers=headers, timeout=30)
             
             if response.status_code != 200:
                 raise Exception(f"API вернул статус {response.status_code}: {response.text}")
             
-            response_data = response.json()
+            task_data = response.json()
+            request_id = task_data.get('request_id')
             
-            # Подсчитываем токены
-            if 'usage' in response_data:
-                self.stats['tokens_used'] += response_data['usage'].get('total_tokens', 0)
+            if not request_id:
+                raise Exception(f"Не получен request_id: {task_data}")
             
-            return response_data
+            logger.info(f"Задача создана, request_id: {request_id}")
+            
+            # Long-Polling для получения результата
+            result = self._wait_for_result(request_id)
+            
+            # Подсчитываем токены (если есть информация о стоимости)
+            if 'cost' in result:
+                cost = result['cost']
+                estimated_tokens = int(cost * 1000)  # Примерная оценка
+                self.stats['tokens_used'] += estimated_tokens
+            
+            self.stats['api_requests'] += 1
+            return result
             
         except Exception as e:
-            logger.error(f"Ошибка при обращении к GigaChat API: {e}")
+            logger.error(f"Ошибка при обращении к gen-api.ru: {e}")
             raise Exception(f"Ошибка API: {e}")
     
-    def _parse_response(self, response_text: str) -> Dict:
+    def _wait_for_result(self, request_id: int, max_wait_time: int = 60) -> Dict:
+        """
+        Ожидает результат выполнения задачи через Long-Polling
+        
+        Args:
+            request_id: ID запроса
+            max_wait_time: Максимальное время ожидания в секундах
+            
+        Returns:
+            Dict: Результат выполнения
+        """
+        headers = {
+            'Accept': 'application/json',
+            'Authorization': f'Bearer {self.api_key}'
+        }
+        
+        # Правильный URL для проверки статуса согласно документации
+        status_url = f"https://api.gen-api.ru/api/v1/request/get/{request_id}"
+        
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait_time:
+            try:
+                logger.info(f"Проверяем статус задачи {request_id}...")
+                response = requests.get(status_url, headers=headers, timeout=10)
+                
+                if response.status_code != 200:
+                    logger.warning(f"Ошибка при проверке статуса: {response.status_code}")
+                    time.sleep(5)  # Ждем 5 секунд перед следующей проверкой
+                    continue
+                
+                status_data = response.json()
+                status = status_data.get('status')
+                
+                logger.info(f"Статус задачи {request_id}: {status}")
+                
+                if status == 'success':
+                    logger.info("✅ Задача выполнена успешно!")
+                    return status_data
+                elif status == 'failed':
+                    error_msg = status_data.get('error', 'Неизвестная ошибка')
+                    raise Exception(f"Задача завершилась с ошибкой: {error_msg}")
+                elif status in ['starting', 'processing']:
+                    # Задача еще выполняется, ждем 5 секунд
+                    logger.info("Задача в работе, ждем 5 секунд...")
+                    time.sleep(5)
+                    continue
+                else:
+                    logger.warning(f"Неизвестный статус: {status}")
+                    time.sleep(5)
+                    continue
+                    
+            except requests.RequestException as e:
+                logger.warning(f"Ошибка при проверке статуса: {e}")
+                time.sleep(5)
+                continue
+        
+        raise Exception(f"Превышено время ожидания результата ({max_wait_time} сек)")
+    
+    def _parse_response(self, response_data: Dict) -> Dict:
         """Парсит ответ от API и извлекает данные классификации"""
         try:
+            # Извлекаем ответ из result (формат Long-Polling)
+            result = response_data.get('result', [])
+            
+            if result and len(result) > 0:
+                # Берем первый элемент из массива result
+                response_text = result[0]
+            else:
+                # Fallback для старого формата
+                output = response_data.get('output', '')
+                response_text = str(output)
+            
             # Пытаемся найти JSON в ответе
             start_idx = response_text.find('{')
             end_idx = response_text.rfind('}') + 1
@@ -258,13 +288,12 @@ class GPTNewsClassifier:
                 'category_name': self.categories[category_id],
                 'social_tension_index': max(0, min(100, int(data['social_tension_index']))),
                 'spike_index': max(0, min(100, int(data['spike_index']))),
-                'confidence': max(0.0, min(1.0, float(data['confidence']))),
-                'reasoning': data.get('reasoning', 'Нет объяснения')
+                'confidence': max(0.0, min(1.0, float(data['confidence'])))
             }
             
         except Exception as e:
             logger.error(f"Ошибка при парсинге ответа: {e}")
-            logger.error(f"Ответ API: {response_text}")
+            logger.error(f"Ответ API: {response_data}")
             raise ValueError(f"Не удалось распарсить ответ: {e}")
     
     def _fallback_classification(self, title: str, content: str) -> Dict:
@@ -278,32 +307,20 @@ class GPTNewsClassifier:
             category_id = '1'
             tension = 85
             spike = 75
-        elif any(word in text for word in ['политика', 'решение', 'заявление', 'дипломатия', 'переговоры']):
+        elif any(word in text for word in ['жертвы', 'беженцы', 'гуманитарный', 'помощь', 'кризис']):
             category_id = '2'
-            tension = 60
-            spike = 50
+            tension = 90
+            spike = 80
         elif any(word in text for word in ['экономика', 'санкции', 'торговля', 'финансы', 'рубль']):
             category_id = '3'
             tension = 70
             spike = 60
-        elif any(word in text for word in ['жертвы', 'беженцы', 'гуманитарный', 'помощь', 'кризис']):
+        elif any(word in text for word in ['политика', 'решение', 'заявление', 'дипломатия', 'переговоры']):
             category_id = '4'
-            tension = 90
-            spike = 80
-        elif any(word in text for word in ['международный', 'поддержка', 'осуждение', 'оон', 'нато']):
-            category_id = '5'
-            tension = 65
-            spike = 55
-        elif any(word in text for word in ['кибер', 'хакер', 'информация', 'данные', 'безопасность']):
-            category_id = '6'
-            tension = 75
-            spike = 65
-        elif any(word in text for word in ['пропаганда', 'фейк', 'дезинформация', 'ложь', 'обман']):
-            category_id = '7'
-            tension = 80
-            spike = 70
+            tension = 60
+            spike = 50
         else:
-            category_id = '8'
+            category_id = '5'
             tension = 30
             spike = 20
         
@@ -312,8 +329,7 @@ class GPTNewsClassifier:
             'category_name': self.categories[category_id],
             'social_tension_index': tension,
             'spike_index': spike,
-            'confidence': 0.3,
-            'reasoning': 'Fallback классификация из-за ошибки API'
+            'confidence': 0.3
         }
     
     def classify(self, title: str, content: str) -> Dict:
@@ -345,13 +361,8 @@ class GPTNewsClassifier:
             # Отправляем запрос к API
             response = self._make_api_request(prompt)
             
-            # Парсим ответ GigaChat
-            if 'alternatives' in response and len(response['alternatives']) > 0:
-                content = response['alternatives'][0]['message']['content']
-            else:
-                raise ValueError("Неожиданный формат ответа GigaChat")
-            
-            result = self._parse_response(content)
+            # Парсим ответ
+            result = self._parse_response(response)
             result['cached'] = False
             
             # Сохраняем в кэш

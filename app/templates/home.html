@@ -16,17 +16,36 @@
     <button class="news-type-btn" data-category="usa">США</button>
 </div>
 
-<table class="news-table">
-    <thead>
-        <tr>
-            <th class="date-col">Дата</th>
-            <th class="source-col">Ресурс</th>
-            <th class="title-col">Заголовок</th>
-            <th>Содержание</th>
-        </tr>
-    </thead>
-    <tbody id="news-table-body"></tbody>
-</table>
+<!-- Легенда категорий -->
+<div class="category-legend">
+    <h4>Легенда категорий:</h4>
+    <div class="legend-items">
+        <div class="legend-item military_operations">
+            <span class="legend-color"></span>
+            <span>Военные операции</span>
+        </div>
+        <div class="legend-item humanitarian_crisis">
+            <span class="legend-color"></span>
+            <span>Гуманитарный кризис</span>
+        </div>
+        <div class="legend-item economic_consequences">
+            <span class="legend-color"></span>
+            <span>Экономические последствия</span>
+        </div>
+        <div class="legend-item political_decisions">
+            <span class="legend-color"></span>
+            <span>Политические решения</span>
+        </div>
+        <div class="legend-item information_social">
+            <span class="legend-color"></span>
+            <span>Информационно-социальные</span>
+        </div>
+    </div>
+</div>
+
+<div class="news-container" id="news-container">
+    <!-- Новости будут загружены здесь в виде карточек -->
+</div>
 <div class="pagination" id="pagination"></div>
 
 <!-- Модальное окно -->
