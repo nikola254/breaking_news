@@ -863,53 +863,60 @@ def get_social_media_data():
 
 @news_api_bp.route('/statistics', methods=['GET'])
 def get_statistics():
-    """РџРѕР»СѓС‡РµРЅРёРµ СЃС‚Р°С‚РёСЃС‚РёРєРё РїРѕ РєРѕР»РёС‡РµСЃС‚РІСѓ СЃС‚Р°С‚РµР№.
+    """Получение статистики по новостям из ClickHouse.
     
-    Р’РѕР·РІСЂР°С‰Р°РµС‚ РѕР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚Р°С‚РµР№ Рё СЂР°Р·Р±РёРІРєСѓ РїРѕ РєР°С‚РµРіРѕСЂРёСЏРј
-    РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РЅР° РіР»Р°РІРЅРѕР№ СЃС‚СЂР°РЅРёС†Рµ.
+    Query Parameters:
+        days (int): Количество дней для анализа (по умолчанию 7)
+        category (str): Категория новостей (по умолчанию 'all')
     
     Returns:
-        JSON: РЎС‚Р°С‚РёСЃС‚РёРєР° РїРѕ РєРѕР»РёС‡РµСЃС‚РІСѓ СЃС‚Р°С‚РµР№
+        JSON: Статистика с общим количеством новостей и распределением по категориям
     """
     try:
+        days = int(request.args.get('days', 7))
+        category = request.args.get('category', 'all')
+        
         client = get_clickhouse_client()
         
-        # РџРѕР»СѓС‡Р°РµРј РѕР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЃС‚Р°С‚РµР№ РёР· РІСЃРµС… РёСЃС‚РѕС‡РЅРёРєРѕРІ
-        total_query = """
+        # Формируем фильтр по категории
+        category_filter = f"AND category = '{category}'" if category != 'all' else ""
+        
+        # Получаем общее количество статей из всех источников за указанный период
+        total_query = f"""
             SELECT COUNT(*) as total FROM (
-                SELECT id FROM news.ria_headlines
+                SELECT id FROM news.ria_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.lenta_headlines
+                SELECT id FROM news.lenta_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.rbc_headlines
+                SELECT id FROM news.rbc_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.gazeta_headlines
+                SELECT id FROM news.gazeta_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.kommersant_headlines
+                SELECT id FROM news.kommersant_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.tsn_headlines
+                SELECT id FROM news.tsn_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.unian_headlines
+                SELECT id FROM news.unian_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.rt_headlines
+                SELECT id FROM news.rt_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.cnn_headlines
+                SELECT id FROM news.cnn_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.aljazeera_headlines
+                SELECT id FROM news.aljazeera_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.reuters_headlines
+                SELECT id FROM news.reuters_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.france24_headlines
+                SELECT id FROM news.france24_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.dw_headlines
+                SELECT id FROM news.dw_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.euronews_headlines
+                SELECT id FROM news.euronews_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.bbc_headlines
+                SELECT id FROM news.bbc_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.israil_headlines
+                SELECT id FROM news.israil_headlines WHERE published_date >= today() - {days} {category_filter}
                 UNION ALL
-                SELECT id FROM news.telegram_headlines
+                SELECT id FROM news.telegram_headlines WHERE published_date >= today() - {days} {category_filter}
             )
         """
         
@@ -945,15 +952,15 @@ def get_statistics():
             # Считаем ТОЛЬКО из _headlines таблиц, так как они содержат все данные
             union_parts = []
             
-            # Добавляем основные таблицы _headlines с фильтром по category
+            # Добавляем основные таблицы _headlines с фильтром по category и времени
             for source in sources:
                 table_name = f"{source}_headlines"
                 if table_name in existing_tables:
-                    union_parts.append(f"SELECT id FROM news.{table_name} WHERE category = '{category_key}'")
+                    union_parts.append(f"SELECT id FROM news.{table_name} WHERE category = '{category_key}' AND published_date >= today() - {days}")
             
-            # Добавляем telegram_headlines с фильтром по category
+            # Добавляем telegram_headlines с фильтром по category и времени
             if 'telegram_headlines' in existing_tables:
-                union_parts.append(f"SELECT id FROM news.telegram_headlines WHERE category = '{category_key}'")
+                union_parts.append(f"SELECT id FROM news.telegram_headlines WHERE category = '{category_key}' AND published_date >= today() - {days}")
             
             if union_parts:
                 category_query = f"""
@@ -987,7 +994,7 @@ def get_statistics():
             site_name = table_name.replace('custom_', '').replace('_headlines', '')
             display_name = site_name.replace('_', '.').title()
             
-            custom_count_query = f"SELECT COUNT(*) FROM news.{table_name}"
+            custom_count_query = f"SELECT COUNT(*) FROM news.{table_name} WHERE published_date >= today() - {days}"
             custom_count_result = client.query(custom_count_query)
             custom_count = custom_count_result.result_rows[0][0] if custom_count_result.result_rows else 0
             

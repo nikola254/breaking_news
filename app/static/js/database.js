@@ -117,6 +117,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Восстанавливаем состояние окна логирования если оно было открыто
     restoreLogWindowState();
+    
+    // Добавляем обработчик изменения периода для обновления статистики
+    // Делаем это в конце, чтобы убедиться что все элементы DOM загружены
+    setTimeout(() => {
+        const daysSelect = document.getElementById('days-select');
+        if (daysSelect) {
+            daysSelect.addEventListener('change', function() {
+                const { days, category } = getCurrentFilterParams();
+                loadStatistics(days, category);
+            });
+        }
+    }, 100);
 });
 
 // Сохраняем состояние окна логирования при переходе на другую страницу
@@ -917,7 +929,8 @@ function runParsers(sources) {
         
         // Обновляем статистику после завершения парсинга
         setTimeout(() => {
-            loadStatistics();
+            const { days, category } = getCurrentFilterParams();
+            loadStatistics(days, category);
         }, 5000); // Обновляем через 5 секунд
     })
     .catch(error => {
@@ -929,9 +942,23 @@ function runParsers(sources) {
     });
 }
 
+// Функция для получения текущих параметров фильтра
+function getCurrentFilterParams() {
+    try {
+        const daysSelect = document.getElementById('days-select');
+        const days = daysSelect ? parseInt(daysSelect.value) : 7;
+        const category = 'all'; // Пока всегда 'all' для статистики БД
+        return { days, category };
+    } catch (error) {
+        console.warn('Ошибка получения параметров фильтра:', error);
+        return { days: 7, category: 'all' };
+    }
+}
+
 // Функция для загрузки статистики
-function loadStatistics() {
-    fetch('/api/statistics')
+function loadStatistics(days = 7, category = 'all') {
+    const url = `/api/statistics?days=${days}&category=${category}`;
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {

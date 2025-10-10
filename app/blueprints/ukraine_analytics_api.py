@@ -1836,6 +1836,7 @@ def get_heatmap_data():
             category_condition = f"AND category = '{category}'"
         
         # Получаем данные по источникам и дням с нормализацией названий источников
+        # Используем тот же набор таблиц что и в /api/statistics для консистентности
         query = f"""
         SELECT 
             CASE 
@@ -1856,6 +1857,28 @@ def get_heatmap_data():
             UNION ALL
             SELECT source, published_date, category FROM news.kommersant_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
+            SELECT source, published_date, category FROM news.tsn_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.unian_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.rt_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.cnn_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.aljazeera_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.reuters_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.france24_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.dw_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.euronews_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.bbc_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.israil_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
             SELECT source, published_date, category FROM news.telegram_headlines WHERE published_date >= today() - {days} {category_condition}
         )
         GROUP BY normalized_source, day
@@ -1874,6 +1897,7 @@ def get_heatmap_data():
             })
         
         # Подсчитываем общее количество новостей для совместимости с другими эндпоинтами
+        # Используем тот же подход что и в /api/statistics
         total_news_query = f"""
         SELECT count() as total_count
         FROM (
@@ -1886,6 +1910,28 @@ def get_heatmap_data():
             SELECT source, published_date, category FROM news.gazeta_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
             SELECT source, published_date, category FROM news.kommersant_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.tsn_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.unian_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.rt_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.cnn_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.aljazeera_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.reuters_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.france24_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.dw_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.euronews_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.bbc_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.israil_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
             SELECT source, published_date, category FROM news.telegram_headlines WHERE published_date >= today() - {days} {category_condition}
         )
@@ -2192,6 +2238,7 @@ def get_territory_data():
             category_condition = f"AND category = '{category}'"
         
         # Получаем данные из всех таблиц с учетом категории
+        # Используем тот же набор таблиц что и в /api/statistics для консистентности
         query = f"""
         SELECT 
             title, content, published_date, category, source
@@ -2205,6 +2252,28 @@ def get_territory_data():
             SELECT title, content, published_date, category, source FROM news.gazeta_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
             SELECT title, content, published_date, category, source FROM news.kommersant_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.tsn_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.unian_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.rt_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.cnn_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.aljazeera_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.reuters_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.france24_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.dw_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.euronews_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.bbc_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.israil_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
             SELECT title, content, published_date, category, source FROM news.telegram_headlines WHERE published_date >= today() - {days} {category_condition}
         )
@@ -2305,28 +2374,46 @@ def get_full_statistics():
         # Получаем правильную таблицу для категории
         table_source = get_table_for_category(category)
         
-        # Формируем запрос в зависимости от типа таблицы
-        if table_source == "all_sources":
-            # Используем UNION ALL запрос для всех источников
-            query = f"""
+        # ВСЕГДА используем UNION ALL запрос для всех источников для консистентности
+        # Используем тот же набор таблиц что и в /api/statistics для консистентности
+        category_filter = f"AND category = '{category}'" if category != 'all' else ""
+        query = f"""
             SELECT title, content, published_date, category, source
             FROM (
-                {build_union_query_for_category(category, days)}
+            SELECT title, content, published_date, category, source FROM news.ria_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.lenta_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.rbc_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.gazeta_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.kommersant_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.tsn_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.unian_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.rt_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.cnn_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.aljazeera_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.reuters_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.france24_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.dw_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.euronews_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.bbc_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.israil_headlines WHERE published_date >= today() - {days} {category_filter}
+            UNION ALL
+            SELECT title, content, published_date, category, source FROM news.telegram_headlines WHERE published_date >= today() - {days} {category_filter}
             )
-            ORDER BY published_date DESC
-            """
-        else:
-            # Формируем условие для категории
-            category_filter = ""
-            if category != 'all':
-                category_filter = f"AND category = '{category}'"
-            
-            # Запрос для получения новостей за период
-            query = f"""
-            SELECT title, content, published_date, category, source
-            FROM {table_source}
-            WHERE published_date >= today() - {days}
-            {category_filter}
             ORDER BY published_date DESC
             """
         
