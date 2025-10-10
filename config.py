@@ -27,6 +27,15 @@ class Config:
     CLICKHOUSE_PASSWORD = os.environ.get('CLICKHOUSE_PASSWORD')
     CLICKHOUSE_DATABASE = os.environ.get('CLICKHOUSE_DATABASE', 'news')
     
+    # Словарь конфигурации ClickHouse для совместимости
+    CLICKHOUSE_CONFIG = {
+        'host': CLICKHOUSE_HOST,
+        'port': CLICKHOUSE_PORT,
+        'user': CLICKHOUSE_USER,
+        'password': CLICKHOUSE_PASSWORD,
+        'database': CLICKHOUSE_DATABASE
+    }
+    
     # Настройки Flask
     SECRET_KEY = os.environ.get('SECRET_KEY')
     DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
@@ -48,6 +57,13 @@ class Config:
     DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
     OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
     OPENROUTER_DEEPSEEK_R1_API_KEY = os.environ.get('OPENROUTER_DEEPSEEK_R1_API_KEY')
+    
+    # Настройки GPT API для классификации новостей
+    GEN_API_KEY = os.environ.get('GEN_API_KEY')
+    GEN_API_URL = os.environ.get('GEN_API_URL', 'https://api.gen-api.ru/api/v1/networks/chat-gpt-4-turbo')
+    GEN_API_MODEL = os.environ.get('GEN_API_MODEL', 'gpt-4o-2024-05-13')
+    GEN_API_MAX_TOKENS = int(os.environ.get('GEN_API_MAX_TOKENS', '500'))
+    GEN_API_TEMPERATURE = float(os.environ.get('GEN_API_TEMPERATURE', '0.1'))
     AUTH_KEY_GIGA_CHAT = os.environ.get('AUTH_KEY_GIGA_CHAT')
     AI_IO_KEY = os.environ.get('AI_IO_KEY')
     

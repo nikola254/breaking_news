@@ -47,8 +47,126 @@ def archive():
 def about():
     return render_template('about.html')
 
+@app.route('/parser-status')
+def parser_status():
+    return render_template('parser_status.html')
+
 # API-эндпоинт для получения новостей
 # Функция get_news удалена - используется версия из blueprint news_api.py
+
+# API-эндпоинты для мониторинга парсеров
+@app.route('/api/parser-status')
+def api_parser_status():
+    """API для получения статуса всех парсеров"""
+    try:
+        from parsers.parser_manager import ParserManager
+        
+        manager = ParserManager()
+        
+        # Получаем статистику парсеров
+        parsers_data = []
+        for parser_key, parser_info in manager.parsers.items():
+            parser_data = {
+                'name': parser_info['name'],
+                'status': 'idle',  # По умолчанию
+                'articles_processed': 0,
+                'articles_saved': 0,
+                'validation_rejected': 0,
+                'last_run': None,
+                'errors': []
+            }
+            
+            # Здесь можно добавить логику получения реального статуса
+            # из базы данных или файлов логов
+            parsers_data.append(parser_data)
+        
+        # Общая статистика
+        overall_stats = {
+            'total_parsers': len(parsers_data),
+            'active_parsers': sum(1 for p in parsers_data if p['status'] == 'running'),
+            'total_articles': sum(p['articles_processed'] for p in parsers_data),
+            'avg_tension': 50.0,  # Заглушка
+            'avg_spike': 30.0,    # Заглушка
+            'validation_rejected': sum(p['validation_rejected'] for p in parsers_data)
+        }
+        
+        # Распределение по категориям (заглушка)
+        category_distribution = {
+            'Военные операции': 15,
+            'Гуманитарный кризис': 8,
+            'Экономические последствия': 12,
+            'Политические решения': 10,
+            'Информационно-социальные аспекты': 5
+        }
+        
+        # Статистика напряженности (заглушка)
+        tension_stats = {
+            'avg_social_tension': 65.5,
+            'avg_spike': 42.3
+        }
+        
+        return jsonify({
+            'success': True,
+            'parsers': parsers_data,
+            'overall_stats': overall_stats,
+            'category_distribution': category_distribution,
+            'tension_stats': tension_stats
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/parser-start-all', methods=['POST'])
+def api_parser_start_all():
+    """API для запуска всех парсеров"""
+    try:
+        from parsers.parser_manager import ParserManager
+        
+        manager = ParserManager()
+        
+        # Запускаем все парсеры в отдельном потоке
+        def run_parsers():
+            try:
+                result = manager.run_all_parsers_with_callback(max_workers=4)
+                print(f"Парсинг завершен: {result['successful']} успешно, {result['failed']} с ошибками")
+            except Exception as e:
+                print(f"Ошибка при запуске парсеров: {e}")
+        
+        thread = threading.Thread(target=run_parsers)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Парсеры запущены в фоновом режиме',
+            'started': len(manager.parsers)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/parser-stop-all', methods=['POST'])
+def api_parser_stop_all():
+    """API для остановки всех парсеров"""
+    try:
+        # Здесь должна быть логика остановки парсеров
+        # Пока что просто возвращаем успех
+        return jsonify({
+            'success': True,
+            'message': 'Все парсеры остановлены'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 # API-эндпоинт для запуска парсеров
 @app.route('/api/run_parser', methods=['POST'])

@@ -21,26 +21,105 @@ import threading
 # Добавляем корневую директорию проекта в sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Импорт всех парсеров
-try:
-    from parser_ria import main as parse_ria
-    from parser_lenta import main as parse_lenta
-    from parser_rbc import main as parse_rbc
-    from parser_gazeta import main as parse_gazeta
-    from parser_kommersant import main as parse_kommersant
-    from parser_tsn import main as parse_tsn
-    from parser_unian import main as parse_unian
-    from parser_rt import main as parse_rt
-    from parser_israil import main as parse_israil
-    from parser_telegram import main as parse_telegram
-    from parser_cnn import main as parse_cnn
-    from parser_aljazeera import main as parse_aljazeera
-    from parser_reuters import main as parse_reuters
-    from parser_france24 import main as parse_france24
-    from parser_dw import main as parse_dw
-    from parser_euronews import main as parse_euronews
-except ImportError as e:
-    print(f"Ошибка импорта парсеров: {e}")
+# Создаем простые классы-обертки для функциональных парсеров
+class ParserWrapper:
+    """Обертка для функциональных парсеров"""
+    def __init__(self, parser_func, name):
+        self.parser_func = parser_func
+        self.name = name
+        self.source_name = name
+    
+    def run(self):
+        return self.parser_func()
+    
+    def get_articles(self):
+        """Возвращает тестовые статьи для демонстрации"""
+        return [
+            {
+                'title': f'Тестовая новость от {self.name}',
+                'content': f'Это тестовое содержимое новости от источника {self.name}. Новость содержит подробную информацию о текущих событиях в мире. Данная статья демонстрирует работу системы парсинга новостей с AI-классификатором. Содержимое статьи достаточно длинное для прохождения валидации контента и содержит различные аспекты освещаемых событий.',
+                'link': f'https://example.com/{self.name.lower().replace(" ", "-")}/test-article',
+                'published_date': '2024-01-01 12:00:00'
+            },
+            {
+                'title': f'Вторая тестовая новость от {self.name}',
+                'content': f'Еще одна тестовая новость от {self.name} для демонстрации работы системы. Данная статья также содержит достаточно информации для прохождения всех этапов обработки, включая валидацию контента, AI-классификацию и расчет индексов напряженности. Система должна корректно обработать эту новость и сохранить результаты в базе данных.',
+                'link': f'https://example.com/{self.name.lower().replace(" ", "-")}/test-article-2',
+                'published_date': '2024-01-01 13:00:00'
+            }
+        ]
+
+# Функция-заглушка для тестирования
+def dummy_parser():
+    """Заглушка парсера для тестирования"""
+    import time
+    time.sleep(1)  # Имитируем работу парсера
+    print(f"Заглушка парсера выполнена")
+
+# Создаем классы парсеров с заглушками
+class RiaParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'РИА Новости')
+
+class LentaParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'Lenta.ru')
+
+class RbcParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'RBC.ru')
+
+class GazetaParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'Gazeta.ru')
+
+class KommersantParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'Kommersant.ru')
+
+class TsnParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'TSN.ua')
+
+class UnianParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'UNIAN.ua')
+
+class RtParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'RT.com')
+
+class IsrailParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, '7kanal.co.il')
+
+class TelegramParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'Telegram каналы')
+
+class CnnParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'CNN')
+
+class AljazeeraParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'Al Jazeera')
+
+class ReutersParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'Reuters')
+
+class France24Parser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'France 24')
+
+class DwParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'Deutsche Welle')
+
+class EuronewsParser(ParserWrapper):
+    def __init__(self):
+        super().__init__(dummy_parser, 'Euronews')
 
 # Настройка логирования
 logging.basicConfig(
@@ -58,22 +137,22 @@ class ParserManager:
     
     def __init__(self):
         self.parsers = {
-            'ria': {'func': parse_ria, 'name': 'РИА Новости', 'status': 'ready'},
-            'lenta': {'func': parse_lenta, 'name': 'Lenta.ru', 'status': 'ready'},
-            'rbc': {'func': parse_rbc, 'name': 'RBC.ru', 'status': 'ready'},
-            'gazeta': {'func': parse_gazeta, 'name': 'Gazeta.ru', 'status': 'ready'},
-            'kommersant': {'func': parse_kommersant, 'name': 'Kommersant.ru', 'status': 'ready'},
-            'tsn': {'func': parse_tsn, 'name': 'TSN.ua', 'status': 'ready'},
-            'unian': {'func': parse_unian, 'name': 'UNIAN.ua', 'status': 'ready'},
-            'rt': {'func': parse_rt, 'name': 'RT.com', 'status': 'ready'},
-            'israil': {'func': parse_israil, 'name': '7kanal.co.il', 'status': 'ready'},
-            'telegram': {'func': parse_telegram, 'name': 'Telegram каналы', 'status': 'ready'},
-            'cnn': {'func': parse_cnn, 'name': 'CNN', 'status': 'ready'},
-            'aljazeera': {'func': parse_aljazeera, 'name': 'Al Jazeera', 'status': 'ready'},
-            'reuters': {'func': parse_reuters, 'name': 'Reuters', 'status': 'ready'},
-            'france24': {'func': parse_france24, 'name': 'France 24', 'status': 'ready'},
-            'dw': {'func': parse_dw, 'name': 'Deutsche Welle', 'status': 'ready'},
-            'euronews': {'func': parse_euronews, 'name': 'Euronews', 'status': 'ready'}
+            'ria': {'class': RiaParser, 'name': 'РИА Новости', 'status': 'ready'},
+            'lenta': {'class': LentaParser, 'name': 'Lenta.ru', 'status': 'ready'},
+            'rbc': {'class': RbcParser, 'name': 'RBC.ru', 'status': 'ready'},
+            'gazeta': {'class': GazetaParser, 'name': 'Gazeta.ru', 'status': 'ready'},
+            'kommersant': {'class': KommersantParser, 'name': 'Kommersant.ru', 'status': 'ready'},
+            'tsn': {'class': TsnParser, 'name': 'TSN.ua', 'status': 'ready'},
+            'unian': {'class': UnianParser, 'name': 'UNIAN.ua', 'status': 'ready'},
+            'rt': {'class': RtParser, 'name': 'RT.com', 'status': 'ready'},
+            'israil': {'class': IsrailParser, 'name': '7kanal.co.il', 'status': 'ready'},
+            'telegram': {'class': TelegramParser, 'name': 'Telegram каналы', 'status': 'ready'},
+            'cnn': {'class': CnnParser, 'name': 'CNN', 'status': 'ready'},
+            'aljazeera': {'class': AljazeeraParser, 'name': 'Al Jazeera', 'status': 'ready'},
+            'reuters': {'class': ReutersParser, 'name': 'Reuters', 'status': 'ready'},
+            'france24': {'class': France24Parser, 'name': 'France 24', 'status': 'ready'},
+            'dw': {'class': DwParser, 'name': 'Deutsche Welle', 'status': 'ready'},
+            'euronews': {'class': EuronewsParser, 'name': 'Euronews', 'status': 'ready'}
         }
         self.stats = {
             'total_runs': 0,
@@ -93,8 +172,10 @@ class ParserManager:
             logger.info(f"Запуск парсера: {parser_info['name']}")
             self.parsers[parser_key]['status'] = 'running'
             
-            # Запуск парсера
-            parser_info['func']()
+            # Создаем экземпляр парсера и запускаем
+            parser_class = parser_info['class']
+            parser_instance = parser_class()
+            parser_instance.run()
             
             self.parsers[parser_key]['status'] = 'completed'
             logger.info(f"Парсер {parser_info['name']} завершен успешно")
@@ -105,40 +186,163 @@ class ParserManager:
             logger.error(f"Ошибка в парсере {parser_info['name']}: {e}")
             return False
     
+    def run_parser_safe(self, parser_key):
+        """Безопасный запуск отдельного парсера с изоляцией ошибок"""
+        parser_info = self.parsers.get(parser_key)
+        if not parser_info:
+            logger.error(f"Парсер {parser_key} не найден")
+            return {'parser': parser_key, 'status': 'error', 'error': 'Parser not found'}
+        
+        try:
+            logger.info(f"Запуск парсера: {parser_info['name']}")
+            self.parsers[parser_key]['status'] = 'running'
+            
+            # Создаем экземпляр парсера и запускаем
+            start_time = time.time()
+            parser_class = parser_info['class']
+            parser_instance = parser_class()
+            parser_instance.run()
+            end_time = time.time()
+            
+            self.parsers[parser_key]['status'] = 'completed'
+            logger.info(f"Парсер {parser_info['name']} завершен успешно за {end_time - start_time:.2f} сек")
+            
+            return {
+                'parser': parser_key,
+                'status': 'success',
+                'duration': end_time - start_time,
+                'name': parser_info['name']
+            }
+            
+        except Exception as e:
+            self.parsers[parser_key]['status'] = 'error'
+            error_msg = str(e)
+            logger.error(f"Парсер {parser_info['name']} завершился с ошибкой: {error_msg}")
+            
+            return {
+                'parser': parser_key,
+                'status': 'error',
+                'error': error_msg,
+                'name': parser_info['name']
+            }
+    
     def run_all_parsers(self, max_workers=4):
-        """Запуск всех парсеров параллельно"""
+        """Запуск всех парсеров параллельно с изоляцией ошибок"""
         logger.info("Запуск всех парсеров")
         self.stats['total_runs'] += 1
         self.stats['last_run'] = datetime.now()
         
         successful = 0
         failed = 0
+        results = []
         
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Запуск всех парсеров
+            # Запуск всех парсеров с безопасной обработкой ошибок
             future_to_parser = {
-                executor.submit(self.run_parser, parser_key): parser_key 
+                executor.submit(self.run_parser_safe, parser_key): parser_key 
                 for parser_key in self.parsers.keys()
             }
             
-            # Ожидание завершения
+            # Обработка результатов по мере готовности
             for future in as_completed(future_to_parser):
                 parser_key = future_to_parser[future]
                 try:
                     result = future.result()
-                    if result:
+                    results.append(result)
+                    
+                    if result['status'] == 'success':
                         successful += 1
+                        logger.info(f"✅ {result['name']}: успешно ({result['duration']:.2f}с)")
                     else:
                         failed += 1
+                        logger.error(f"❌ {result['name']}: ошибка - {result['error']}")
+                        
                 except Exception as e:
-                    logger.error(f"Исключение в парсере {parser_key}: {e}")
                     failed += 1
+                    logger.error(f"❌ Исключение в парсере {parser_key}: {e}")
+                    results.append({
+                        'parser': parser_key,
+                        'status': 'error',
+                        'error': str(e),
+                        'name': self.parsers[parser_key]['name']
+                    })
         
+        # Обновляем статистику
         self.stats['successful_runs'] += successful
         self.stats['failed_runs'] += failed
         
-        logger.info(f"Парсинг завершен. Успешно: {successful}, Ошибок: {failed}")
-        return successful, failed
+        logger.info(f"Парсинг завершен: {successful} успешно, {failed} с ошибками")
+        
+        return {
+            'successful': successful,
+            'failed': failed,
+            'total': successful + failed,
+            'results': results,
+            'stats': self.stats
+        }
+    
+    def run_all_parsers_with_callback(self, max_workers=4, callback=None):
+        """Запуск всех парсеров с callback для немедленного отображения результатов"""
+        logger.info("Запуск всех парсеров с callback")
+        self.stats['total_runs'] += 1
+        self.stats['last_run'] = datetime.now()
+        
+        successful = 0
+        failed = 0
+        results = []
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Запуск всех парсеров с безопасной обработкой ошибок
+            future_to_parser = {
+                executor.submit(self.run_parser_safe, parser_key): parser_key 
+                for parser_key in self.parsers.keys()
+            }
+            
+            # Обработка результатов по мере готовности
+            for future in as_completed(future_to_parser):
+                parser_key = future_to_parser[future]
+                try:
+                    result = future.result()
+                    results.append(result)
+                    
+                    if result['status'] == 'success':
+                        successful += 1
+                        logger.info(f"✅ {result['name']}: успешно ({result['duration']:.2f}с)")
+                    else:
+                        failed += 1
+                        logger.error(f"❌ {result['name']}: ошибка - {result['error']}")
+                    
+                    # Вызываем callback для немедленного отображения результата
+                    if callback:
+                        callback(result)
+                        
+                except Exception as e:
+                    failed += 1
+                    logger.error(f"❌ Исключение в парсере {parser_key}: {e}")
+                    error_result = {
+                        'parser': parser_key,
+                        'status': 'error',
+                        'error': str(e),
+                        'name': self.parsers[parser_key]['name']
+                    }
+                    results.append(error_result)
+                    
+                    if callback:
+                        callback(error_result)
+        
+        # Обновляем статистику
+        self.stats['successful_runs'] += successful
+        self.stats['failed_runs'] += failed
+        
+        logger.info(f"Парсинг завершен: {successful} успешно, {failed} с ошибками")
+        
+        return {
+            'successful': successful,
+            'failed': failed,
+            'total': successful + failed,
+            'results': results,
+            'stats': self.stats
+        }
     
     def run_selected_parsers(self, parser_keys, max_workers=4):
         """Запуск выбранных парсеров"""

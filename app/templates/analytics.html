@@ -207,6 +207,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
+                        <!-- Группа 1: Новости и тренд -->
                         <div class="col-md-6">
                             <div class="stats-card">
                                 <div class="stats-number" id="totalNews">-</div>
@@ -215,16 +216,26 @@
                         </div>
                         <div class="col-md-6">
                             <div class="stats-card">
+                                <div class="stats-number" id="trendIndicator">-</div>
+                                <div class="stats-label">📊 Тренд</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Группа 2: Напряженность и тренд тональности -->
+                        <div class="col-md-6">
+                            <div class="stats-card">
                                 <div class="stats-number" id="avgTension">-</div>
                                 <div class="stats-label">🌡️ Средняя напряженность</div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="stats-card">
-                                <div class="stats-number" id="trendIndicator">-</div>
-                                <div class="stats-label">📊 Тренд</div>
+                                <div class="stats-number" id="sentimentTrend">-</div>
+                                <div class="stats-label">📊 Тренд тональности</div>
                             </div>
                         </div>
+                        
+                        <!-- Группа 3: Активность и скорость -->
                         <div class="col-md-6">
                             <div class="stats-card">
                                 <div class="stats-number" id="socialActivity">-</div>
@@ -237,16 +248,12 @@
                                 <div class="stats-label">⚡ Скорость новостей/час</div>
                             </div>
                         </div>
+                        
+                        <!-- Группа 4: Пиковый час -->
                         <div class="col-md-6">
                             <div class="stats-card">
                                 <div class="stats-number" id="peakHour">-</div>
                                 <div class="stats-label">🕐 Пиковый час</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="stats-card">
-                                <div class="stats-number" id="sentimentTrend">-</div>
-                                <div class="stats-label">📊 Тренд тональности</div>
                             </div>
                         </div>
                     </div>
@@ -989,14 +996,14 @@ function createRealTerritoryChart(data, totalNews) {
     
     // Легенда снизу
     const legendY = centerY + radius + 50;
-    const legendItemWidth = 140;
+    const legendItemWidth = 180;  // Увеличено с 140 до 180
     const startX = (canvas.width - (legendItemWidth * 2)) / 2;
     
     data.forEach((item, index) => {
         const row = Math.floor(index / 2);
         const col = index % 2;
         const x = startX + col * legendItemWidth;
-        const y = legendY + row * 30;
+        const y = legendY + row * 35;  // Увеличено с 30 до 35
         
         // Цветной квадрат
         ctx.fillStyle = item.color;

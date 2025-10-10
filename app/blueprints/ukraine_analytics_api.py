@@ -899,7 +899,7 @@ def get_social_tension_statistics():
         for title, content, pub_date, cat, site_name in results:
             text = f"{title} {content or ''}"
             metrics = tension_analyzer.analyze_text_tension(text, title)
-            safe_score = safe_float(metrics.tension_score)
+            safe_score = safe_float(metrics.tension_score) * 100  # Преобразуем в проценты (0-100%)
             tension_scores.append(safe_score)
             tension_history.append((pub_date, safe_score))
         
@@ -1772,8 +1772,30 @@ def get_heatmap_data():
                 'status': 'success',
                 'sources': [],
                 'days': [],
-                'data': []
+                'data': [],
+                'total_news': 0
             })
+        
+        # Подсчитываем общее количество новостей для совместимости с другими эндпоинтами
+        total_news_query = f"""
+        SELECT count() as total_count
+        FROM (
+            SELECT source, published_date, category FROM news.ria_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.lenta_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.rbc_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.gazeta_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.kommersant_headlines WHERE published_date >= today() - {days} {category_condition}
+            UNION ALL
+            SELECT source, published_date, category FROM news.telegram_headlines WHERE published_date >= today() - {days} {category_condition}
+        )
+        """
+        
+        total_result = client.execute(total_news_query)
+        total_news = total_result[0][0] if total_result else 0
         
         # Обрабатываем данные
         sources = sorted(list(set(row[0] for row in result)))
@@ -1825,7 +1847,8 @@ def get_heatmap_data():
             'status': 'success',
             'sources': sources,
             'days': day_names,
-            'data': heatmap_data
+            'data': heatmap_data,
+            'total_news': total_news
         })
         
     except Exception as e:
@@ -2233,14 +2256,26 @@ def get_full_statistics():
             first_half_avg = sum(daily_counts[d] for d in first_half_dates) / len(first_half_dates) if first_half_dates else 0
             second_half_avg = sum(daily_counts[d] for d in second_half_dates) / len(second_half_dates) if second_half_dates else 0
             
-            if second_half_avg > first_half_avg * 1.2:
+            # Унифицированный расчет тренда с процентом изменения (как в get_tension_data)
+            if first_half_avg > 0.1:  # Минимальный порог для избежания огромных процентов
+                trend_percent = round(((second_half_avg - first_half_avg) / first_half_avg) * 100, 1)
+                # Ограничиваем максимальный процент изменения
+                trend_percent = max(-100, min(100, trend_percent))
+            else:
+                # Если первое значение слишком маленькое, считаем абсолютное изменение
+                trend_percent = round((second_half_avg - first_half_avg) * 10, 1)  # Умножаем на 10 для масштабирования
+                trend_percent = max(-50, min(50, trend_percent))  # Ограничиваем в разумных пределах
+            
+            # Используем ту же логику, что и в get_tension_data
+            if trend_percent > 20:
                 trend = '↗ Растет'
-            elif second_half_avg < first_half_avg * 0.8:
+            elif trend_percent < -20:
                 trend = '↘ Снижается'
             else:
                 trend = '→ Стабильно'
         else:
             trend = '→ Стабильно'
+            trend_percent = 0
         
         # Анализ социальной активности (на основе количества новостей)
         avg_daily_news = total_news / days if days > 0 else 0
@@ -2307,6 +2342,7 @@ def get_full_statistics():
             'status': 'success',
             'total_news': total_news,
             'trend': trend,
+            'trend_percent': trend_percent,
             'social_activity': social_activity,
             'avg_daily_news': round(avg_daily_news, 1),
             'news_velocity': news_velocity,

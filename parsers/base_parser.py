@@ -201,7 +201,7 @@ class BaseNewsParser:
         confidence: float = 1.0
     ) -> bool:
         """
-        Сохраняет статью в базу данных с анализом тональности
+        Сохраняет статью в базу данных с анализом тональности и валидацией контента
         
         Args:
             title: Заголовок
@@ -221,6 +221,24 @@ class BaseNewsParser:
             return False
         
         try:
+            # Валидация контента
+            from parsers.content_validator import ContentValidator
+            
+            validator = ContentValidator()
+            source_domain = self._extract_domain(link)
+            is_valid, cleaned_content = validator.validate_content(content, source_domain)
+            
+            if not is_valid:
+                print(f"Статья отклонена валидатором: {cleaned_content}")
+                self.stats['validation_rejected'] = self.stats.get('validation_rejected', 0) + 1
+                return False
+            
+            # Используем очищенный контент
+            content = cleaned_content
+            
+            # AI-классификация и расчет индексов напряженности
+            ai_data = self._perform_ai_classification(title, content)
+            
             # Анализируем тональность текста
             sentiment_data = {
                 'sentiment_score': 0.0,
@@ -251,15 +269,17 @@ class BaseNewsParser:
                 'source': self.source_name,
                 'category': category,
                 'published_date': published_date or datetime.now(),
-                **sentiment_data
+                'content_validated': 1,  # Флаг валидации контента
+                **sentiment_data,
+                **ai_data
             }
             
-            # SQL запрос с полями sentiment
+            # SQL запрос с полями sentiment, валидации и AI-классификации
             query = f"""
             INSERT INTO news.{table_name}
-            (title, link, content, rubric, source, category, published_date, sentiment_score, positive_score, negative_score)
+            (title, link, content, rubric, source, category, published_date, sentiment_score, positive_score, negative_score, content_validated, social_tension_index, spike_index, ai_classification_metadata, ai_category, ai_confidence)
             VALUES
-            (%(title)s, %(link)s, %(content)s, %(rubric)s, %(source)s, %(category)s, %(published_date)s, %(sentiment_score)s, %(positive_score)s, %(negative_score)s)
+            (%(title)s, %(link)s, %(content)s, %(rubric)s, %(source)s, %(category)s, %(published_date)s, %(sentiment_score)s, %(positive_score)s, %(negative_score)s, %(content_validated)s, %(social_tension_index)s, %(spike_index)s, %(ai_classification_metadata)s, %(ai_category)s, %(ai_confidence)s)
             """
             
             self.client.execute(query, insert_data)
@@ -274,6 +294,108 @@ class BaseNewsParser:
             print(f"Ошибка сохранения статьи '{title[:50]}...': {e}")
             self.stats['errors'] += 1
             return False
+    
+    def _extract_domain(self, url: str) -> str:
+        """
+        Извлекает домен из URL
+        
+        Args:
+            url: URL для извлечения домена
+            
+        Returns:
+            str: Домен
+        """
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            return parsed.netloc
+        except Exception:
+            return ""
+    
+    def _perform_ai_classification(self, title: str, content: str) -> dict:
+        """
+        Выполняет AI-классификацию новости и расчет индексов напряженности
+        
+        Args:
+            title: Заголовок новости
+            content: Содержимое новости
+            
+        Returns:
+            dict: Данные AI-классификации
+        """
+        try:
+            # Пытаемся использовать GPT-классификатор
+            from parsers.gpt_classifier import classify_news_with_gpt
+            from parsers.tension_calculator import calculate_both_indices
+            
+            # Классификация с помощью GPT
+            gpt_result = classify_news_with_gpt(title, content)
+            
+            # Расчет индексов напряженности с учетом AI-оценок
+            social_tension, spike_index = calculate_both_indices(
+                gpt_result['category_name'],
+                title,
+                content,
+                gpt_result['social_tension_index'],
+                gpt_result['spike_index']
+            )
+            
+            # Формируем метаданные
+            metadata = {
+                'gpt_category': gpt_result['category'],
+                'gpt_category_name': gpt_result['category_name'],
+                'gpt_confidence': gpt_result['confidence'],
+                'gpt_reasoning': gpt_result['reasoning'],
+                'processing_time': gpt_result['processing_time'],
+                'cached': gpt_result['cached']
+            }
+            
+            return {
+                'social_tension_index': social_tension,
+                'spike_index': spike_index,
+                'ai_classification_metadata': str(metadata),
+                'ai_category': gpt_result['category_name'],
+                'ai_confidence': gpt_result['confidence']
+            }
+            
+        except Exception as e:
+            print(f"Warning: AI classification failed: {e}")
+            
+            # Fallback: используем только ручной расчет индексов
+            try:
+                from parsers.tension_calculator import calculate_both_indices
+                
+                # Используем категорию по умолчанию
+                default_category = 'information_social'
+                social_tension, spike_index = calculate_both_indices(
+                    default_category, title, content
+                )
+                
+                metadata = {
+                    'fallback': True,
+                    'error': str(e),
+                    'default_category': default_category
+                }
+                
+                return {
+                    'social_tension_index': social_tension,
+                    'spike_index': spike_index,
+                    'ai_classification_metadata': str(metadata),
+                    'ai_category': default_category,
+                    'ai_confidence': 0.1  # Низкая уверенность для fallback
+                }
+                
+            except Exception as e2:
+                print(f"Warning: Fallback classification also failed: {e2}")
+                
+                # Последний fallback: нулевые значения
+                return {
+                    'social_tension_index': 0.0,
+                    'spike_index': 0.0,
+                    'ai_classification_metadata': f"{{'error': '{str(e2)}', 'fallback': True}}",
+                    'ai_category': 'unknown',
+                    'ai_confidence': 0.0
+                }
     
     def process_article(
         self,
