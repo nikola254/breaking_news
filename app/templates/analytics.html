@@ -135,19 +135,23 @@
 }
 
 .chart-placeholder {
-    overflow: auto;
+    overflow: hidden;
     max-width: 100%;
 }
 
 .chart-placeholder canvas {
     max-width: 100%;
     height: auto;
+    display: block;
 }
 
 /* Исправления для тепловой карты */
+#sourcesChart {
+    overflow: hidden;
+}
+
 #sourcesChart canvas {
     max-width: 100%;
-    overflow-x: auto;
 }
 
 /* Исправления для круговой диаграммы */
@@ -1025,11 +1029,12 @@ function createRealTerritoryChart(data, totalNews) {
 }
 
 function createRealHeatmap(sources, days, data) {
-    // Создаем Canvas для тепловой карты с адаптивным размером
-    const canvasWidth = Math.max(850, days.length * 80 + 200);
+    // Создаем Canvas для тепловой карты с компактным размером
+    const canvasWidth = Math.max(900, days.length * 70 + 200);
+    const canvasHeight = Math.max(400, sources.length * 35 + 120);
     document.getElementById('sourcesChart').innerHTML = `
         <div class="chart-placeholder">
-            <canvas id="realHeatmapCanvas" width="${canvasWidth}" height="450"></canvas>
+            <canvas id="realHeatmapCanvas" width="${canvasWidth}" height="${canvasHeight}"></canvas>
         </div>
     `;
     
@@ -1038,7 +1043,7 @@ function createRealHeatmap(sources, days, data) {
     
     const ctx = canvas.getContext('2d');
     const cellWidth = Math.max(60, (canvasWidth - 200) / days.length);
-    const cellHeight = 45;
+    const cellHeight = Math.max(30, (canvasHeight - 120) / sources.length);
     const startX = 140;
     const startY = 80;
     
@@ -1053,7 +1058,7 @@ function createRealHeatmap(sources, days, data) {
     ctx.fillText('Интенсивность публикаций по источникам за неделю', canvas.width / 2, 30);
     
     // Рисуем заголовки дней
-    ctx.font = 'bold 11px Arial';
+    ctx.font = 'bold 12px Arial';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     days.forEach((day, i) => {
@@ -1109,7 +1114,7 @@ function createRealHeatmap(sources, days, data) {
             
             // Значение в ячейке
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 14px Arial';
+            ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(value.toString(), 
