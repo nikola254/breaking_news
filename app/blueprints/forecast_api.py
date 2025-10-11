@@ -365,14 +365,26 @@ def generate_forecast():
     try:
         data = request.json
         category = data.get('category', 'all')
-        analysis_period = data.get('analysis_period', 24)  # РІ С‡Р°СЃР°С…
-        forecast_period = data.get('forecast_period', 24)  # РІ С‡Р°СЃР°С…
+        analysis_period = data.get('analysis_period', 24)  # в часах
+        forecast_period = data.get('forecast_period', 24)  # в часах
+        prompt = data.get('prompt', '')  # Добавить опциональный параметр
         
-        # РџСЂРµРѕР±СЂР°Р·СѓРµРј РїРµСЂРёРѕРґ РїСЂРѕРіРЅРѕР·Р° РІ РґРЅРё РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё СЃ С‚РµРєСѓС‰РёРј РєРѕРґРѕРј
+        # Преобразуем период прогноза в дни для совместимости с текущим кодом
         forecast_days = max(1, forecast_period // 24)
         
-        # РСЃРїРѕР»СЊР·СѓРµРј СЂРµР°Р»СЊРЅС‹Р№ Р°РЅР°Р»РёР· РґР°РЅРЅС‹С… РёР· ClickHouse
+        # Используем реальный анализ данных из ClickHouse
         analysis_result = perform_real_analysis(category, analysis_period, forecast_period)
+        
+        # Если предоставлен prompt, можно использовать AI для уточнения прогноза
+        ai_response = None
+        if prompt:
+            # Интеграция с AI для улучшения прогноза
+            try:
+                # Здесь можно добавить вызов AI API для обработки prompt
+                # Пока что просто сохраняем prompt как дополнительную информацию
+                ai_response = f"Пользовательский запрос: {prompt}"
+            except Exception as e:
+                current_app.logger.warning(f"AI integration failed: {e}")
         
         if analysis_result:
             tension_values = analysis_result['tension_forecast']['values']
@@ -441,39 +453,53 @@ def generate_forecast():
             ]
         }
         
-        # Р”Р»СЏ РѕСЃС‚Р°Р»СЊРЅС‹С… РєР°С‚РµРіРѕСЂРёР№ РёСЃРїРѕР»СЊР·СѓРµРј РѕР±С‰РёРµ С‚РµРјС‹
-        default_topics = [
-            {'name': 'РџРѕР»РёС‚РёРєР°', 'value': random.uniform(0.2, 0.4), 'change': random.uniform(-0.1, 0.1)},
-            {'name': 'Р­РєРѕРЅРѕРјРёРєР°', 'value': random.uniform(0.1, 0.3), 'change': random.uniform(-0.1, 0.1)},
-            {'name': 'Р’РѕРµРЅРЅС‹Рµ РґРµР№СЃС‚РІРёСЏ', 'value': random.uniform(0.2, 0.5), 'change': random.uniform(-0.1, 0.1)},
-            {'name': 'РњРµР¶РґСѓРЅР°СЂРѕРґРЅС‹Рµ РѕС‚РЅРѕС€РµРЅРёСЏ', 'value': random.uniform(0.1, 0.2), 'change': random.uniform(-0.1, 0.1)},
-            {'name': 'Р”СЂСѓРіРѕРµ', 'value': random.uniform(0.05, 0.15), 'change': random.uniform(-0.05, 0.05)}
-        ]
-        
-        topics = topics_by_category.get(category, default_topics)
-        
-        # Р”РѕР±Р°РІР»СЏРµРј РІРѕРµРЅРЅС‹Р№ РїСЂРѕРіРЅРѕР· РІ РѕС‚РІРµС‚ РµСЃР»Рё РѕРЅ РµСЃС‚СЊ
+        # Добавляем военный прогноз в ответ если он есть
         response_data = {
-            'success': True,
-            'forecast': {
-                'tension': {
+            'status': 'success',
+            'forecast_data': {
+                'tension_forecast': {
                     'values': tension_values,
-                    'trend': analysis_result.get('tension_forecast', {}).get('trend', 'СЃС‚Р°Р±РёР»СЊРЅС‹Р№') if analysis_result else 'РЅРµРѕРїСЂРµРґРµР»РµРЅРЅС‹Р№'
+                    'trend': analysis_result.get('tension_forecast', {}).get('trend', 'стабильный') if analysis_result else 'неопределенный'
                 },
-                'topics': topics_data,
-                'metadata': {
-                    'category': category,
-                    'analysis_period': f'{analysis_period} С‡Р°СЃРѕРІ',
-                    'forecast_period': f'{forecast_period} С‡Р°СЃРѕРІ',
-                    'news_analyzed': analysis_result.get('news_count', 0) if analysis_result else 0,
-                    'tension_index': round(analysis_result.get('tension_index', 0.5) if analysis_result else 0.5, 3)
-                }
+                'topics_forecast': {
+                    'topics': topics_data
+                },
+                'statistics': {
+                    'historical_points': len(tension_values),
+                    'forecast_points': forecast_days,
+                    'average_tension': f"{round(sum(item['value'] for item in tension_values) / len(tension_values) * 100, 1)}%" if tension_values else "0%",
+                    'trend': analysis_result.get('tension_forecast', {}).get('trend', 'стабильный') if analysis_result else 'неопределенный'
+                },
+                'analysis': f"Анализ новостей категории '{get_category_name(category)}' за последние {analysis_period} часов",
+                'forecast': f"Прогноз развития ситуации на следующие {forecast_period} часов",
+                'key_factors': [
+                    "Динамика новостного потока",
+                    "Изменение тональности сообщений",
+                    "Активность ключевых источников",
+                    "Международная реакция"
+                ],
+                'scenarios': [
+                    "Оптимистичный: снижение напряженности",
+                    "Реалистичный: стабильное состояние",
+                    "Пессимистичный: рост напряженности"
+                ]
+            },
+            'metadata': {
+                'category': category,
+                'analysis_period': f'{analysis_period} часов',
+                'forecast_period': f'{forecast_period} часов',
+                'news_analyzed': analysis_result.get('news_count', 0) if analysis_result else 0,
+                'tension_index': round(analysis_result.get('tension_index', 0.5) if analysis_result else 0.5, 3)
             }
         }
         
-        # Р”РѕР±Р°РІР»СЏРµРј РІРѕРµРЅРЅС‹Р№ РїСЂРѕРіРЅРѕР· РµСЃР»Рё РѕРЅ РµСЃС‚СЊ
+        # Добавляем AI ответ если он есть
+        if ai_response:
+            response_data['ai_response'] = ai_response
+        
+        # Добавляем военный прогноз если он есть
         if analysis_result and analysis_result.get('military_forecast'):
-            response_data['forecast']['military_forecast'] = analysis_result['military_forecast']
+            response_data['forecast_data']['military_forecast'] = analysis_result['military_forecast']
         
         return jsonify(response_data)
     except Exception as e:

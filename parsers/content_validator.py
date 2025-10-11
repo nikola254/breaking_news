@@ -185,6 +185,10 @@ class ContentValidator:
         # Удаляем HTML теги
         cleaned = re.sub(r'<[^>]+>', '', cleaned)
         
+        # Добавить исправление склеенных слов
+        cleaned = re.sub(r'([а-я])([А-Я])', r'\1 \2', cleaned)
+        cleaned = re.sub(r'([a-z])([A-Z])', r'\1 \2', cleaned)
+        
         # Удаляем лишние знаки препинания
         cleaned = re.sub(r'[!]{2,}', '!', cleaned)  # Множественные восклицательные знаки
         cleaned = re.sub(r'[?]{2,}', '?', cleaned)  # Множественные вопросительные знаки

@@ -38,12 +38,35 @@
 
 .select-control {
     width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    padding: 12px 16px;
+    border: 2px solid rgba(108, 117, 125, 0.2);
+    border-radius: 12px;
     background-color: white;
-    font-size: 14px;
-    color: #333;
+    font-size: 0.95rem;
+    color: #2c3e50;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236c757d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    padding-right: 40px;
+    transition: all 0.3s ease;
+}
+
+.select-control:hover {
+    border-color: #4a90e2;
+    background-color: rgba(74, 144, 226, 0.05);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.1);
+}
+
+.select-control:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+    background-color: white;
+    outline: none;
 }
 
 .chart-container {
@@ -67,67 +90,111 @@
 }
 
 .input-area {
-    background-color: #0d2b50;
-    border: 1px solid #2d4a7a;
-    border-radius: 8px;
-    padding: 15px;
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    padding: 25px;
     margin-bottom: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.input-area::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
 }
 
 .prompt-input {
     width: 100%;
-    background-color: #0a1f3d;
-    color: #e0e0e0;
-    border: 1px solid #2d4a7a;
-    border-radius: 4px;
-    padding: 10px;
-    min-height: 100px;
+    background-color: white;
+    color: #2c3e50;
+    border: 2px solid rgba(108, 117, 125, 0.2);
+    border-radius: 12px;
+    padding: 15px;
+    min-height: 120px;
     resize: vertical;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.prompt-input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+    outline: none;
 }
 
 .prompt-input::placeholder {
-    color: #bbdefb;
+    color: #6c757d;
     opacity: 0.7;
 }
 
 .submit-btn {
-    background-color: #1976d2;
+    background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
     color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
+    padding: 12px 24px;
+    border-radius: 25px;
     cursor: pointer;
-    transition: all 0.3s;
-    margin-top: 10px;
+    transition: all 0.3s ease;
+    margin-top: 15px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
 }
 
 .submit-btn:hover {
-    background-color: #1565c0;
+    background: linear-gradient(135deg, #7b68ee 0%, #4a90e2 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(74, 144, 226, 0.4);
 }
 
 .output-area {
-    background-color: #0d2b50;
-    border: 1px solid #2d4a7a;
-    border-radius: 8px;
-    padding: 15px;
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.output-area::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
 }
 
 .output-title {
-    color: #bbdefb;
-    margin-bottom: 10px;
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-weight: 600;
+    font-size: 1.1rem;
 }
 
 .response-box {
-    min-height: 100px;
+    min-height: 120px;
     max-height: 400px;
     overflow-y: auto;
-    background-color: #0a1f3d;
-    border: 1px solid #2d4a7a;
-    border-radius: 4px;
-    padding: 15px;
+    background-color: white;
+    border: 2px solid rgba(108, 117, 125, 0.2);
+    border-radius: 12px;
+    padding: 20px;
     white-space: pre-wrap;
-    color: #e0e0e0;
+    color: #2c3e50;
     position: relative;
+    font-size: 0.95rem;
+    line-height: 1.6;
 }
 
 .thinking-text {
@@ -164,54 +231,87 @@
     margin: 15px 0 10px 0;
     display: flex;
     align-items: center;
+    gap: 15px;
 }
 
 .tokens-control label {
-    color: #bbdefb;
-    margin-right: 15px;
+    color: #2c3e50;
+    margin-right: 0;
     flex: 0 0 auto;
+    font-weight: 500;
+    font-size: 0.95rem;
 }
 
 .tokens-slider {
     height: 8px;
     -webkit-appearance: none;
     appearance: none;
-    background: #1e3a6a;
+    background: rgba(108, 117, 125, 0.2);
     outline: none;
     border-radius: 4px;
     flex: 1;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.tokens-slider:hover {
+    background: rgba(74, 144, 226, 0.2);
 }
 
 .tokens-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background: #4fc3f7;
+    background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
     cursor: pointer;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+    transition: all 0.3s ease;
+}
+
+.tokens-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+}
+
+.tokens-slider::-webkit-slider-thumb:active {
+    transform: scale(0.95);
 }
 
 .tokens-slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background: #4fc3f7;
+    background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
     cursor: pointer;
-    border: none;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+    transition: all 0.3s ease;
+}
+
+.tokens-slider::-moz-range-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
+}
+
+.tokens-slider::-moz-range-thumb:active {
+    transform: scale(0.95);
 }
 
 .tokens-balance {
-    color: #bbdefb;
+    color: #2c3e50;
     font-size: 0.9em;
     margin: 5px 0 15px 0;
     display: inline-block;
     width: auto;
+    font-weight: 500;
 }
 
 #tokens-balance {
-    color: #4caf50;
-    font-weight: bold;
+    color: #4a90e2;
+    font-weight: 600;
 }
 
 @keyframes spin {

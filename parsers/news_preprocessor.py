@@ -65,6 +65,22 @@ class NewsPreprocessor:
         text = self.audio_pattern.sub('', text)
         return text
     
+    def fix_missing_spaces(self, text):
+        """
+        Исправляет отсутствующие пробелы между словами
+        Примеры проблем: "палестинскоедвижение", "освобожденияПалестины"
+        """
+        if not text:
+            return ""
+        
+        # Паттерн: строчная буква + заглавная буква (кириллица)
+        text = re.sub(r'([а-я])([А-Я])', r'\1 \2', text)
+        
+        # Паттерн: строчная буква + заглавная буква (латиница)
+        text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+        
+        return text
+    
     def normalize_whitespace(self, text):
         """Нормализует пробелы и переносы строк"""
         # Заменяем множественные пробелы на один
@@ -80,7 +96,8 @@ class NewsPreprocessor:
                    remove_mentions=False,  # Оставляем упоминания по умолчанию
                    remove_hashtags=False,  # Оставляем хэштеги по умолчанию
                    remove_emojis=True,
-                   remove_media=True):
+                   remove_media=True,
+                   fix_spaces=True):
         """
         Полная очистка текста
         
@@ -93,6 +110,7 @@ class NewsPreprocessor:
             remove_hashtags: Удалять ли хэштеги
             remove_emojis: Удалять ли эмодзи
             remove_media: Удалять ли ссылки на медиа
+            fix_spaces: Исправлять ли склеенные слова
             
         Returns:
             Очищенный текст
@@ -103,6 +121,10 @@ class NewsPreprocessor:
         # Применяем все фильтры
         if remove_html:
             text = self.remove_html_tags(text)
+        
+        # Исправляем склеенные слова после удаления HTML тегов
+        if fix_spaces:
+            text = self.fix_missing_spaces(text)
         
         if remove_urls:
             text = self.remove_urls(text)
@@ -140,11 +162,13 @@ class NewsPreprocessor:
         """
         cleaned_title = self.clean_text(title, 
                                          remove_mentions=False,
-                                         remove_hashtags=False)
+                                         remove_hashtags=False,
+                                         fix_spaces=True)
         
         cleaned_content = self.clean_text(content,
                                           remove_mentions=False,
-                                          remove_hashtags=False)
+                                          remove_hashtags=False,
+                                          fix_spaces=True)
         
         return cleaned_title, cleaned_content
 
@@ -162,6 +186,7 @@ if __name__ == '__main__':
     Email: test@example.com
     <b>HTML теги</b>
     🎉🎊 Множество   пробелов    здесь
+    палестинскоедвижение освобожденияПалестины
     """
     
     preprocessor = NewsPreprocessor()
@@ -170,5 +195,12 @@ if __name__ == '__main__':
     print(test_text)
     print("\nОчищенный текст:")
     print(cleaned)
+    
+    # Тестирование исправления пробелов
+    test_spaces = "палестинскоедвижение освобожденияПалестины"
+    fixed = preprocessor.fix_missing_spaces(test_spaces)
+    print(f"\nТест исправления пробелов:")
+    print(f"До: {test_spaces}")
+    print(f"После: {fixed}")
 
 

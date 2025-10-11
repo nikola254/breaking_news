@@ -1,7 +1,7 @@
 // Основной JavaScript файл для приложения NewsAnalytics
 
 // Глобальные переменные
-let currentCategory = 'military_operations';
+let currentCategory = 'all';
 let currentPage = 1;
 let availableCategories = [];
 
@@ -13,10 +13,10 @@ function loadNews(category, page) {
     const limit = 10;
     const offset = (page - 1) * limit;
 
-    // Для категории 'all' используем source=all без параметра category
+    // Для категории 'all' используем API аналитики для получения данных с полями напряженности
     const url = validCategory === 'all' 
-        ? `/api/news?source=all&category=all&limit=${limit}&offset=${offset}`
-        : `/api/news?category=${validCategory}&source=all&limit=${limit}&offset=${offset}`;
+        ? `/api/ukraine_analytics/latest_news?category=all&limit=${limit}&offset=${offset}`
+        : `/api/ukraine_analytics/latest_news?category=${validCategory}&limit=${limit}&offset=${offset}`;
 
     console.log('Загрузка новостей:', { category: validCategory, page, url });
 
@@ -26,10 +26,28 @@ function loadNews(category, page) {
             console.log('Ответ API:', data);
             
             if (data.status === 'success') {
+                // Обрабатываем разные форматы ответов от разных API
+                let newsData, totalPages, currentPageNum;
+                
+                if (data.latest_news) {
+                    // API аналитики возвращает latest_news
+                    newsData = data.latest_news;
+                    totalPages = Math.ceil(data.total_count / limit);
+                    currentPageNum = currentPage;
+                } else if (data.data) {
+                    // Обычный API возвращает data
+                    newsData = data.data;
+                    totalPages = data.total_pages;
+                    currentPageNum = data.current_page;
+                } else {
+                    newsData = [];
+                    totalPages = 1;
+                    currentPageNum = 1;
+                }
 
-                console.log('Количество новостей:', data.data.length);
+                console.log('Количество новостей:', newsData.length);
 
-                if (data.data.length === 0) {
+                if (newsData.length === 0) {
                     const container = document.getElementById('news-container');
                     container.innerHTML = `
                         <div style="text-align: center; color: #e0e0e0; padding: 40px;">
@@ -39,10 +57,10 @@ function loadNews(category, page) {
                         </div>
                     `;
                 } else {
-                    renderNewsCards(data.data);
+                    renderNewsCards(newsData);
                 }
 
-                updatePagination(data);
+                updatePagination({ total_pages: totalPages, current_page: currentPageNum });
             } else {
                 console.error('Ошибка:', data.message);
             }
@@ -70,10 +88,9 @@ function renderNewsCards(newsData) {
             'Неизвестно';
         
         // Получаем индекс напряженности (если есть)
-        const tensionIndex = news.social_tension_index || news.tension_index || 
-            (Math.random() * 100).toFixed(1);
-        const spikeIndex = news.spike_index || 
-            (tensionIndex * 0.8).toFixed(1);
+        const tensionIndex = news.social_tension_index || news.tension_index || news.tension_score || 
+            news.tension || 'Н/Д';
+        const spikeIndex = news.spike_index || news.spike_score || news.spike || 'Н/Д';
         
         newsCard.innerHTML = `
             <div class="news-card-body">
@@ -92,11 +109,11 @@ function renderNewsCards(newsData) {
                     </div>
                     <div class="news-meta-item">
                         <i class="fas fa-thermometer-half"></i>
-                        <span class="news-tension">${tensionIndex}%</span>
+                        <span class="news-tension">${tensionIndex === 'Н/Д' ? 'Н/Д' : `${tensionIndex}%`}</span>
                     </div>
                     <div class="news-meta-item">
                         <i class="fas fa-chart-line"></i>
-                        <span class="news-spike">${spikeIndex}%</span>
+                        <span class="news-spike">${spikeIndex === 'Н/Д' ? 'Н/Д' : `${spikeIndex}%`}</span>
                     </div>
                     <div class="news-meta-item">
                         <i class="fas fa-rss"></i>
@@ -232,7 +249,8 @@ function updatePagination(data) {
 
 // Функция открытия модального окна
 function openModal(news) {
-    const modal = document.getElementById('news-modal');
+    const modal = document.getElementById('newsModal');
+    
     // Форматируем дату
     const formattedDate = news.published_date ? 
         new Date(news.published_date).toLocaleDateString('ru-RU', {
@@ -243,13 +261,25 @@ function openModal(news) {
             minute: '2-digit'
         }) : 'Неизвестно';
     
-    document.getElementById('modal-title').textContent = news.title || 'Без заголовка';
-    document.getElementById('modal-source').innerHTML = `<strong>Источник:</strong> ${news.source || 'Неизвестно'}`;
-    document.getElementById('modal-date').innerHTML = `<strong>Дата:</strong> ${formattedDate}`;
+    // Получаем индекс напряженности (если есть)
+    const tensionIndex = news.social_tension_index || news.tension_index || news.tension_score || 
+        news.tension || 'Н/Д';
+    
+    // Получаем индекс всплеска (если есть)
+    const spikeIndex = news.spike_index || news.spike_score || news.spike || 'Н/Д';
+    
+    // Получаем название категории
+    const categoryName = getCategoryName(news.category);
+    
+    document.getElementById('modalTitle').textContent = news.title || 'Без заголовка';
+    document.getElementById('modalDate').textContent = formattedDate;
+    document.getElementById('modalSource').textContent = news.source || 'Неизвестно';
+    document.getElementById('modalCategory').textContent = categoryName;
+    document.getElementById('modalTension').textContent = tensionIndex === 'Н/Д' ? 'Н/Д' : `${tensionIndex}%`;
     
     // Проверяем наличие контента
     const content = news.content && news.content !== '-' ? news.content : 'Содержимое статьи недоступно';
-    document.getElementById('modal-content').textContent = content;
+    document.getElementById('modalContent').textContent = content;
 
     // Определяем ссылку в зависимости от источника
     let linkUrl = '';
@@ -268,29 +298,50 @@ function openModal(news) {
         }
     }
 
-    const modalLink = document.getElementById('modal-link');
+    const modalLink = document.getElementById('modalLink');
     if (linkUrl) {
         modalLink.href = linkUrl;
-        modalLink.style.display = 'inline-block';
+        modalLink.style.display = 'inline-flex';
     } else {
         modalLink.style.display = 'none';
     }
 
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
+}
+
+function closeNewsModal() {
+    const modal = document.getElementById('newsModal');
+    modal.style.display = 'none';
+}
+
+function getCategoryName(category) {
+    const categoryNames = {
+        'military_operations': 'Военные операции',
+        'humanitarian_crisis': 'Гуманитарный кризис',
+        'economic_consequences': 'Экономические последствия',
+        'political_decisions': 'Политические решения',
+        'information_social': 'Информационно-социальные аспекты',
+        'ukraine': 'Украина',
+        'middle_east': 'Ближний восток',
+        'fake_news': 'Фейки',
+        'info_war': 'Инфовойна',
+        'europe': 'Европа',
+        'usa': 'США',
+        'other': 'Другое'
+    };
+    return categoryNames[category] || category;
 }
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     // Обработчик закрытия окна по клику на крестик
-    document.querySelector('.close')?.addEventListener('click', () => {
-        document.getElementById('news-modal').style.display = 'none';
-    });
+    document.querySelector('.news-modal-close')?.addEventListener('click', closeNewsModal);
 
     // Обработчик закрытия окна по клику вне контента
     window.addEventListener('click', (event) => {
-        const modal = document.getElementById('news-modal');
+        const modal = document.getElementById('newsModal');
         if (event.target === modal) {
-            modal.style.display = 'none';
+            closeNewsModal();
         }
     });
     

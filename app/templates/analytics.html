@@ -173,6 +173,29 @@
 #territoryChart canvas {
     max-width: 100%;
 }
+
+/* Исправления для графика социальной напряженности */
+#tensionChart {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+#tensionChart canvas {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+#tensionChart .chart-placeholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    width: 100%;
+}
 </style>
 {% endblock %}
 
@@ -197,6 +220,7 @@
                         <select class="form-control" id="categorySelect">
                             <option value="all">Все категории</option>
                             <option value="military_operations">Военные операции</option>
+                            <option value="military_operations_demo">🎯 Военные операции (Демо)</option>
                             <option value="humanitarian_crisis">Гуманитарный кризис</option>
                             <option value="economic_consequences">Экономические последствия</option>
                             <option value="political_decisions">Политические решения</option>
@@ -358,7 +382,7 @@
 </div>
 
 <!-- Модальное окно для просмотра статьи -->
-<div id="newsModal" class="news-modal">
+<div id="newsModal" class="news-modal-overlay">
     <div class="news-modal-content">
         <div class="news-modal-header">
             <h2 id="modalTitle"></h2>
@@ -394,10 +418,6 @@
                 <i class="fas fa-external-link-alt"></i>
                 Читать на источнике
             </a>
-            <div class="news-modal-badges">
-                <span id="modalCategoryBadge" class="category-badge"></span>
-                <span id="modalTensionBadge" class="tension-badge"></span>
-            </div>
         </div>
     </div>
 </div>
@@ -414,7 +434,12 @@ function updateAnalytics() {
     loadStatistics(category, dateRange);
     
     // Загружаем график социальной напряженности с прогнозом
-    loadRealTensionChart(category, dateRange);
+    if (category === 'military_operations_demo') {
+        // Для демо-категории загружаем реальные данные напряженности для военных операций
+        loadRealTensionChart('military_operations', dateRange);
+    } else {
+        loadRealTensionChart(category, dateRange);
+    }
     
     // Загружаем графики
     loadCharts(category, dateRange);
@@ -450,6 +475,11 @@ function showLoadingSpinners() {
 }
 
 function loadStatistics(category, dateRange) {
+    // Проверяем, является ли это тестовой категорией "Военные операции"
+    if (category === 'military_operations_demo') {
+        loadMilitaryStatistics();
+        return;
+    }
     
     // Загружаем полную статистику (включая тренд и социальную активность)
     fetch(`/api/ukraine_analytics/full_statistics?category=${category}&days=${dateRange}`)
@@ -566,12 +596,566 @@ function updateTensionDistribution(distribution) {
 }
 
 function loadCharts(category, dateRange) {
-    // Загружаем реальные графики для всех категорий
-    loadRealCharts(category, dateRange);
+    // Проверяем, является ли это тестовой категорией "Военные операции"
+    if (category === 'military_operations_demo') {
+        loadMilitaryOperationsDemo(dateRange);
+    } else {
+        // Загружаем реальные графики для всех категорий
+        loadRealCharts(category, dateRange);
+    }
+}
+
+function loadMilitaryOperationsDemo(dateRange) {
+    // Эталонная категория "Военные операции" с полными данными для демонстрации
+    
+    // 1. Диаграмма распределения по территориям
+    createMilitaryTerritoryChart();
+    
+    // 2. Тепловая карта источников
+    createMilitaryHeatmap();
+    
+    // 3. График социальной напряженности
+    createMilitaryTensionChart();
+}
+
+function createMilitaryTerritoryChart() {
+    document.getElementById('territoryChart').innerHTML = `
+        <div class="chart-placeholder">
+            <canvas id="militaryTerritoryCanvas" width="700" height="450"></canvas>
+        </div>
+    `;
+    
+    const canvas = document.getElementById('militaryTerritoryCanvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2 - 20;
+    const radius = 130;
+    
+    // Эталонные данные для военных операций
+    const data = [
+        { territory: 'Донецкая область', percent: 35, count: 1250, color: '#e17055' },
+        { territory: 'Луганская область', percent: 28, count: 980, color: '#fab1a0' },
+        { territory: 'Харьковская область', percent: 18, count: 640, color: '#ffeaa7' },
+        { territory: 'Запорожская область', percent: 12, count: 420, color: '#fff3cd' },
+        { territory: 'Херсонская область', percent: 7, count: 250, color: '#e8f5e8' }
+    ];
+    const totalNews = 3540;
+    
+    // Заливка фона
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Заголовок
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Распределение новостей по территориям - Военные операции (${totalNews.toLocaleString()} всего)`, centerX, 30);
+    
+    // Рисуем круговую диаграмму
+    let currentAngle = -Math.PI / 2;
+    data.forEach((item, index) => {
+        const sliceAngle = (item.percent / 100) * 2 * Math.PI;
+        
+        // Сектор
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = item.color;
+        ctx.fill();
+        
+        // Белая обводка
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        currentAngle += sliceAngle;
+    });
+    
+    // Легенда снизу
+    const legendY = centerY + radius + 50;
+    const legendItemWidth = 180;
+    const startX = (canvas.width - (legendItemWidth * 2)) / 2;
+    
+    data.forEach((item, index) => {
+        const row = Math.floor(index / 2);
+        const col = index % 2;
+        const x = startX + col * legendItemWidth;
+        const y = legendY + row * 35;
+        
+        // Цветной квадрат
+        ctx.fillStyle = item.color;
+        ctx.fillRect(x, y - 10, 20, 20);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y - 10, 20, 20);
+        
+        // Текст с процентами
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.territory + ' - ' + item.percent + '%', x + 28, y);
+        ctx.font = '11px Arial';
+        ctx.fillStyle = '#6c757d';
+        ctx.fillText(item.count.toLocaleString() + ' новостей', x + 28, y + 12);
+    });
+}
+
+function createMilitaryHeatmap() {
+    document.getElementById('sourcesChart').innerHTML = `
+        <div class="chart-placeholder">
+            <canvas id="militaryHeatmapCanvas" width="1200" height="550"></canvas>
+        </div>
+    `;
+    
+    const heatCanvas = document.getElementById('militaryHeatmapCanvas');
+    if (!heatCanvas) return;
+    
+    const ctx = heatCanvas.getContext('2d');
+    const sources = [
+        'РИА Новости', 'Lenta.ru', 'РБК', 'Газета.ru', 'Коммерсантъ', 
+        'Reuters', 'CNN', 'BBC', 'Interfax', 'ТАСС'
+    ];
+    const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    const cellWidth = 100;
+    const cellHeight = 40;
+    const startX = 160;
+    const startY = 80;
+    
+    // Эталонные данные для военных операций
+    const heatData = [
+        [85, 92, 88, 95, 89, 45, 38],  // РИА Новости
+        [78, 84, 79, 86, 82, 41, 35],  // Lenta.ru
+        [82, 88, 85, 91, 87, 43, 37],  // РБК
+        [68, 75, 71, 78, 74, 32, 28],  // Газета.ru
+        [71, 78, 74, 81, 77, 35, 30],  // Коммерсантъ
+        [95, 98, 96, 99, 97, 55, 48],  // Reuters
+        [98, 99, 97, 100, 98, 58, 51], // CNN
+        [88, 91, 89, 93, 90, 48, 42],  // BBC
+        [75, 81, 78, 84, 80, 38, 33],  // Interfax
+        [90, 94, 92, 96, 93, 52, 45]   // ТАСС
+    ];
+    
+    // Заливка фона
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, heatCanvas.width, heatCanvas.height);
+    
+    // Заголовок
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Интенсивность публикаций по источникам за неделю - Военные операции', heatCanvas.width / 2, 35);
+    
+    // Рисуем заголовки дней
+    ctx.font = 'bold 11px Arial';
+    ctx.fillStyle = '#2c3e50';
+    ctx.textAlign = 'center';
+    days.forEach((day, i) => {
+        ctx.fillText(day, startX + i * cellWidth + cellWidth / 2, startY - 20);
+    });
+    
+    // Рисуем источники и ячейки
+    sources.forEach((source, i) => {
+        // Название источника
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(source, startX - 10, startY + i * cellHeight + cellHeight / 2);
+        
+        days.forEach((day, j) => {
+            const value = heatData[i][j];
+            
+            // Определяем цвет по интенсивности
+            let color;
+            if (value < 40) color = '#e8f5e8';      // Очень низкая
+            else if (value < 60) color = '#fff3cd';  // Низкая
+            else if (value < 80) color = '#ffeaa7';  // Средняя
+            else if (value < 90) color = '#fab1a0';  // Высокая
+            else color = '#e17055';                  // Очень высокая
+            
+            // Рисуем ячейку
+            ctx.fillStyle = color;
+            ctx.fillRect(
+                startX + j * cellWidth, 
+                startY + i * cellHeight, 
+                cellWidth - 4, 
+                cellHeight - 4
+            );
+            
+            // Белая рамка
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+                startX + j * cellWidth, 
+                startY + i * cellHeight, 
+                cellWidth - 4, 
+                cellHeight - 4
+            );
+            
+            // Значение в ячейке
+            ctx.fillStyle = '#2c3e50';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(
+                value, 
+                startX + j * cellWidth + (cellWidth - 4) / 2, 
+                startY + i * cellHeight + (cellHeight - 4) / 2
+            );
+        });
+    });
+    
+    // Легенда
+    const legendX = startX;
+    const legendY = startY + sources.length * cellHeight + 30;
+    
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('Уровень активности:', legendX, legendY);
+    
+    const legendItems = [
+        { label: 'Очень низкая (0-39)', color: '#e8f5e8' },
+        { label: 'Низкая (40-59)', color: '#fff3cd' },
+        { label: 'Средняя (60-79)', color: '#ffeaa7' },
+        { label: 'Высокая (80-89)', color: '#fab1a0' },
+        { label: 'Очень высокая (90+)', color: '#e17055' }
+    ];
+    
+    legendItems.forEach((item, index) => {
+        const x = legendX + index * 200;
+        const y = legendY + 20;
+        
+        ctx.fillStyle = item.color;
+        ctx.fillRect(x, y - 8, 16, 16);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y - 8, 16, 16);
+        
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(item.label, x + 25, y + 2);
+    });
+}
+
+function createMilitaryTensionChart() {
+    const chartContainer = document.getElementById('tensionChart');
+    chartContainer.innerHTML = `
+        <div class="chart-placeholder">
+            <canvas id="militaryTensionCanvas" width="1200" height="500"></canvas>
+            <div class="mt-3" style="color: #2c3e50;">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <strong style="color: #4a90e2;">📊 Исторических точек:</strong><br>7 / 7
+                    </div>
+                    <div class="col-md-3">
+                        <strong style="color: #7b68ee;">🔮 Прогнозных точек:</strong><br>5
+                    </div>
+                    <div class="col-md-3">
+                        <strong style="color: #6c757d;">📈 Средняя напряженность:</strong><br>78.5%
+                    </div>
+                    <div class="col-md-3">
+                        <strong style="color: #5a6c7d;">📉 Тренд:</strong><br>↗ Растет (+12.3%)
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const canvas = document.getElementById('militaryTensionCanvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const padding = 80;
+    const chartWidth = width - 2 * padding;
+    const chartHeight = height - 2 * padding;
+    
+    // Эталонные данные для военных операций
+    const historicalData = [
+        { date: new Date('2025-01-01'), value: 65 },
+        { date: new Date('2025-01-02'), value: 68 },
+        { date: new Date('2025-01-03'), value: 72 },
+        { date: new Date('2025-01-04'), value: 75 },
+        { date: new Date('2025-01-05'), value: 78 },
+        { date: new Date('2025-01-06'), value: 82 },
+        { date: new Date('2025-01-07'), value: 85 }
+    ];
+    
+    const forecastData = [
+        { date: new Date('2025-01-08'), value: 88 },
+        { date: new Date('2025-01-09'), value: 91 },
+        { date: new Date('2025-01-10'), value: 89 },
+        { date: new Date('2025-01-11'), value: 87 },
+        { date: new Date('2025-01-12'), value: 85 }
+    ];
+    
+    const allData = [...historicalData, ...forecastData];
+    
+    // Заливка фона
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Заголовок
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Интегральный индекс социальной напряженности - Военные операции', width / 2, 35);
+    
+    // Рисуем сетку
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 5; i++) {
+        const y = padding + (chartHeight / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+        
+        // Подписи по Y
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText((100 - i * 20) + '%', padding - 15, y + 5);
+    }
+    
+    // Рисуем исторические данные
+    ctx.strokeStyle = '#667eea';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    historicalData.forEach((point, index) => {
+        const x = padding + (chartWidth / (allData.length - 1)) * index;
+        const y = padding + chartHeight - (point.value / 100) * chartHeight;
+        if (index === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    });
+    ctx.stroke();
+    
+    // Рисуем точки исторических данных
+    historicalData.forEach((point, index) => {
+        const x = padding + (chartWidth / (allData.length - 1)) * index;
+        const y = padding + chartHeight - (point.value / 100) * chartHeight;
+        
+        ctx.fillStyle = '#667eea';
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    });
+    
+    // Рисуем прогнозные данные
+    if (forecastData.length > 0) {
+        ctx.strokeStyle = '#9b59b6';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        forecastData.forEach((point, index) => {
+            const dataIndex = historicalData.length + index;
+            const x = padding + (chartWidth / (allData.length - 1)) * dataIndex;
+            const y = padding + chartHeight - (point.value / 100) * chartHeight;
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Рисуем точки прогнозных данных
+        forecastData.forEach((point, index) => {
+            const dataIndex = historicalData.length + index;
+            const x = padding + (chartWidth / (allData.length - 1)) * dataIndex;
+            const y = padding + chartHeight - (point.value / 100) * chartHeight;
+            
+            ctx.fillStyle = '#9b59b6';
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+    }
+    
+    // Легенда
+    const legendX = width - 220;
+    const legendY = 60;
+    
+    // Исторические данные
+    ctx.strokeStyle = '#667eea';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(legendX, legendY + 5);
+    ctx.lineTo(legendX + 30, legendY + 5);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#667eea';
+    ctx.beginPath();
+    ctx.arc(legendX + 15, legendY + 5, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('Исторические данные', legendX + 40, legendY + 10);
+    
+    // Прогноз
+    ctx.strokeStyle = '#9b59b6';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([8, 4]);
+    ctx.beginPath();
+    ctx.moveTo(legendX, legendY + 35);
+    ctx.lineTo(legendX + 30, legendY + 35);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    ctx.fillStyle = '#9b59b6';
+    ctx.beginPath();
+    ctx.arc(legendX + 15, legendY + 35, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillText('Прогноз (5 дней)', legendX + 40, legendY + 40);
+}
+
+function loadMilitaryStatistics() {
+    // Эталонные статистические данные для демо-категории "Военные операции"
+    const totalNewsElement = document.getElementById('totalNews');
+    const trendIndicatorElement = document.getElementById('trendIndicator');
+    const socialActivityElement = document.getElementById('socialActivity');
+    const newsVelocityElement = document.getElementById('newsVelocity');
+    
+    if (totalNewsElement) {
+        totalNewsElement.textContent = '3,540';
+    }
+    
+    if (trendIndicatorElement) {
+        trendIndicatorElement.innerHTML = '<span class="trend-up">↗ Растет (+12.3%)</span>';
+    }
+    
+    if (socialActivityElement) {
+        socialActivityElement.textContent = 'Высокая';
+    }
+    
+    if (newsVelocityElement) {
+        newsVelocityElement.textContent = '78.5%';
+    }
+    
+    // Обновляем распределение напряженности
+    const distribution = {
+        'critical': 15,
+        'high': 25,
+        'medium': 35,
+        'low': 20,
+        'minimal': 5
+    };
+    updateTensionDistribution(distribution);
+}
+
+function loadMilitaryNewsTable() {
+    const container = document.getElementById('newsContainer');
+    const dateRange = document.getElementById('dateRange').value;
+    
+    // Загружаем реальные новости для демо-категории через API
+    const apiUrl = `/api/ukraine_analytics/latest_news?category=military_operations&days=${dateRange}`;
+    
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.news && data.news.length > 0) {
+                // Очищаем контейнер
+                container.innerHTML = '';
+                
+                // Создаем таблицу
+                const table = document.createElement('table');
+                table.className = 'news-table';
+                table.id = 'data-table';
+                table.style.display = 'table';
+                
+                // Заголовок таблицы
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                headerRow.id = 'table-header';
+                headerRow.innerHTML = `
+                    <th class="date-col">Дата</th>
+                    <th class="title-col">Заголовок</th>
+                    <th class="category-col">Категория</th>
+                `;
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+                
+                // Тело таблицы
+                const tbody = document.createElement('tbody');
+                tbody.id = 'table-body';
+                
+                data.news.forEach((news, index) => {
+                    const row = document.createElement('tr');
+                    row.classList.add('fade-in-up');
+                    
+                    row.innerHTML = `
+                        <td class="date-col">${formatDate(news.date)}</td>
+                        <td class="title-col" title="Нажмите, чтобы открыть полную статью" style="cursor: pointer;">${news.title}</td>
+                        <td class="category-col">${getCategoryName(news.category)}</td>
+                    `;
+                    
+                    // Добавляем обработчик клика на строку
+                    row.addEventListener('click', function() {
+                        openNewsModal({
+                            title: news.title,
+                            date: formatDate(news.date),
+                            source: news.source,
+                            category: news.category,
+                            categoryName: getCategoryName(news.category),
+                            tension: news.tension ? news.tension.toFixed(1) : '0.0',
+                            tensionColor: news.tension ? getTensionColorForValue(news.tension) : '#6c757d',
+                            content: news.content || 'Содержимое недоступно',
+                            url: news.url || '#'
+                        });
+                    });
+                    
+                    tbody.appendChild(row);
+                });
+                
+                table.appendChild(tbody);
+                container.appendChild(table);
+            } else {
+                // Показываем сообщение об отсутствии данных
+                container.innerHTML = `
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle"></i>
+                        <h5>Нет новостей для отображения</h5>
+                        <p>Попробуйте изменить фильтры или период времени</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading military news:', error);
+            container.innerHTML = `
+                <div class="alert alert-danger text-center">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h5>Ошибка загрузки новостей</h5>
+                    <p>Не удалось загрузить данные. Попробуйте позже.</p>
+                </div>
+            `;
+        });
 }
 
 function loadTestCharts(dateRange) {
-    // График распределения по территориям с реалистичными данными
     document.getElementById('territoryChart').innerHTML = `
         <div class="chart-placeholder">
             <canvas id="testTerritoryCanvas" width="700" height="450"></canvas>
@@ -598,10 +1182,10 @@ function loadTestCharts(dateRange) {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // Заголовок
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.font = 'bold 18px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Распределение новостей по территориям', centerX, 30);
+        ctx.fillText('Распределение новостей по территориям - Военные операции', centerX, 30);
         
         // Рисуем круговую диаграмму с тенями
         let currentAngle = -Math.PI / 2;
@@ -634,7 +1218,7 @@ function loadTestCharts(dateRange) {
             const textX = centerX + Math.cos(midAngle) * (radius * 0.7);
             const textY = centerY + Math.sin(midAngle) * (radius * 0.7);
             
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#2c3e50';
             ctx.font = 'bold 16px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -662,7 +1246,7 @@ function loadTestCharts(dateRange) {
             ctx.strokeRect(x, y - 10, 20, 20);
             
             // Текст с процентами
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#2c3e50';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
@@ -676,45 +1260,51 @@ function loadTestCharts(dateRange) {
     // Тепловая карта источников с реалистичными данными
     document.getElementById('sourcesChart').innerHTML = `
         <div class="chart-placeholder">
-            <canvas id="testHeatmapCanvas" width="950" height="450"></canvas>
+            <canvas id="testHeatmapCanvas" width="1200" height="550"></canvas>
         </div>
     `;
     
-    // Рисуем улучшенную тепловую карту
+    // Рисуем улучшенную тепловую карту с полными данными
     const heatCanvas = document.getElementById('testHeatmapCanvas');
     if (heatCanvas) {
         const ctx = heatCanvas.getContext('2d');
-        const sources = ['РИА Новости', 'Lenta', 'РБК', 'Газета', 'Коммерсантъ', 'Reuters', 'CNN'];
+        const sources = [
+            'РИА Новости', 'Lenta.ru', 'РБК', 'Газета.ru', 'Коммерсантъ', 
+            'Reuters', 'CNN', 'BBC', 'Interfax', 'ТАСС'
+        ];
         const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
-        const cellWidth = 80;
-        const cellHeight = 45;
-        const startX = 140;
+        const cellWidth = 100;
+        const cellHeight = 40;
+        const startX = 160;
         const startY = 80;
         
-        // Генерируем реалистичные данные
+        // Генерируем реалистичные данные для военных операций
         const heatData = [
-            [45, 52, 68, 71, 63, 38, 29],  // РИА
-            [38, 44, 59, 65, 58, 31, 25],  // Lenta
-            [42, 48, 62, 67, 61, 35, 27],  // РБК
-            [28, 35, 47, 52, 46, 22, 18],  // Газета
-            [31, 38, 51, 56, 49, 25, 20],  // Коммерсантъ
-            [55, 61, 78, 82, 74, 45, 36],  // Reuters
-            [58, 64, 81, 86, 77, 48, 38]   // CNN
+            [85, 92, 88, 95, 89, 45, 38],  // РИА Новости
+            [78, 84, 79, 86, 82, 41, 35],  // Lenta.ru
+            [82, 88, 85, 91, 87, 43, 37],  // РБК
+            [68, 75, 71, 78, 74, 32, 28],  // Газета.ru
+            [71, 78, 74, 81, 77, 35, 30],  // Коммерсантъ
+            [95, 98, 96, 99, 97, 55, 48],  // Reuters
+            [98, 99, 97, 100, 98, 58, 51], // CNN
+            [88, 91, 89, 93, 90, 48, 42],  // BBC
+            [75, 81, 78, 84, 80, 38, 33],  // Interfax
+            [90, 94, 92, 96, 93, 52, 45]   // ТАСС
         ];
         
         // Заливка фона
-        ctx.fillStyle = '#1e3a6a';
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, heatCanvas.width, heatCanvas.height);
         
         // Заголовок
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 18px Arial';
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 20px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Интенсивность публикаций по источникам за неделю', heatCanvas.width / 2, 30);
+        ctx.fillText('Интенсивность публикаций по источникам за неделю - Военные операции', heatCanvas.width / 2, 35);
         
         // Рисуем заголовки дней
         ctx.font = 'bold 11px Arial';
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.textAlign = 'center';
         days.forEach((day, i) => {
             ctx.fillText(day, startX + i * cellWidth + cellWidth / 2, startY - 20);
@@ -723,7 +1313,7 @@ function loadTestCharts(dateRange) {
         // Рисуем источники и ячейки
         sources.forEach((source, i) => {
             // Название источника
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#2c3e50';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
@@ -732,12 +1322,13 @@ function loadTestCharts(dateRange) {
             days.forEach((day, j) => {
                 const value = heatData[i][j];
                 
-            // Определяем цвет по интенсивности (приглушенные тона)
+            // Определяем цвет по интенсивности (обновленная схема для значений до 100)
             let color;
-            if (value < 30) color = '#7fb069';
-            else if (value < 50) color = '#b5a565';
-            else if (value < 70) color = '#d4a574';
-            else color = '#c77d6a';
+            if (value < 40) color = '#e8f5e8';      // Очень низкая
+            else if (value < 60) color = '#fff3cd';  // Низкая
+            else if (value < 80) color = '#ffeaa7';  // Средняя
+            else if (value < 90) color = '#fab1a0';  // Высокая
+            else color = '#e17055';                  // Очень высокая
                 
                 // Рисуем ячейку с градиентом
                 const gradient = ctx.createLinearGradient(
@@ -768,7 +1359,7 @@ function loadTestCharts(dateRange) {
                 );
                 
                 // Значение в ячейке
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = '#2c3e50';
                 ctx.font = 'bold 14px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -785,7 +1376,7 @@ function loadTestCharts(dateRange) {
         const legendX = startX;
         
         ctx.font = 'bold 12px Arial';
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.textAlign = 'left';
         ctx.fillText('Уровень активности:', legendX, legendY);
         
@@ -808,7 +1399,7 @@ function loadTestCharts(dateRange) {
             ctx.strokeRect(x, y - 10, 20, 20);
             
             // Текст
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#2c3e50';
             ctx.font = '11px Arial';
             ctx.textAlign = 'left';
             ctx.fillText(item.label, x + 25, y + 2);
@@ -886,11 +1477,11 @@ function createRealCategoryChart(data, totalNews) {
     const radius = 130;
     
     // Заливка фона
-    ctx.fillStyle = '#1e3a6a';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Заголовок
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(`Распределение новостей по категориям (${totalNews.toLocaleString()} всего)`, centerX, 30);
@@ -945,13 +1536,13 @@ function createRealCategoryChart(data, totalNews) {
         ctx.strokeRect(x, y - 10, 20, 20);
         
         // Текст
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(item.name, x + 28, y);
         ctx.font = '11px Arial';
-        ctx.fillStyle = '#bbdefb';
+        ctx.fillStyle = '#6c757d';
         ctx.fillText(item.count.toLocaleString() + ' новостей', x + 28, y + 12);
     });
 }
@@ -973,11 +1564,11 @@ function createRealTerritoryChart(data, totalNews) {
     const radius = 130;
     
     // Заливка фона
-    ctx.fillStyle = '#1e3a6a';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Заголовок
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(`Распределение новостей по территориям (${totalNews.toLocaleString()} всего)`, centerX, 30);
@@ -1032,13 +1623,13 @@ function createRealTerritoryChart(data, totalNews) {
         ctx.strokeRect(x, y - 10, 20, 20);
         
         // Текст с процентами
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(item.territory + ' - ' + item.percent + '%', x + 28, y);
         ctx.font = '11px Arial';
-        ctx.fillStyle = '#bbdefb';
+        ctx.fillStyle = '#6c757d';
         ctx.fillText(item.count.toLocaleString() + ' новостей', x + 28, y + 12);
     });
 }
@@ -1063,18 +1654,18 @@ function createRealHeatmap(sources, days, data) {
     const startY = 80;
     
     // Заливка фона
-    ctx.fillStyle = '#1e3a6a';
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Заголовок
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('Интенсивность публикаций по источникам за неделю', canvas.width / 2, 30);
     
     // Рисуем заголовки дней
     ctx.font = 'bold 12px Arial';
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.textAlign = 'center';
     days.forEach((day, i) => {
         ctx.fillText(day, startX + i * cellWidth + cellWidth / 2, startY - 20);
@@ -1083,7 +1674,7 @@ function createRealHeatmap(sources, days, data) {
     // Рисуем источники и ячейки
     sources.forEach((source, i) => {
         // Название источника
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
@@ -1128,7 +1719,7 @@ function createRealHeatmap(sources, days, data) {
             );
             
             // Значение в ячейке
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#2c3e50';
             ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -1143,8 +1734,9 @@ function createRealHeatmap(sources, days, data) {
 function renderNewsCards(newsData, container) {
     newsData.forEach(news => {
         const isTestCategory = news.category && news.category.startsWith('test_');
-        // Используем реальный tension_score если есть, иначе генерируем случайный
-        const tensionScore = news.tension_score || news.tension || Math.random() * 10;
+        // Используем реальные данные напряженности из API, если нет - показываем Н/Д
+        const tensionScore = news.tension_index || news.tension_score || news.tension || 'Н/Д';
+        const spikeScore = news.spike_index || news.spike_score || news.spike || 'Н/Д';
         
         const newsCard = document.createElement('div');
         newsCard.className = 'news-card';
@@ -1166,11 +1758,11 @@ function renderNewsCards(newsData, container) {
                     </div>
                     <div class="news-meta-item">
                         <i class="fas fa-thermometer-half"></i>
-                        <span class="news-tension">${tensionScore.toFixed(1)}%</span>
+                        <span class="news-tension">${tensionScore === 'Н/Д' ? 'Н/Д' : tensionScore.toFixed(1) + '%'}</span>
                     </div>
                     <div class="news-meta-item">
                         <i class="fas fa-chart-line"></i>
-                        <span class="news-spike">${(news.spike_index || news.spike || tensionScore * 0.8).toFixed(1)}%</span>
+                        <span class="news-spike">${spikeScore === 'Н/Д' ? 'Н/Д' : spikeScore.toFixed(1) + '%'}</span>
                     </div>
                     <div class="news-meta-item">
                         <i class="fas fa-rss"></i>
@@ -1192,8 +1784,8 @@ function renderNewsCards(newsData, container) {
                 source: news.source,
                 category: news.category,
                 categoryName: getCategoryName(news.category),
-                tension: tensionScore.toFixed(1),
-                tensionColor: getTensionColorForValue(tensionScore),
+                tension: tensionScore === 'Н/Д' ? 'Н/Д' : tensionScore.toFixed(1),
+                tensionColor: tensionScore === 'Н/Д' ? '#6c757d' : getTensionColorForValue(tensionScore),
                 content: news.content || 'Полный текст статьи недоступен. Перейдите на источник для чтения.',
                 url: news.url || news.link || '#'
             });
@@ -1217,7 +1809,11 @@ function showNoNewsMessage(container) {
 function loadNewsTable(category, dateRange) {
     const container = document.getElementById('newsContainer');
     
-    // Проверяем, является ли это тестовой категорией
+    // Проверяем, является ли это тестовой категорией "Военные операции"
+    if (category === 'military_operations_demo') {
+        loadMilitaryNewsTable();
+        return;
+    }
     
     // Используем правильный API эндпоинт с учетом категории
     let apiUrl = '/api/ukraine_analytics/latest_news?category=all&days=' + dateRange;
@@ -1375,7 +1971,7 @@ function loadTestNewsTable(tbody) {
                     
                     row.innerHTML = `
                         <td>
-                <small style="color: #ffffff; font-weight: 500;">${formatDate(news.date)}</small>
+                <small style="color: #2c3e50; font-weight: 500;">${formatDate(news.date)}</small>
                         </td>
                         <td>
                             <div class="fw-bold">
@@ -1394,7 +1990,7 @@ function loadTestNewsTable(tbody) {
                 </span>
                         </td>
                         <td>
-                <small style="color: #ffffff; font-weight: 600;">${news.source}</small>
+                <small style="color: #2c3e50; font-weight: 600;">${news.source}</small>
                         </td>
                     `;
         
@@ -1503,7 +2099,7 @@ function createRealTensionChart(data, container) {
     container.innerHTML = `
         <div class="chart-placeholder">
             <canvas id="realTensionCanvas" width="1200" height="500"></canvas>
-            <div class="mt-3" style="color: #ffffff;">
+            <div class="mt-3" style="color: #2c3e50;">
                 <div class="row text-center">
                     <div class="col-md-3">
                         <strong style="color: #4a90e2;">📊 Исторических точек:</strong><br>${data.historical_points || (data.historical_data ? data.historical_data.length : 0)} / ${data.target_points || 7}
@@ -1552,18 +2148,18 @@ function createRealTensionChart(data, container) {
     const historicalPoints = historicalData.length;
     const forecastPoints = forecastData.length;
     
-    // Заливка фона темным цветом
-    ctx.fillStyle = '#1e3a6a';
+    // Заливка фона светлым цветом
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
     
     // Заголовок
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.font = 'bold 20px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('Интегральный индекс социальной напряженности', width / 2, 35);
     
     // Рисуем сетку
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 5; i++) {
         const y = padding + (chartHeight / 5) * i;
@@ -1572,8 +2168,8 @@ function createRealTensionChart(data, container) {
         ctx.lineTo(width - padding, y);
         ctx.stroke();
         
-        // Подписи по Y (белым цветом)
-        ctx.fillStyle = '#ffffff';
+        // Подписи по Y (тёмным цветом)
+        ctx.fillStyle = '#2c3e50';
         ctx.font = 'bold 13px Arial';
         ctx.textAlign = 'right';
         ctx.fillText((100 - i * 20) + '%', padding - 15, y + 5);
@@ -1642,24 +2238,24 @@ function createRealTensionChart(data, container) {
     // Зоны напряженности (полупрозрачные)
     ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
     ctx.fillRect(padding, padding, chartWidth, chartHeight * 0.2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.font = 'bold 12px Arial';
     ctx.textAlign = 'left';
     ctx.fillText('🔴 Критическая зона (80-100%)', padding + 10, padding + 20);
     
     ctx.fillStyle = 'rgba(243, 156, 18, 0.15)';
     ctx.fillRect(padding, padding + chartHeight * 0.2, chartWidth, chartHeight * 0.2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.fillText('🟠 Высокая зона (60-80%)', padding + 10, padding + chartHeight * 0.2 + 20);
     
     ctx.fillStyle = 'rgba(241, 196, 15, 0.1)';
     ctx.fillRect(padding, padding + chartHeight * 0.4, chartWidth, chartHeight * 0.2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.fillText('🟡 Средняя зона (40-60%)', padding + 10, padding + chartHeight * 0.4 + 20);
     
     ctx.fillStyle = 'rgba(46, 204, 113, 0.1)';
     ctx.fillRect(padding, padding + chartHeight * 0.6, chartWidth, chartHeight * 0.4);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.fillText('🟢 Низкая зона (0-40%)', padding + 10, padding + chartHeight * 0.6 + 20);
     
     // Легенда в правом верхнем углу
@@ -1686,7 +2282,7 @@ function createRealTensionChart(data, container) {
     ctx.arc(legendX + 15, legendY + 5, 5, 0, 2 * Math.PI);
     ctx.fill();
     
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#2c3e50';
     ctx.font = 'bold 12px Arial';
     ctx.textAlign = 'left';
     ctx.fillText('Исторические данные', legendX + 40, legendY + 10);
@@ -1707,7 +2303,7 @@ function createRealTensionChart(data, container) {
         ctx.arc(legendX + 15, legendY + 35, 5, 0, 2 * Math.PI);
         ctx.fill();
         
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.fillText('Прогноз (5 дней)', legendX + 40, legendY + 40);
     }
 }
@@ -1716,7 +2312,7 @@ function loadTestTensionChart(container, dateRange) {
     container.innerHTML = `
         <div class="chart-placeholder">
             <canvas id="testTensionCanvas" width="1200" height="500"></canvas>
-            <div class="mt-3" style="color: #ffffff;">
+            <div class="mt-3" style="color: #2c3e50;">
                 <div class="row text-center">
                     <div class="col-md-3">
                         <strong style="color: #4a90e2;">📊 Исторических точек:</strong><br>${actualPoints}
@@ -1779,10 +2375,10 @@ function loadTestTensionChart(container, dateRange) {
         ctx.fillRect(0, 0, width, height);
         
         // Заголовок
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.font = 'bold 20px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Интегральный индекс социальной напряженности', width / 2, 35);
+        ctx.fillText('Интегральный индекс социальной напряженности - Военные операции', width / 2, 35);
         
         // Рисуем сетку
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
@@ -1795,7 +2391,7 @@ function loadTestTensionChart(container, dateRange) {
             ctx.stroke();
             
             // Подписи по Y (белым цветом)
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#2c3e50';
             ctx.font = 'bold 13px Arial';
             ctx.textAlign = 'right';
             ctx.fillText((100 - i * 20) + '%', padding - 15, y + 5);
@@ -1862,24 +2458,24 @@ function loadTestTensionChart(container, dateRange) {
         // Зоны напряженности (полупрозрачные)
         ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
         ctx.fillRect(padding, padding, chartWidth, chartHeight * 0.2);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'left';
         ctx.fillText('🔴 Критическая зона (80-100%)', padding + 10, padding + 20);
         
         ctx.fillStyle = 'rgba(243, 156, 18, 0.15)';
         ctx.fillRect(padding, padding + chartHeight * 0.2, chartWidth, chartHeight * 0.2);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.fillText('🟠 Высокая зона (60-80%)', padding + 10, padding + chartHeight * 0.2 + 20);
         
         ctx.fillStyle = 'rgba(241, 196, 15, 0.1)';
         ctx.fillRect(padding, padding + chartHeight * 0.4, chartWidth, chartHeight * 0.2);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.fillText('🟡 Средняя зона (40-60%)', padding + 10, padding + chartHeight * 0.4 + 20);
         
         ctx.fillStyle = 'rgba(46, 204, 113, 0.1)';
         ctx.fillRect(padding, padding + chartHeight * 0.6, chartWidth, chartHeight * 0.4);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.fillText('🟢 Низкая зона (0-40%)', padding + 10, padding + chartHeight * 0.6 + 20);
         
         // Легенда в правом верхнем углу
@@ -1906,7 +2502,7 @@ function loadTestTensionChart(container, dateRange) {
         ctx.arc(legendX + 15, legendY + 5, 5, 0, 2 * Math.PI);
         ctx.fill();
         
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'left';
         ctx.fillText('Исторические данные', legendX + 40, legendY + 10);
@@ -1926,7 +2522,7 @@ function loadTestTensionChart(container, dateRange) {
         ctx.arc(legendX + 15, legendY + 35, 5, 0, 2 * Math.PI);
         ctx.fill();
         
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#2c3e50';
         ctx.fillText('Прогноз (5 дней)', legendX + 40, legendY + 40);
     }
 }
@@ -1940,18 +2536,25 @@ function openNewsModal(newsData) {
     document.getElementById('modalDate').textContent = newsData.date;
     document.getElementById('modalSource').textContent = newsData.source;
     document.getElementById('modalCategory').textContent = newsData.categoryName;
-    document.getElementById('modalTension').textContent = newsData.tension + '%';
-    document.getElementById('modalContent').textContent = newsData.content || 'Полный текст статьи недоступен. Перейдите на источник для чтения.';
+    document.getElementById('modalTension').textContent = newsData.tension === 'Н/Д' ? 'Н/Д' : newsData.tension + '%';
+    
+    // Обрабатываем содержимое статьи
+    let contentText = newsData.content || '';
+    
+    // Если содержимое слишком короткое или отсутствует, показываем информативное сообщение
+    if (!contentText || contentText.length < 200) {
+        contentText = `Полный текст статьи недоступен в базе данных. 
+        
+Возможные причины:
+• Статья была добавлена только с кратким описанием
+• Полное содержимое не было сохранено при парсинге
+• Статья содержит только заголовок и краткую аннотацию
+
+Для чтения полного текста перейдите на источник статьи.`;
+    }
+    
+    document.getElementById('modalContent').textContent = contentText;
     document.getElementById('modalLink').href = newsData.url || '#';
-    
-    // Бейджи
-    const categoryBadge = document.getElementById('modalCategoryBadge');
-    categoryBadge.textContent = newsData.categoryName;
-    categoryBadge.style.background = '';
-    
-    const tensionBadge = document.getElementById('modalTensionBadge');
-    tensionBadge.textContent = newsData.tension + '%';
-    tensionBadge.style.backgroundColor = newsData.tensionColor;
     
     // Показываем модальное окно
     modal.classList.add('show');

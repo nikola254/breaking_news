@@ -65,7 +65,48 @@
 .pagination-container {
     display: flex;
     justify-content: center;
-    margin-top: 20px;
+    margin-top: 30px;
+    gap: 8px;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.pagination-btn, .page-btn {
+    background: white;
+    color: #5a6c7d;
+    border: 2px solid rgba(108, 117, 125, 0.2);
+    padding: 10px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    font-size: 0.95rem;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.pagination-btn:hover, .page-btn:hover {
+    background: rgba(74, 144, 226, 0.1);
+    border-color: #4a90e2;
+    color: #2c3e50;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.2);
+}
+
+.pagination-btn.active, .page-btn.active {
+    background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
+    color: white;
+    border-color: transparent;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+    transform: translateY(-2px);
 }
 
 /* Анимация загрузки */

@@ -14,7 +14,7 @@
     
     <!-- Блок статистики -->
     <div class="statistics-container">
-        <h2 class="statistics-title">📊 Статистика базы данных</h2>
+        <h2 class="statistics-title"><span class="emoji">📊</span> Статистика базы данных</h2>
         <div id="statistics-content" class="loading-stats">
             Загрузка статистики...
         </div>
@@ -92,8 +92,6 @@
         </thead>
         <tbody id="table-body"></tbody>
     </table>
-    
-    <div class="pagination" id="pagination"></div>
 </div>
 
 <!-- Модальное окно для просмотра статьи -->
@@ -217,6 +215,45 @@
     </div>
     <div class="log-content" id="log-content">
         <!-- Логи будут добавляться динамически -->
+    </div>
+</div>
+
+<!-- Модальное окно для статьи -->
+<div id="newsModal" class="news-modal-overlay">
+    <div class="news-modal-content">
+        <div class="news-modal-header">
+            <h2 id="modalTitle">Заголовок статьи</h2>
+            <button class="news-modal-close" onclick="closeNewsModal()">×</button>
+        </div>
+        <div class="news-modal-body">
+            <div class="news-modal-meta">
+                <div class="news-modal-meta-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <strong>Дата:</strong> <span id="modalDate">Дата</span>
+                </div>
+                <div class="news-modal-meta-item">
+                    <i class="fas fa-newspaper"></i>
+                    <strong>Источник:</strong> <span id="modalSource">Источник</span>
+                </div>
+                <div class="news-modal-meta-item">
+                    <i class="fas fa-tag"></i>
+                    <strong>Категория:</strong> <span id="modalCategory">Категория</span>
+                </div>
+                <div class="news-modal-meta-item">
+                    <i class="fas fa-chart-line"></i>
+                    <strong>Напряженность:</strong> <span id="modalTension">Напряженность</span>
+                </div>
+            </div>
+            <div class="news-modal-content-text" id="modalContent">
+                Содержимое статьи...
+            </div>
+        </div>
+        <div class="news-modal-footer">
+            <a id="modalLink" href="#" target="_blank" class="news-modal-link">
+                <i class="fas fa-external-link-alt"></i>
+                Читать на источнике
+            </a>
+        </div>
     </div>
 </div>
 {% endblock %}

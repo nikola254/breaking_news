@@ -1,10 +1,8 @@
 // Глобальные переменные
 let currentSource = 'all';
-let currentPage = 1;
 let currentFilter = null;
 let currentFilterValue = null;
 let currentDays = 7;
-let totalPages = 1;
 let currentSearchQuery = '';
 
 // Переменные для управления парсингом
@@ -16,7 +14,6 @@ let logWindowVisible = false;
 const dataTable = document.getElementById('data-table');
 const tableHeader = document.getElementById('table-header');
 const tableBody = document.getElementById('table-body');
-const pagination = document.getElementById('pagination');
 const loading = document.getElementById('loading');
 const errorContainer = document.getElementById('error-container');
 const filterContainer = document.getElementById('filter-container');
@@ -128,6 +125,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadStatistics(days, category);
             });
         }
+        
+        // Обработчик для кнопки закрытия модального окна новостей
+        const closeBtn = document.querySelector('.news-modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeNewsModal);
+        }
     }, 100);
 });
 
@@ -150,14 +153,22 @@ function loadData() {
     showLoading(true);
     clearError();
     
-    console.log('Загрузка данных для страницы:', currentPage);
+    console.log('Загрузка данных');
     
-    // Вычисляем offset на основе текущей страницы и лимита
-    const limit = 20;
-    const offset = (currentPage - 1) * limit;
+    // Загружаем все данные без пагинации
+    const limit = 1000; // Большой лимит для загрузки всех данных
+    const offset = 0;
     
     // Формирование URL запроса с параметрами
-    let url = `/api/news?source=${currentSource}&limit=${limit}&offset=${offset}`;
+    let url;
+    
+    // Используем API аналитики для получения данных с полями напряженности
+    if (currentSource === 'all') {
+        url = `/api/ukraine_analytics/latest_news?category=all&days=${currentDays}&limit=${limit}&offset=${offset}`;
+    } else {
+        // Для конкретных источников также используем API аналитики для правильного расчета напряженности
+        url = `/api/ukraine_analytics/latest_news?category=all&days=${currentDays}&limit=${limit}&offset=${offset}&source=${currentSource}`;
+    }
     
     // Добавляем фильтр по дням
     const endDate = new Date();
@@ -181,15 +192,27 @@ function loadData() {
         .then(data => {
             if (data.status === 'success') {
                 console.log('Получены данные:', data);
-                console.log('Текущая страница:', data.current_page);
-                console.log('Всего страниц:', data.total_pages);
+                
+                // Обрабатываем разные форматы ответов от разных API
+                let newsData;
+                
+                if (data.latest_news) {
+                    // API аналитики возвращает latest_news
+                    newsData = data.latest_news;
+                    console.log('API аналитики - загружено новостей:', newsData.length);
+                } else if (data.data) {
+                    // Обычный API возвращает data
+                    newsData = data.data;
+                    console.log('Обычный API - загружено новостей:', newsData.length);
+                } else {
+                    newsData = [];
+                }
+                
+                console.log('Загружено новостей:', newsData.length);
                 
                 // Обновляем данные на странице
-                updateTable(data.data);
-                updatePagination(data.total_pages, data.current_page);
+                updateTable(newsData);
                 updateFilters(data);
-                totalPages = data.total_pages;
-                currentPage = data.current_page; // Синхронизируем текущую страницу с ответом сервера
             } else {
                 showError(data.message || 'Ошибка при загрузке данных');
             }
@@ -202,126 +225,168 @@ function loadData() {
         });
 }
 
-// Функция обновления таблицы с данными
+// Функция обновления таблицы с данными (теперь создает карточки)
 function updateTable(data) {
-    // Очистка таблицы
-    tableHeader.innerHTML = '';
-    tableBody.innerHTML = '';
+    // Получаем контейнер для новостей
+    const newsContainer = document.getElementById('newsContainer') || createNewsContainer();
+    
+    // Очищаем контейнер
+    newsContainer.innerHTML = '';
     
     if (data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Нет данных для отображения</td></tr>';
+        newsContainer.innerHTML = `
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle"></i>
+                <h5>Нет данных для отображения</h5>
+                <p>Попробуйте изменить фильтры или период времени</p>
+            </div>
+        `;
         return;
     }
     
-    // Создание заголовков таблицы в зависимости от источника
-    const headers = getHeadersForSource(currentSource);
-    headers.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header.label;
-        if (header.class) th.className = header.class;
-        tableHeader.appendChild(th);
-    });
-    
-    // Заполнение таблицы данными
+    // Создаем карточки для каждой новости
     data.forEach(item => {
-        const row = document.createElement('tr');
-        
-        headers.forEach(header => {
-            const cell = document.createElement('td');
-            
-            if (header.key === 'published_date' || header.key === 'date') {
-                // Форматируем дату
-                const dateValue = item['published_date'] || item['date'];
-                if (dateValue) {
-                    try {
-                        const date = new Date(dateValue);
-                        if (!isNaN(date.getTime())) {
-                            cell.textContent = date.toLocaleString('ru-RU');
-                        } else {
-                            cell.textContent = dateValue;
-                        }
-                    } catch (e) {
-                        cell.textContent = dateValue;
-                    }
-                } else {
-                    cell.textContent = '-';
-                }
-                cell.className = 'date-col';
-            } else if (header.key === 'title') {
-                // Для заголовка добавляем возможность открытия модального окна
-                cell.className = 'title-col';
-                cell.textContent = item['title'] || '-';
-                cell.style.cursor = 'pointer';
-                cell.title = 'Нажмите, чтобы открыть полную статью';
-                
-                // Добавляем обработчик клика для открытия модального окна
-                cell.addEventListener('click', () => {
-                    openArticleModal(item);
-                });
-            } else if (header.key === 'content') {
-                // Для контента добавляем возможность разворачивания
-                cell.className = 'content-cell';
-                const content = item['content'] || '-';
-                
-                // Ограничиваем длину контента в таблице
-                const shortContent = content.length > 100 ? content.substring(0, 100) + '...' : content;
-                cell.textContent = shortContent;
-                
-                if (content && content.length > 100) {
-                    const expandBtn = document.createElement('button');
-                    expandBtn.className = 'expand-btn';
-                    expandBtn.textContent = '[Развернуть]';
-                    expandBtn.addEventListener('click', () => {
-                        if (cell.classList.contains('expanded')) {
-                            cell.textContent = shortContent;
-                            cell.classList.remove('expanded');
-                            cell.appendChild(expandBtn);
-                            expandBtn.textContent = '[Развернуть]';
-                        } else {
-                            cell.textContent = content;
-                            cell.classList.add('expanded');
-                            cell.appendChild(expandBtn);
-                            expandBtn.textContent = '[Свернуть]';
-                        }
-                    });
-                    cell.appendChild(expandBtn);
-                }
-            } else if (header.key === 'category') {
-                // Для категории переводим на русский язык
-                const categoryTranslations = {
-                    'military_operations': 'Военные операции',
-                    'humanitarian_crisis': 'Гуманитарный кризис',
-                    'economic_consequences': 'Экономические последствия',
-                    'political_decisions': 'Политические решения',
-                    'information_social': 'Информационно-социальные аспекты',
-                    'ukraine': 'Украина',
-                    'middle_east': 'Ближний восток',
-                    'fake_news': 'Фейки',
-                    'info_war': 'Инфовойна',
-                    'europe': 'Европа',
-                    'usa': 'США',
-                    'other': 'Другое'
-                };
-                const category = item['category'] || 'other';
-                cell.textContent = categoryTranslations[category] || category;
-                cell.className = 'category-col';
-            } else {
-                // Для остальных полей просто выводим значение
-                cell.textContent = item[header.key] || '-';
-            }
-            
-            row.appendChild(cell);
-        });
-        
-        tableBody.appendChild(row);
+        const newsCard = createNewsCard(item);
+        newsContainer.appendChild(newsCard);
     });
     
     // Выделяем поисковый текст после отображения данных
-    if (currentSearchQuery) {
-        setTimeout(() => {
-            highlightAllArticles();
-        }, 50);
+    setTimeout(() => {
+        highlightAllArticles();
+    }, 50);
+}
+
+// Функция создания контейнера для новостей
+function createNewsContainer() {
+    // Скрываем таблицу
+    const dataTable = document.getElementById('data-table');
+    if (dataTable) {
+        dataTable.style.display = 'none';
     }
+    
+    // Создаем контейнер для карточек
+    const container = document.createElement('div');
+    container.id = 'newsContainer';
+    container.className = 'news-container';
+    
+    // Вставляем контейнер после таблицы
+    if (dataTable) {
+        dataTable.parentNode.insertBefore(container, dataTable.nextSibling);
+    }
+    
+    return container;
+}
+
+// Функция создания карточки новости
+function createNewsCard(item) {
+    const card = document.createElement('div');
+    card.className = 'news-card';
+    card.style.cursor = 'pointer';
+    
+    // Определяем данные в зависимости от источника
+    let title, content, date, category, tension, spike, source, url;
+    
+    if (currentSource === 'all' || currentSource === 'ria' || currentSource === 'lenta' || 
+        currentSource === 'rbc' || currentSource === 'gazeta' || currentSource === 'kommersant' || 
+        currentSource === 'rt' || currentSource === 'tsn' || currentSource === 'unian' || 
+        currentSource === 'cnn' || currentSource === 'bbc' || currentSource === 'reuters' || 
+        currentSource === 'aljazeera' || currentSource === 'euronews' || currentSource === 'france24' || 
+        currentSource === 'dw' || currentSource === 'israil') {
+        
+        title = item.title || 'Без заголовка';
+        content = item.content ? item.content.substring(0, 200) + '...' : 'Содержимое недоступно';
+        
+        // Форматируем дату
+        const dateValue = item.published_date || item.date;
+        if (dateValue) {
+            try {
+                const dateObj = new Date(dateValue);
+                if (!isNaN(dateObj.getTime())) {
+                    date = dateObj.toLocaleString('ru-RU');
+                } else {
+                    date = dateValue;
+                }
+            } catch (e) {
+                date = dateValue;
+            }
+        } else {
+            date = 'Дата неизвестна';
+        }
+        
+        // Переводим категорию
+        const categoryTranslations = {
+            'military_operations': 'Военные операции',
+            'humanitarian_crisis': 'Гуманитарный кризис',
+            'economic_consequences': 'Экономические последствия',
+            'political_decisions': 'Политические решения',
+            'information_social': 'Информационно-социальные аспекты',
+            'ukraine': 'Украина',
+            'middle_east': 'Ближний восток',
+            'fake_news': 'Фейки',
+            'info_war': 'Инфовойна',
+            'europe': 'Европа',
+            'usa': 'США',
+            'other': 'Другое'
+        };
+        category = categoryTranslations[item.category] || item.category || 'Неизвестная категория';
+        
+        // Обрабатываем разные варианты названий полей напряженности
+        const tensionValue = item.tension || item.tension_index || item.tension_score;
+        const spikeValue = item.spike || item.spike_index || item.spike_score;
+        
+        tension = tensionValue ? tensionValue.toFixed(1) + '%' : '0.0%';
+        spike = spikeValue ? spikeValue.toFixed(1) + '%' : '0.0%';
+        source = item.source || 'Неизвестный источник';
+        url = item.url || '#';
+    } else {
+        // Для социальных сетей
+        title = item.text ? item.text.substring(0, 100) + '...' : 'Пост без текста';
+        content = item.text || 'Содержимое недоступно';
+        date = item.date || 'Дата неизвестна';
+        category = 'Социальная сеть';
+        tension = '0.0%';
+        spike = '0.0%';
+        source = currentSource.toUpperCase();
+        url = item.url || '#';
+    }
+    
+    card.innerHTML = `
+        <div class="news-card-body">
+            <div class="news-title">
+                ${title}
+            </div>
+            <div class="news-content">${content}</div>
+            <div class="news-meta">
+                <div class="news-meta-item">
+                    <i class="fas fa-clock"></i>
+                    <span class="news-time">${date}</span>
+                </div>
+                <div class="news-meta-item">
+                    <i class="fas fa-tag"></i>
+                    <span class="news-category">${category}</span>
+                </div>
+                <div class="news-meta-item">
+                    <i class="fas fa-thermometer-half"></i>
+                    <span class="news-tension">${tension}</span>
+                </div>
+                <div class="news-meta-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span class="news-spike">${spike}</span>
+                </div>
+                <div class="news-meta-item">
+                    <i class="fas fa-rss"></i>
+                    <span class="news-source">${source}</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Добавляем обработчик клика
+    card.addEventListener('click', function() {
+        openArticleModal(item);
+    });
+    
+    return card;
 }
 
 // Функция получения заголовков таблицы в зависимости от источника
@@ -332,55 +397,6 @@ function getHeadersForSource(source) {
         { key: 'title', label: 'Заголовок', class: 'title-col' },
         { key: 'category', label: 'Категория', class: 'category-col' }
     ];
-}
-
-// Функция обновления пагинации
-function updatePagination(totalPages, currentPage) {
-    console.log('Обновление пагинации:', totalPages, currentPage);
-    pagination.innerHTML = '';
-    
-    if (totalPages <= 1) {
-        console.log('Всего одна страница, пагинация не нужна');
-        return;
-    }
-    
-    // Кнопка "Предыдущая"
-    if (currentPage > 1) {
-        addPageButton('«', currentPage - 1);
-    }
-    
-    // Номера страниц
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, startPage + 4);
-    
-    console.log('Диапазон страниц:', startPage, endPage);
-    
-    for (let i = startPage; i <= endPage; i++) {
-        const isActive = i === parseInt(currentPage);
-        console.log('Добавление кнопки страницы:', i, 'активна:', isActive);
-        addPageButton(i, i, isActive);
-    }
-    
-    // Кнопка "Следующая"
-    if (currentPage < totalPages) {
-        addPageButton('»', currentPage + 1);
-    }
-}
-
-// Функция добавления кнопки пагинации
-function addPageButton(text, page, isActive = false) {
-    const button = document.createElement('button');
-    button.className = `page-btn${isActive ? ' active' : ''}`;
-    button.textContent = text;
-    button.addEventListener('click', function() {
-        console.log('Нажата кнопка пагинации:', page);
-        if (page !== currentPage) {
-            currentPage = page;
-            console.log('Установлена новая страница:', currentPage);
-            loadData();
-        }
-    });
-    pagination.appendChild(button);
 }
 
 // Функция обновления фильтров
@@ -466,7 +482,13 @@ function highlightSearchText(text, searchQuery) {
     if (!searchQuery || !text) return text;
     
     const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+    const result = text.replace(regex, '<mark class="search-highlight">$1</mark>');
+    
+    if (result !== text) {
+        console.log('Найдено совпадение в тексте:', text.substring(0, 50) + '...');
+    }
+    
+    return result;
 }
 
 // Функция для очистления выделения
@@ -480,119 +502,191 @@ function clearHighlights(element) {
 function highlightAllArticles() {
     const searchQuery = currentSearchQuery.trim();
     
-    // Выделяем в заголовках таблицы
-    document.querySelectorAll('.title-col').forEach(cell => {
-        if (searchQuery) {
-            const originalText = cell.textContent;
-            cell.innerHTML = highlightSearchText(originalText, searchQuery);
-        } else {
-            clearHighlights(cell);
+    console.log('highlightAllArticles вызвана с запросом:', searchQuery);
+    
+    if (!searchQuery) {
+        // Если нет поискового запроса, очищаем все выделения
+        document.querySelectorAll('.search-highlight').forEach(highlight => {
+            const parent = highlight.parentNode;
+            parent.replaceChild(document.createTextNode(highlight.textContent), highlight);
+            parent.normalize();
+        });
+        return;
+    }
+    
+    // Выделяем в карточках новостей
+    const cards = document.querySelectorAll('.news-card');
+    console.log('Найдено карточек:', cards.length);
+    
+    cards.forEach(card => {
+        // Выделяем в заголовках (ищем как div.news-title, так и a внутри него)
+        const titleElement = card.querySelector('.news-title a') || card.querySelector('.news-title');
+        if (titleElement) {
+            const originalText = titleElement.textContent;
+            console.log('Выделяем в заголовке:', originalText.substring(0, 50) + '...');
+            titleElement.innerHTML = highlightSearchText(originalText, searchQuery);
         }
+        
+        // Выделяем в содержимом
+        const contentElement = card.querySelector('.news-content');
+        if (contentElement) {
+            const originalText = contentElement.textContent;
+            contentElement.innerHTML = highlightSearchText(originalText, searchQuery);
+        }
+        
+        // Выделяем в метаданных
+        const metaElements = card.querySelectorAll('.news-meta-item span');
+        metaElements.forEach(metaElement => {
+            const originalText = metaElement.textContent;
+            metaElement.innerHTML = highlightSearchText(originalText, searchQuery);
+        });
     });
     
-    // Выделяем в содержимом статей
-    document.querySelectorAll('.content-cell').forEach(cell => {
-        if (searchQuery) {
-            const expandBtn = cell.querySelector('.expand-btn');
-            const btnText = expandBtn ? expandBtn.textContent : '';
-            const originalText = cell.textContent.replace(btnText, '');
-            
-            const highlightedText = highlightSearchText(originalText, searchQuery);
-            cell.innerHTML = highlightedText;
-            
-            if (expandBtn) {
-                cell.appendChild(expandBtn);
-            }
-        } else {
-            clearHighlights(cell);
+    // Выделяем в модальном окне если оно открыто
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
+    
+    if (modalTitle && modalContent) {
+        // Проверяем, открыто ли модальное окно
+        const modal = document.getElementById('newsModal');
+        if (modal && modal.style.display === 'flex') {
+            highlightModalContent();
         }
-    });
+    }
 }
 
 // Модифицированная функция поиска с автоматическим выделением
 function performSearch() {
     currentSearchQuery = searchInput.value.trim();
-    currentPage = 1;
-    loadData().then(() => {
-        // Выделяем текст после загрузки данных
-        setTimeout(() => {
-            highlightAllArticles();
-        }, 100);
-    });
+    
+    // Загружаем данные
+    loadData();
+    
+    // Выделяем текст после загрузки данных
+    setTimeout(() => {
+        highlightAllArticles();
+    }, 200);
 }
 
 
 
 // Функция открытия модального окна со статьей
 function openArticleModal(article) {
-    const modal = document.getElementById('article-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const modalContent = document.getElementById('modal-content');
-    const modalSource = document.getElementById('modal-source');
-    const modalDate = document.getElementById('modal-date');
-    const modalLink = document.getElementById('modal-link');
-    
-    // Заполняем данными модальное окно с выделением поискового запроса
-    const title = article.title || 'Без заголовка';
-    const content = article.content || 'Содержание отсутствует';
-    
-    if (currentSearchQuery) {
-        modalTitle.innerHTML = highlightSearchText(title, currentSearchQuery);
-        modalContent.innerHTML = highlightSearchText(content, currentSearchQuery);
-    } else {
-        modalTitle.textContent = title;
-        modalContent.textContent = content;
+    const modal = document.getElementById('newsModal');
+    if (!modal) {
+        console.error('Модальное окно не найдено');
+        return;
     }
     
-    // Устанавливаем метаданные
-    modalSource.textContent = article.source || 'Неизвестный источник';
+    // Заполняем модальное окно данными
+    document.getElementById('modalTitle').textContent = article.title || 'Без заголовка';
     
+    // Форматируем дату
     const dateValue = article.published_date || article.date;
     if (dateValue) {
         try {
             const date = new Date(dateValue);
             if (!isNaN(date.getTime())) {
-                modalDate.textContent = date.toLocaleString('ru-RU');
+                document.getElementById('modalDate').textContent = date.toLocaleString('ru-RU');
             } else {
-                modalDate.textContent = dateValue;
+                document.getElementById('modalDate').textContent = dateValue;
             }
         } catch (e) {
-            modalDate.textContent = dateValue;
+            document.getElementById('modalDate').textContent = dateValue;
         }
     } else {
-        modalDate.textContent = 'Дата неизвестна';
+        document.getElementById('modalDate').textContent = 'Дата неизвестна';
     }
+    
+    document.getElementById('modalSource').textContent = article.source || 'Неизвестный источник';
+    document.getElementById('modalCategory').textContent = getCategoryName(article.category) || 'Неизвестная категория';
+    // Обрабатываем разные варианты названий полей напряженности
+    const tensionValue = article.tension || article.tension_index || article.tension_score;
+    document.getElementById('modalTension').textContent = tensionValue ? tensionValue.toFixed(1) + '%' : '0.0%';
+    document.getElementById('modalContent').textContent = article.content || 'Содержимое недоступно';
     
     // Устанавливаем ссылку на оригинал
     const linkValue = article.link || article.telegram_link || article.israil_link || article.url || article.original_url;
-    
     if (linkValue && linkValue.trim() !== '') {
-        modalLink.href = linkValue;
-        modalLink.style.display = 'inline';
-        modalLink.target = '_blank';
+        document.getElementById('modalLink').href = linkValue;
+        document.getElementById('modalLink').style.display = 'inline';
+        document.getElementById('modalLink').target = '_blank';
     } else {
-        modalLink.style.display = 'none';
+        document.getElementById('modalLink').style.display = 'none';
     }
     
-    // Отображаем модальное окно
-    modal.classList.add('show');
-    modal.style.display = 'block';
+    // Показываем модальное окно
+    modal.style.display = 'flex';
     
-    // Обработчик закрытия модального окна
-    const closeBtn = modal.querySelector('.article-close-btn');
-    closeBtn.onclick = function() {
-        modal.classList.remove('show');
-        modal.style.display = 'none';
-    }
-    
-    // Закрытие при клике вне модального окна
-    window.onclick = function(event) {
-        if (event.target === modal) {
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-        }
+    // Выделяем поисковый текст в модальном окне
+    if (currentSearchQuery && currentSearchQuery.trim()) {
+        setTimeout(() => {
+            highlightModalContent();
+        }, 100);
     }
 }
+
+function closeNewsModal() {
+    const modal = document.getElementById('newsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Функция для выделения поискового текста в модальном окне
+function highlightModalContent() {
+    const searchQuery = currentSearchQuery.trim();
+    if (!searchQuery) return;
+    
+    // Выделяем в заголовке модального окна
+    const modalTitle = document.getElementById('modalTitle');
+    if (modalTitle) {
+        const originalText = modalTitle.textContent;
+        modalTitle.innerHTML = highlightSearchText(originalText, searchQuery);
+    }
+    
+    // Выделяем в содержимом модального окна
+    const modalContent = document.getElementById('modalContent');
+    if (modalContent) {
+        const originalText = modalContent.textContent;
+        modalContent.innerHTML = highlightSearchText(originalText, searchQuery);
+    }
+    
+    // Выделяем в метаданных модального окна
+    const modalMetaItems = document.querySelectorAll('.news-modal-meta-item span');
+    modalMetaItems.forEach(item => {
+        const originalText = item.textContent;
+        item.innerHTML = highlightSearchText(originalText, searchQuery);
+    });
+}
+
+// Функция получения названия категории
+function getCategoryName(category) {
+    const categoryNames = {
+        'military_operations': 'Военные операции',
+        'humanitarian_crisis': 'Гуманитарный кризис',
+        'economic_consequences': 'Экономические последствия',
+        'political_decisions': 'Политические решения',
+        'information_social': 'Информационно-социальные аспекты',
+        'ukraine': 'Украина',
+        'middle_east': 'Ближний восток',
+        'fake_news': 'Фейки',
+        'info_war': 'Инфовойна',
+        'europe': 'Европа',
+        'usa': 'США',
+        'other': 'Другое'
+    };
+    return categoryNames[category] || category;
+}
+
+// Обработчик закрытия модального окна при клике вне его
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('newsModal');
+    if (modal && event.target === modal) {
+        modal.style.display = 'none';
+    }
+});
+
 
 // Функция открытия модального окна выбора парсеров
 function openParserSelectionModal() {
@@ -1038,7 +1132,6 @@ function loadSocialMediaData() {
         })
         .then(data => {
             updateSocialMediaTable(data);
-            updatePagination(data.total_pages || 1, currentPage);
             showLoading(false);
         })
         .catch(error => {
@@ -1049,22 +1142,27 @@ function loadSocialMediaData() {
 }
 
 function updateSocialMediaTable(data) {
-    // Обновляем заголовки таблицы для социальных сетей
-    const headers = getSocialMediaHeaders(currentSource);
-    tableHeader.innerHTML = headers.map(header => `<th>${header}</th>`).join('');
+    // Получаем контейнер для новостей
+    const newsContainer = document.getElementById('newsContainer') || createNewsContainer();
     
-    // Очищаем тело таблицы
-    tableBody.innerHTML = '';
+    // Очищаем контейнер
+    newsContainer.innerHTML = '';
     
     if (!data.posts || data.posts.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="100%" class="no-data">Нет данных для отображения</td></tr>';
+        newsContainer.innerHTML = `
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle"></i>
+                <h5>Нет данных для отображения</h5>
+                <p>Попробуйте изменить фильтры или период времени</p>
+            </div>
+        `;
         return;
     }
     
-    // Заполняем таблицу данными
+    // Создаем карточки для каждого поста
     data.posts.forEach(post => {
-        const row = createSocialMediaRow(post, currentSource);
-        tableBody.appendChild(row);
+        const newsCard = createNewsCard(post);
+        newsContainer.appendChild(newsCard);
     });
     
     // Подсвечиваем результаты поиска если есть поисковый запрос

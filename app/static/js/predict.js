@@ -348,123 +348,204 @@ function displayMilitaryForecast(militaryForecast) {
 }
 
 function displayCharts(data) {
-    // Старая функция для совместимости
-    console.log('Displaying charts with data:', data);
+    const chartContainer = document.getElementById('forecast-chart');
+    
+    // Отображаем график напряженности
+    if (data.tension_chart_url) {
+        console.log('Creating tension chart with URL:', data.tension_chart_url);
+        const tensionChart = document.createElement('img');
+        tensionChart.src = data.tension_chart_url;
+        tensionChart.alt = 'График прогноза напряженности';
+        tensionChart.className = 'forecast-chart-img';
+        tensionChart.onload = function() {
+            console.log('Tension chart loaded successfully');
+        };
+        tensionChart.onerror = function() {
+            console.error('Failed to load tension chart:', this.src);
+        };
+        chartContainer.appendChild(tensionChart);
+    }
+    
+    // Отображаем график тем
+    if (data.topics_chart_url) {
+        console.log('Creating topics chart with URL:', data.topics_chart_url);
+        const topicsChart = document.createElement('img');
+        topicsChart.src = data.topics_chart_url;
+        topicsChart.alt = 'График прогноза тем';
+        topicsChart.className = 'forecast-chart-img';
+        topicsChart.onload = function() {
+            console.log('Topics chart loaded successfully');
+        };
+        topicsChart.onerror = function() {
+            console.error('Failed to load topics chart:', this.src);
+        };
+        chartContainer.appendChild(topicsChart);
+    }
 }
 
 // Функция для генерации прогноза социальной напряженности
 function generateForecast() {
-    const prompt = document.getElementById('ai-prompt').value;
-    const responseBox = document.getElementById('ai-response');
-    const chartContainer = document.getElementById('forecast-chart');
-    const temperature = parseFloat(document.getElementById('temperature').value) || 0.7;
-    const maxTokens = parseInt(document.getElementById('max_tokens').value) || 2048;
-    
-    // Получаем выбранные пользователем параметры
-    const newsCategory = document.getElementById('news-category').value;
+    const category = document.getElementById('news-category').value;
     const analysisPeriod = parseInt(document.getElementById('analysis-period').value);
     const forecastPeriod = parseInt(document.getElementById('forecast-period').value);
+    const aiPrompt = document.getElementById('ai-prompt').value;
     
-    // Показываем индикатор загрузки и текст "генерирую прогноз..."
+    const responseBox = document.getElementById('ai-response');
+    const chartContainer = document.getElementById('forecast-chart');
+    
     responseBox.innerHTML = '<span class="thinking-text">Генерирую прогноз...</span>';
     responseBox.classList.add('loading');
     chartContainer.innerHTML = '';
     
-    // Формируем системный промт для Cloud.ru AI с инструкциями по анализу данных
-    const systemPrompt = `Ты - аналитик социальной напряженности. Проанализируй новостные статьи и дай текстовый прогноз развития ситуации. 
-
-Формат ответа:
-1) Краткий анализ текущей ситуации на основе новостей
-2) Прогноз развития событий на ближайшие дни
-3) Ключевые факторы влияния
-4) Возможные сценарии развития
-
-Отвечай текстом, без цифр и числовых индексов. Фокусируйся на качественном анализе событий.`;
-    
-    // Сначала отправляем запрос к AI для анализа данных и создания прогноза
-    const userPrompt = prompt.trim() ? prompt : 'Проанализируй новостные статьи и дай текстовый прогноз развития ситуации';
-    const aiPrompt = `${userPrompt}. Категория: ${getReadableCategoryName(newsCategory)}, период анализа: ${getReadableTimePeriod(analysisPeriod)}, прогноз на: ${getReadableTimePeriod(forecastPeriod)}. Дай качественный анализ без числовых данных.`;
-    
-    // Отправляем запрос к AI для получения прогноза
-    const aiioEndpoint = '/api/aiio/chat';
-    const aiioRequestBody = {
-        prompt: aiPrompt,
-        system_prompt: systemPrompt,
-        temperature: temperature,
-        max_tokens: maxTokens
-    };
-    
-    fetch(aiioEndpoint, {
+    // Вызов API прогнозирования
+    fetch('/api/forecast/generate_forecast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(aiioRequestBody)
+        body: JSON.stringify({
+            category: category,
+            analysis_period: analysisPeriod,
+            forecast_period: forecastPeriod,
+            prompt: aiPrompt // опциональный параметр для уточнения
+        })
     })
     .then(res => res.json())
-    .then(aiioData => {
-        if (aiioData.status === 'success') {
-            // Отображаем текстовый ответ AI
-            responseBox.classList.remove('loading');
-            const formattedResponse = aiioData.response
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>');
+    .then(data => {
+        responseBox.classList.remove('loading');
+        
+        if (data.status === 'success') {
+            // Отображение результата прогноза
+            displayForecastResult(data);
             
-            responseBox.innerHTML = formattedResponse;
-            
-            // Отображение информации об использовании токенов
-            if (aiioData.usage) {
-                const usedTokens = aiioData.usage.total_tokens || 0;
-                currentTokenBalance -= usedTokens;
-                if (currentTokenBalance < 0) currentTokenBalance = 0;
-                updateTokenBalance(currentTokenBalance);
-                
-                const usageInfo = document.createElement('div');
-                usageInfo.className = 'usage-info';
-                usageInfo.textContent = `Использовано токенов: ${usedTokens}`;
-                responseBox.appendChild(usageInfo);
+            // Генерация графиков через /api/chart/generate_charts
+            if (data.forecast_data) {
+                generateCharts(data.forecast_data, category);
             }
-            
-            // Теперь генерируем графики на основе прогноза AI
-            return generateChartsFromAIResponse(aiioData.response, newsCategory, forecastPeriod);
         } else {
-            throw new Error(aiioData.message || 'Ошибка при получении прогноза от AI');
+            responseBox.innerHTML = `<span style="color: #ff7043;">Ошибка: ${data.message}</span>`;
         }
     })
-    .then(chartData => {
-        if (chartData) {
-            // Отображаем сгенерированные графики
-            if (chartData.tension_chart_url) {
-                console.log('Creating tension chart with URL:', chartData.tension_chart_url);
-                const tensionChart = document.createElement('img');
-                tensionChart.src = chartData.tension_chart_url;
-                tensionChart.alt = 'График прогноза напряженности';
-                tensionChart.className = 'forecast-chart-img';
-                tensionChart.onload = function() {
-                    console.log('Tension chart loaded successfully');
-                };
-                tensionChart.onerror = function() {
-                    console.error('Failed to load tension chart:', this.src);
-                };
-                chartContainer.appendChild(tensionChart);
+    .catch(error => {
+        responseBox.classList.remove('loading');
+        responseBox.innerHTML = `<span style="color: #ff7043;">Ошибка: ${error.message}</span>`;
+    });
+}
+
+function displayForecastResult(data) {
+    const responseBox = document.getElementById('ai-response');
+    
+    // Форматирование и отображение результата прогноза
+    let resultHtml = '';
+    
+    if (data.forecast_data) {
+        const forecast = data.forecast_data;
+        
+        // Отображаем анализ
+        if (forecast.analysis) {
+            resultHtml += `<div class="forecast-section">
+                <h4>📊 Анализ текущей ситуации</h4>
+                <p>${forecast.analysis}</p>
+            </div>`;
+        }
+        
+        // Отображаем прогноз
+        if (forecast.forecast) {
+            resultHtml += `<div class="forecast-section">
+                <h4>🔮 Прогноз развития</h4>
+                <p>${forecast.forecast}</p>
+            </div>`;
+        }
+        
+        // Отображаем ключевые факторы
+        if (forecast.key_factors) {
+            resultHtml += `<div class="forecast-section">
+                <h4>⚡ Ключевые факторы влияния</h4>
+                <ul>`;
+            forecast.key_factors.forEach(factor => {
+                resultHtml += `<li>${factor}</li>`;
+            });
+            resultHtml += `</ul></div>`;
+        }
+        
+        // Отображаем сценарии
+        if (forecast.scenarios) {
+            resultHtml += `<div class="forecast-section">
+                <h4>🎯 Возможные сценарии</h4>
+                <ul>`;
+            forecast.scenarios.forEach(scenario => {
+                resultHtml += `<li>${scenario}</li>`;
+            });
+            resultHtml += `</ul></div>`;
+        }
+        
+        // Отображаем статистику
+        if (forecast.statistics) {
+            resultHtml += `<div class="forecast-section">
+                <h4>📈 Статистика</h4>
+                <div class="forecast-stats">`;
+            
+            if (forecast.statistics.historical_points) {
+                resultHtml += `<div class="stat-item">
+                    <strong>📊 Исторических точек:</strong> ${forecast.statistics.historical_points}
+                </div>`;
             }
             
-            if (chartData.topics_chart_url) {
-                console.log('Creating topics chart with URL:', chartData.topics_chart_url);
-                const topicsChart = document.createElement('img');
-                topicsChart.src = chartData.topics_chart_url;
-                topicsChart.alt = 'График распределения тем';
-                topicsChart.className = 'forecast-chart-img';
-                topicsChart.onload = function() {
-                    console.log('Topics chart loaded successfully');
-                };
-                topicsChart.onerror = function() {
-                    console.error('Failed to load topics chart:', this.src);
-                };
-                chartContainer.appendChild(topicsChart);
+            if (forecast.statistics.forecast_points) {
+                resultHtml += `<div class="stat-item">
+                    <strong>🔮 Прогнозных точек:</strong> ${forecast.statistics.forecast_points}
+                </div>`;
             }
+            
+            if (forecast.statistics.average_tension) {
+                resultHtml += `<div class="stat-item">
+                    <strong>📈 Средняя напряженность:</strong> ${forecast.statistics.average_tension}%
+                </div>`;
+            }
+            
+            if (forecast.statistics.trend) {
+                resultHtml += `<div class="stat-item">
+                    <strong>📉 Тренд:</strong> ${forecast.statistics.trend}
+                </div>`;
+            }
+            
+            resultHtml += `</div></div>`;
+        }
+    }
+    
+    // Если есть AI ответ, добавляем его
+    if (data.ai_response) {
+        resultHtml += `<div class="forecast-section">
+            <h4>🤖 Дополнительный анализ AI</h4>
+            <div class="ai-response">${data.ai_response.replace(/\n/g, '<br>')}</div>
+        </div>`;
+    }
+    
+    responseBox.innerHTML = resultHtml || '<p>Прогноз успешно сгенерирован. Графики загружаются...</p>';
+}
+
+function generateCharts(forecastData, category) {
+    const chartContainer = document.getElementById('forecast-chart');
+    
+    // Вызов API для генерации графиков
+    fetch('/api/chart/generate_charts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            forecast_data: forecastData,
+            category: category
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Отображение графиков
+            displayCharts(data);
+        } else {
+            console.error('Ошибка генерации графиков:', data.message);
         }
     })
-
+    .catch(error => {
+        console.error('Ошибка при генерации графиков:', error);
+    });
 }
 
 // Функция для генерации графиков на основе ответа AI

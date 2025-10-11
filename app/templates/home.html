@@ -49,14 +49,39 @@
 <div class="pagination" id="pagination"></div>
 
 <!-- Модальное окно -->
-<div id="news-modal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2 id="modal-title"></h2>
-        <p id="modal-source"></p>
-        <p id="modal-date"></p>
-        <p id="modal-content"></p>
-        <a id="modal-link" href="#" target="_blank" style="display: none;">Перейти по ссылке</a>
+<div id="newsModal" class="news-modal-overlay">
+    <div class="news-modal-content">
+        <div class="news-modal-header">
+            <h2 id="modalTitle">Заголовок</h2>
+            <button class="news-modal-close" onclick="closeNewsModal()">×</button>
+        </div>
+        <div class="news-modal-body">
+            <div class="news-modal-meta">
+                <div class="news-modal-meta-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <strong>Дата:</strong> <span id="modalDate"></span>
+                </div>
+                <div class="news-modal-meta-item">
+                    <i class="fas fa-newspaper"></i>
+                    <strong>Источник:</strong> <span id="modalSource"></span>
+                </div>
+                <div class="news-modal-meta-item">
+                    <i class="fas fa-tag"></i>
+                    <strong>Категория:</strong> <span id="modalCategory"></span>
+                </div>
+                <div class="news-modal-meta-item">
+                    <i class="fas fa-chart-line"></i>
+                    <strong>Напряженность:</strong> <span id="modalTension"></span>
+                </div>
+            </div>
+            <div class="news-modal-content-text" id="modalContent"></div>
+        </div>
+        <div class="news-modal-footer">
+            <a id="modalLink" href="#" target="_blank" class="news-modal-link">
+                <i class="fas fa-external-link-alt"></i>
+                Читать на источнике
+            </a>
+        </div>
     </div>
 </div>
 {% endblock %}

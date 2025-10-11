@@ -991,9 +991,13 @@ def get_latest_news():
     try:
         days = request.args.get('days', 7, type=int)
         category = request.args.get('category', 'all')
+        source = request.args.get('source', None)
+        limit = request.args.get('limit', 20, type=int)
+        offset = request.args.get('offset', 0, type=int)
         
-        # Инициализируем клиент ClickHouse
+        # Инициализируем клиент ClickHouse и анализатор напряженности
         client = get_clickhouse_client()
+        tension_analyzer = get_tension_analyzer()
         
         # Определяем таблицу для запроса
         if category == 'all':
@@ -1008,6 +1012,11 @@ def get_latest_news():
         if category != 'all':
             category_condition = f"AND category = '{category}'"
         
+        # Условие для источника
+        source_condition = ""
+        if source and source != 'all':
+            source_condition = f"AND source = '{source}'"
+        
         # Запрос для получения последних новостей с новыми полями
         query = f"""
         SELECT title, content, published_date, category, source,
@@ -1018,29 +1027,54 @@ def get_latest_news():
         FROM {table_source}
         WHERE published_date >= today() - {days}
         {category_condition}
+        {source_condition}
         ORDER BY published_date DESC
-        LIMIT 20
+        LIMIT {limit} OFFSET {offset}
         """
         
         result = client.execute(query)
         
         latest_news = []
         for title, content, pub_date, cat, site_name, tension_idx, spike_idx, ai_cat, ai_conf in result:
+            # Используем данные из базы, если они есть и больше 0, иначе анализируем
+            if tension_idx > 0:
+                calculated_tension = safe_float(tension_idx)
+                calculated_spike = safe_float(spike_idx)
+            else:
+                # Fallback к анализу текста для правильного расчета напряженности
+                text = f"{title} {content or ''}"
+                metrics = tension_analyzer.analyze_text_tension(text, title)
+                calculated_tension = safe_float(metrics.tension_score) * 100
+                calculated_spike = calculated_tension * 0.8  # Примерное соотношение
+            
             latest_news.append({
                 'title': title,
-                'content': content[:200] + '...' if content and len(content) > 200 else content,
+                'content': content,  # Возвращаем полное содержимое без обрезания
                 'published_date': pub_date.strftime('%Y-%m-%d %H:%M') if pub_date else 'Неизвестно',
                 'category': ai_cat or cat,
                 'source': site_name,
-                'tension_index': round(safe_float(tension_idx), 2),
-                'spike_index': round(safe_float(spike_idx), 2),
+                'tension_index': round(calculated_tension, 2),
+                'spike_index': round(calculated_spike, 2),
                 'ai_confidence': round(safe_float(ai_conf), 2)
             })
+        
+        # Получаем общее количество записей для пагинации
+        count_query = f"""
+        SELECT COUNT(*)
+        FROM {table_source}
+        WHERE published_date >= today() - {days}
+        {category_condition}
+        {source_condition}
+        """
+        total_count_result = client.execute(count_query)
+        total_count = total_count_result[0][0] if total_count_result else len(latest_news)
         
         return jsonify({
             'status': 'success',
             'latest_news': latest_news,
-            'total_count': len(latest_news)
+            'total_count': total_count,
+            'current_page': (offset // limit) + 1,
+            'total_pages': math.ceil(total_count / limit) if total_count > 0 else 1
         })
         
     except Exception as e:
