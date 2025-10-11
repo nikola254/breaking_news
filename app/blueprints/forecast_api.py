@@ -25,7 +25,7 @@ from collections import Counter
 from app.utils.ukraine_sentiment_analyzer import get_ukraine_sentiment_analyzer
 
 # РЎРѕР·РґР°РµРј Blueprint РґР»СЏ API РїСЂРѕРіРЅРѕР·РѕРІ
-forecast_api_bp = Blueprint('forecast_api', __name__, url_prefix='/api')
+forecast_api_bp = Blueprint('forecast_api', __name__, url_prefix='/api/forecast')
 
 def get_clickhouse_client():
     """РЎРѕР·РґР°РЅРёРµ РєР»РёРµРЅС‚Р° РґР»СЏ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє ClickHouse.
