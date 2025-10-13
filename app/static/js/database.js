@@ -339,13 +339,13 @@ function createNewsCard(item) {
         source = item.source || 'Неизвестный источник';
         url = item.url || '#';
     } else {
-        // Для социальных сетей
-        title = item.text ? item.text.substring(0, 100) + '...' : 'Пост без текста';
-        content = item.text || 'Содержимое недоступно';
+        // Для социальных сетей - показываем реальный контент
+        title = item.text ? item.text.substring(0, 100) + '...' : (item.title || 'Пост без текста');
+        content = item.text || item.content || 'Содержимое недоступно';
         date = item.date || 'Дата неизвестна';
-        category = 'Социальная сеть';
-        tension = '0.0%';
-        spike = '0.0%';
+        category = item.category || 'Социальная сеть';
+        tension = item.tension_score ? item.tension_score.toFixed(1) + '%' : '0.0%';
+        spike = item.spike || item.spike_index || item.spike_score ? (item.spike || item.spike_index || item.spike_score).toFixed(1) + '%' : '0.0%';
         source = currentSource.toUpperCase();
         url = item.url || '#';
     }

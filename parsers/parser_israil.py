@@ -13,13 +13,11 @@ import sys
 import os
 
 # Добавляем путь к парсерам для импорта модулей
-import sys
-import os
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 
-from parsers.gen_api_classifier import GenApiNewsClassifier
-from parsers.news_categories import classify_news, create_category_tables
-from parsers.ukraine_relevance_filter import filter_ukraine_relevance
+from gen_api_classifier import GenApiNewsClassifier
+from news_categories import classify_news, create_category_tables
+from ukraine_relevance_filter import filter_ukraine_relevance
 
 # Добавляем корневую директорию проекта в sys.path для импорта config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -97,7 +95,7 @@ def get_page_content(driver, url, wait_for_class=None, timeout=20):
         logger.error(f"Error getting page content: {e}")
         return None
 
-def parse_israil_news(driver=None):
+def parse_israil_news(driver=None, limit=None):
     """Parse news from 7kanal.co.il"""
     create_driver = driver is None
     
@@ -139,6 +137,11 @@ def parse_israil_news(driver=None):
         articles = soup.find_all('article', class_='category-item')
         logger.info(f"Found {len(articles)} articles")
         
+        # Применяем лимит если указан
+        if limit:
+            articles = articles[:limit]
+            logger.info(f"Ограничение парсинга: обрабатываем только {len(articles)} статей")
+        
         for article in articles:
             try:
                 # Extract title and link
@@ -178,6 +181,11 @@ def parse_israil_news(driver=None):
                             paragraphs = content_div.find_all('p')
                             content = ' '.join([p.get_text(strip=True) for p in paragraphs])
                         
+                        # Проверка контента перед сохранением
+                        if not content or len(content.strip()) < 100:
+                            logger.warning(f"Пропуск статьи '{title}' - недостаточно контента (длина: {len(content) if content else 0})")
+                            continue
+                        
                         # Extract source links
                         source_link_elements = article_soup.find_all('a', href=True)
                         for link_elem in source_link_elements:
@@ -201,8 +209,28 @@ def parse_israil_news(driver=None):
                 logger.info(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f}, категория: {relevance_result['category']})")
                 logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
                 
-                # Используем категорию из фильтра релевантности
-                category = relevance_result.get('category', 'other')
+                # Дополнительная классификация через Gen-API для получения индексов напряженности
+                try:
+                    classifier = GenApiNewsClassifier()
+                    ai_result = classifier.classify(title, content)
+                    
+                    # Используем результаты Gen-API классификации
+                    category = ai_result['category_name']
+                    social_tension_index = ai_result['social_tension_index']
+                    spike_index = ai_result['spike_index']
+                    ai_confidence = ai_result['confidence']
+                    ai_category = ai_result['category_name']
+                    
+                    logger.info(f"Gen-API классификация: {category} (напряженность: {social_tension_index}, всплеск: {spike_index})")
+                    
+                except Exception as e:
+                    logger.warning(f"Ошибка Gen-API классификации: {e}")
+                    # Fallback к результатам фильтра релевантности
+                    category = relevance_result.get('category', 'other')
+                    social_tension_index = 0.0
+                    spike_index = 0.0
+                    ai_confidence = 0.0
+                    ai_category = category
 
                 if not category or category is None:
                     category = 'other'
@@ -220,6 +248,11 @@ def parse_israil_news(driver=None):
                     'content': content,
                     'source_links': source_links_str,
                     'category': category,
+                    'social_tension_index': social_tension_index,
+                    'spike_index': spike_index,
+                    'ai_category': ai_category,
+                    'ai_confidence': ai_confidence,
+                    'ai_classification_metadata': 'gen_api_classification',
                     'published_date': datetime.now()
                 })
                 
@@ -231,7 +264,7 @@ def parse_israil_news(driver=None):
         if headlines_data:
             # Вставляем в общую таблицу
             client.execute(
-                'INSERT INTO news.israil_headlines (title, link, content, source_links, category, published_date) VALUES',
+                'INSERT INTO news.israil_headlines (title, link, content, source_links, category, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata, published_date) VALUES',
                 headlines_data
             )
             
@@ -408,6 +441,8 @@ if __name__ == "__main__":
     if args.monitor:
         continuous_monitoring(args.interval)
     else:
-        # Run once
+        # Run once by default
+        logger.info("Запуск парсера 7kanal.co.il в режиме однократного запуска")
         create_ukraine_tables_if_not_exists()
-        parse_israil_news()
+        parse_israil_news(limit=args.limit)
+        logger.info("Парсер 7kanal.co.il завершил работу")

@@ -34,7 +34,7 @@ def init_socketio(app_socketio):
     global socketio
     socketio = app_socketio
 
-def run_parser_with_logging(parser_path, source_name):
+def run_parser_with_logging(parser_path, source_name, test_mode=False):
     """Запускает парсер и передает его вывод через WebSocket.
     
     Функция выполняет парсер в отдельном процессе и передает
@@ -44,6 +44,7 @@ def run_parser_with_logging(parser_path, source_name):
     Args:
         parser_path (str): Путь к файлу парсера
         source_name (str): Название источника для логирования
+        test_mode (bool): Если True, добавляет --limit 2 для тестирования
     """
     try:
         # Отправляем начальное сообщение
@@ -79,8 +80,19 @@ def run_parser_with_logging(parser_path, source_name):
                 'source': source_name
             })
         
+        # Формируем команду запуска
+        cmd = ['python', parser_path]
+        if test_mode:
+            cmd.extend(['--limit', '2'])
+            if socketio:
+                socketio.emit('parser_log', {
+                    'message': f'Тестовый режим: ограничение на 2 статьи',
+                    'type': 'info',
+                    'source': source_name
+                })
+        
         process = subprocess.Popen(
-            ['python', parser_path],
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
@@ -191,12 +203,13 @@ def run_parser_with_logging(parser_path, source_name):
                 'source': source_name
             })
 
-def run_universal_parser_with_logging(parser_path, site_url):
+def run_universal_parser_with_logging(parser_path, site_url, test_mode=False):
     """Запускает универсальный парсер с указанным URL и передает его вывод через WebSocket.
     
     Args:
         parser_path (str): Путь к файлу универсального парсера
         site_url (str): URL сайта для парсинга
+        test_mode (bool): Если True, добавляет --limit 2 для тестирования
     """
     try:
         source_name = f"universal_{site_url}"
@@ -219,9 +232,20 @@ def run_universal_parser_with_logging(parser_path, site_url):
                 })
             return
         
+        # Формируем команду запуска
+        cmd = ['python', parser_path, '--url', site_url]
+        if test_mode:
+            cmd.extend(['--limit', '2'])
+            if socketio:
+                socketio.emit('parser_log', {
+                    'message': f'Тестовый режим: ограничение на 2 статьи',
+                    'type': 'info',
+                    'source': source_name
+                })
+        
         # Запускаем процесс универсального парсера с URL в качестве аргумента
         process = subprocess.Popen(
-            ['python', parser_path, '--url', site_url],
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
@@ -322,22 +346,19 @@ def run_parser():
             else:
                 sources = [source]
         
+        # Получаем параметр тестового режима
+        test_mode = data.get('test_mode', False)
+        
         # Словарь всех доступных парсеров
         available_parsers = {
-            'ria': 'parser_ria.py',
             'lenta': 'parser_lenta.py',
             'rbc': 'parser_rbc.py',
             'gazeta': 'parser_gazeta.py',
             'kommersant': 'parser_kommersant.py',
+            'ria': 'parser_ria.py',
+            'rt': 'parser_rt.py',
             'tsn': 'parser_tsn.py',
             'unian': 'parser_unian.py',
-            'rt': 'parser_rt.py',
-            'cnn': 'parser_cnn.py',
-            'aljazeera': 'parser_aljazeera.py',
-            'reuters': 'parser_reuters.py',
-            'france24': 'parser_france24.py',
-            'dw': 'parser_dw.py',
-            'euronews': 'parser_euronews.py',
             'israil': 'parser_israil.py',
             'telegram': 'parser_telegram.py',
             'twitter': 'parser_twitter.py',
@@ -364,7 +385,7 @@ def run_parser():
             
             def run_specific_parser(name, file):
                 parser_path = os.path.join(basedir, 'parsers', file)
-                run_parser_with_logging(parser_path, name)
+                run_parser_with_logging(parser_path, name, test_mode)
             
             thread = threading.Thread(target=run_specific_parser, args=(parser_name, parser_file))
             thread.daemon = True
@@ -400,7 +421,7 @@ def run_parser():
                 
                 # Затем запускаем парсер
                 parser_path = os.path.join(basedir, 'parsers', 'universal_parser.py')
-                run_universal_parser_with_logging(parser_path, url)
+                run_universal_parser_with_logging(parser_path, url, test_mode)
             
             thread = threading.Thread(target=run_universal_parser_with_category_creation, args=(site_url,))
             thread.daemon = True

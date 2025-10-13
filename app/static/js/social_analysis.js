@@ -354,8 +354,9 @@ function formatKeywordResults(results) {
                     
                     // Отображаем выделенный текст
                     const displayContent = item.highlighted_text || item.content;
+                    const shortContent = displayContent.length > 200 ? displayContent.substring(0, 200) + '...' : displayContent;
                     html += `<td style="border-left: 4px solid ${threatColor}; padding-left: 8px; width: 100%;">`;
-                    html += `<div class="text-truncate" title="${item.content}">${displayContent}</div>`;
+                    html += `<div title="${item.content}">${shortContent}</div>`;
                     html += '</td>';
                     
                     html += `<td class="text-center"><span class="badge ${badgeClass}">${item.classification}</span></td>`;

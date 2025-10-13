@@ -1,0 +1,1698 @@
+{
+  "47f3608bd6b42958d8f75c49903dadd3": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "585bfb790e29220c4af0c67b41e3b9e2": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4a130cc1f58347beca9ed2e7235ec55f": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "d574c3d16eb01af23355cb802262fe4c": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "15dd385aba7025cccaff5c3884b9e1e3": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "147e2600c62615bbd67beedadce82bef": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "002f2fa86c83e8fb4991dd236594bedc": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "594564d23e519a32be0e15b8e29009d9": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "018bb4e44fbfee9c7ad07eba8de7ddd0": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "298e3a8c18a5d11f70c31ffcfcd264ed": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 60,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "bd0128c77b057a2ccee3fc8803e01713": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 85,
+    "spike_index": 90,
+    "confidence": 0.95,
+    "cached": false
+  },
+  "7f7250e6f79357766e1f071161b1252f": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "5cb51d7d571cecf347ee5f474e4e0ea4": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 20,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "26f7daf6a444cba15e93429db26c1118": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 85,
+    "spike_index": 90,
+    "confidence": 0.95,
+    "cached": false
+  },
+  "9818ad670327855ce34047a720e216f5": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "8d4d795e681d8448a5338e5f9bbdc739": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4d364c5e03408225cdd498e0b654ce7c": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "60e45925ec752456647aa769e4e8c8a7": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "c00e8e498ea5205b69c995af32634e81": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 60,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "36a46eebdebd5a0b80298fd675cbd38b": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 60,
+    "spike_index": 75,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4d2e251ec08c6691e0960dd1cb93bb56": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 40,
+    "spike_index": 60,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "c62976a74de09ae4fcb895b0b7ef4e52": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 40,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "06c900094bccf1c3bb5c5fcdcebfec42": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "07a6404225515582c2c47f7bd50e2112": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 85,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "fe060ca056f65d77dcccfd0fe364ece2": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "57997fba63c630e68e75d45d7499c954": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 85,
+    "spike_index": 90,
+    "confidence": 0.95,
+    "cached": false
+  },
+  "9ba7e737f9f1ce8d752304d8bf50b7b3": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 75,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "8a41a1ceb3a8c4d9847de98e84aaa507": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "272f927ac3071289b2deb0efdc909472": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "fdf8e645ecb37745a089ad5e0a68e4cd": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4b88b5f7151814631201573cb0bbe6ce": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 40,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "fbbdec8c03c8c7f96a1abae0297465ea": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 60,
+    "spike_index": 75,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "cde362c9652e4b78d2abd6a16181c396": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "291fc6c56bffbad713fb3fa11a5fadce": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 65,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "b0796a7ff96940af467aace56412149d": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "e8460a9c8738561b2b7cd6aa1e350cb7": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "3a0773a5e388cb325426bb420e239033": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "a8d4837f4266bc9592a645c55711cb05": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 85,
+    "spike_index": 90,
+    "confidence": 0.95,
+    "cached": false
+  },
+  "34be2d4403ab3d3263efe98e42e37145": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4f85526d929276807fcd91d234388951": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "f70dfc83cab20cef5b106d7fe1ae2c44": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 20,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "e1d8c0594da2d773450688f2e2e582f9": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 70,
+    "spike_index": 65,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "02de0160555308ac13425a6434b88c6d": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "3e4ac19bde4b8be61ca1b2cbebd10766": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "7c70c789d31754ca6d799e3764cb4d1e": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 50,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "bd5e9e1688a93d80e474f36a2ff6855f": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 60,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "5339e0c6824ea39348cb40d3918486ad": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "5e9ba21f6dfb807f1d493d2a6ab9dd1a": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 50,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "19c847e77f73434c7b189c8856c47fcb": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "de6889b448a9f71492325eccca313715": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 85,
+    "spike_index": 90,
+    "confidence": 0.95,
+    "cached": false
+  },
+  "5d46430648b1b354329f1844826316ea": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "0c499310d977f0d8b3f942be2f6c1b52": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 40,
+    "spike_index": 60,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "3fcbf53810e6bd494c975c658d9fea40": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "3bbc4bbc5b39337f9aaa230c2b543308": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "eda28fcc4de54bcd9a4c162fffbfffb5": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "39a4a09c8ec8d8963967cbdef5bb3838": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "c7908d337c2377eb450eaee018987bb9": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "e34f42b5a1e18e287cf7815ae703c029": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 60,
+    "spike_index": 75,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "5a9f0d39d8aa5b8b4a3eced9e3dad7d2": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "5e333f87f5f74c5d5fc9e85163223a78": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "18376d58610a36f6d2871d05eabc76a7": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 40,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "3bedca314687ce4a8e84f55b8653b6a0": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 20,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "e1fc4c9f3531c34b99b96af368ff6846": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "06bbb171810defa4aaed4ab7fb983543": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "f6051a8f311d04c848016a38c843117d": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "d50283dfa63dff4caae518768a9c6a91": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "7a8231184eb35e3b573d5d373018016f": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 65,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "6893745582018fba8ab2d29dfcaff248": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "b9342dc80d0e724709422a184593fe24": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "da060a99a144503d5e02ba078e877619": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "14405aca3f4d91ef0514dce29fc1818e": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "71f27b6b9875fd3310e38e811e182b6d": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "bfaf94a06d382458d3ad98ca8482b0cc": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "60d9a23023277352de3172182875b581": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "f2f8deb179b25227b82ef221668a96cf": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "dfec25f22937d6224b4702ab5ca9bcbc": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 40,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "881cec2c7e4b5af62302219949ca8697": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "2196d1b7b4ba2c3856e608715c0b616f": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "8c6fb6d22e2c33738c3681b8c754c3bb": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "3bee0d6e7ada75abf9a0b0f7e6793474": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "7d5adc6a04be3623689607b4f8b77f5a": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "fd75b358386a0b5ef8d4ecd9e4bf46ad": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 30,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "9795fc51f51077e0b55bda3f0ae09b3c": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "67c148ea5f1f008f5946c3293a33e8bb": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "97dfe18e03f9e3d667a38f194ec0dc80": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "6a4626019dba40fd7902878b479c9605": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 30,
+    "spike_index": 50,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "227603c6f5d42a0c24ae77dff808a604": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "461064afbc45e6079f9eaf7ddc806c31": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "d557c23d3f356c479ecb4b51975d7870": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4352ed753c581256874b2e6be7bdc8f5": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "dcefb6d620d11d45aef7a2b1cc6de1c2": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "c8a82277c4833ca4c82f44b070ba0c8f": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "23e638b6ad7e31d9a1dac69d50ebc902": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "a406ec78ec745370333c73749a4cfe5f": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "7a7fbad768a58a3dd590f2cb60e46be5": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "8485d9dfbfadb9c582f479032ec70b4a": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "b9bf45975203d55fe79387c3d7698461": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "9e2af1cc6aac1febad8f2f401ef77a87": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "98fb4021cea27834c73e218791000e35": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "d0c542f76e0065d23142a0342bf34f21": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 85,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "080122b7d6fc0d7a6a45ad47cac4689f": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "8715b807dcb6eba8b149ddfc140e094a": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 70,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "4c808d752aa4de21e553d263bce7bf3d": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 45,
+    "spike_index": 60,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "05428eb87887676da40c188bcc255aeb": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "edaa05164ee2b93024950f2c97accef1": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "ee82d655018c670fca3fa15e7a2899de": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "8c63e788a085be0531ae03d6c9a3b66b": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 60,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "f3071085dec0d64ea23547e39cbc0148": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "85aeeb96fdf36ae7de41b1edb8a83975": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 75,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4aa5d40f135dbfd5e73d8925d6db4b76": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 60,
+    "spike_index": 75,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "27c0e981d66aae600315f9208b6b8412": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "500b00220a2fd3984a916ea15bd52c17": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "e4d22f76c85821082716e04183883163": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "1084ebbdb8e919ab61a71fbbe8e0d2e7": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "c84b8b7d5270f1751e12fa96b966354a": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 20,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "17fe301462817636abf181e2ff34114a": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 70,
+    "spike_index": 65,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "bd8b46ce9913a6a4413c9dd1194ec834": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "307216a7d827a806680ab7fab23568b9": {
+    "category_id": "2",
+    "category_name": "humanitarian_crisis",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "36d118569519b9a63e058ad657851687": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "e1a14dfea52cf8a63203898059671bb1": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "3f76bfaa9cc71cc463f2d0b0e59d0845": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 85,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "788fb67cc678995d9b89060fcb1e1cc7": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "98402fea49d2ac3db031b65c26495b02": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "08b38f672629cd20d664f80e552b2c10": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "8872bc9f759d94696c75d11f0de2276b": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "dea32bea2dd54e38e8e7408f300f3a2f": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 65,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "db483484851caae9cff1dea22a6782f2": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "328139ccd439d66d865e52c02578d1c0": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "232cd0f21d3e9b937dab037749b9991d": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 60,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "3a779a8df9fb94670736502bb156cce6": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "366985bdee9053bd1f4e870f9f67c02b": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 75,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "9a86b4faa6613f81195e732e32b00c1f": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "b9d684ffad5a9ebce27be68948038392": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "687b913bf6a2461312e4829203dd4fd7": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "7efc5ac88aa2864e5b861ec3a0cc0756": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 40,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "b27d265742a723529435a21259103307": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 30,
+    "spike_index": 20,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "ac62b0fedecea7df4aed24ade30c3268": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "8cee64b608d371881bbe5ec95c808be5": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "6004151795b132a95ea9f5a981bab63c": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "0c50b5e733f8bf89001f66d3356a3778": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 85,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "097c7e999f7da1c017edac18e9aa2fad": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 85,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "c407ee547ba33ace22a87bf2aca41d9a": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 20,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "dbe645bce6bfa2b0e0fb074a4c01ad36": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 10,
+    "spike_index": 15,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "58b621a66696ed8a69709ba1d82eef8f": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "e27725ee296e161fe0455974ebd508b4": {
+    "category_id": "2",
+    "category_name": "humanitarian_crisis",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "c39eb7118b811c884f259294e3f4db8b": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "bc209d9c247207522a74b8044c04b5a6": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "80bdf5aa36b133493179dd0f48152d3c": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 85,
+    "spike_index": 90,
+    "confidence": 0.95,
+    "cached": false
+  },
+  "f150ead7e0ba6fb78efef089a1ec181b": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 30,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "a2abae5a7a4822b27e244146608879ed": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "05b771171fe329875ba38be9db5dbd0c": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 30,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "112ec30e6e5c6543add404c090e30ec8": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "15b1285f2998bb1c1ea8a198c8a12290": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 75,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "2fe932bbc4f4ad93647b5f7d1bf0033f": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "134f83333d99fb9b87ec57792415d47a": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "47fb9e23b90767e43073b441d29c62e6": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "da751d4d6b6b7e4f2e696ec3a667a300": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "03f88720384761c27ae32acb650e52ec": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "33ce2b6e4542a14ec7a39f91d7b2c61d": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 85,
+    "spike_index": 90,
+    "confidence": 0.95,
+    "cached": false
+  },
+  "2c5eda97aad58aec1561e802d12cb13f": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 75,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "b93bc787426cfefb3e3576a8af90082c": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "6105e5c1d540e6d173c1d9c2528d51c7": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "d8f19459907398cba1b4fef285c01b86": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "56156ff5c387cb4f141cdff539c2001d": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 40,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "b450efc92889ce466c93d4d72a2cbaf8": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 85,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "c784016697759579b5b85aeb67c849b0": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "7695f5a3ffba0bc0579dacfb3d5653ff": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "9efb851a4e5ae07f78b06b57a0a323ca": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "1ad1746c40ff697bfcb5d1afe361c7c3": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "d181a420316cf2ede5124aeb9f465155": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 85,
+    "spike_index": 90,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "975aae01fa55dffb2c5a20e9d0e256c4": {
+    "category_id": "2",
+    "category_name": "humanitarian_crisis",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "7ef9ec40848260791477f2e9624f29f6": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "8d225e4676ec9c35b24b827998958b0f": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 30,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "0fe4293e9bbf7822b9f7ed6ed8a131f6": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "b37ad143960af524a3b8006fb5f9a3fd": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "9f232210fa78f58fb3dd869a2e2ee7cd": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "8fedc20f6482cc2f0a17df5d4992cf86": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "b6c994f304e7fc3022c4351637600861": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "da24d39623a51f17d45b812a510a63e4": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.7,
+    "cached": false
+  },
+  "9aa4ca397983ab1e863a7943b6bd2f3a": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "3dce8ed767e69f769cac677885970f0c": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 85,
+    "spike_index": 90,
+    "confidence": 0.95,
+    "cached": false
+  },
+  "65a71813b589b225472878de41965bc9": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 60,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "5f97689cca14b108f3765561e4b73a25": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "cb7a89045f1c9ff101155345f470389e": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 65,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4fab551abb2c74beb0d550309c84505c": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "bd496872160fb12011d905bfecf373ec": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "fca0289238b312cf5c24fbcf745335cc": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "62748f9537925acdcab25b2d51511ad6": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "2c879de916c03741ddc93435ac69f0f9": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "52722dd998436f841cfc44c6f9fe246a": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 45,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "43d4f40e11ebb3bd22f6f2dac21f9ebc": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "025372cde320e2c9300cf8b0a5c8f2c8": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "de7330c92357709c01517d73fedf483a": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 15,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "67d072c51d8ebd53762e76dcb9f9b093": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4a36271de5b812f5d4fdf87c4c21c24e": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "56c395b36dd09c82f70383caa3e1aa5a": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 50,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "c3f9c24de0fcab371236d2b5116f7e45": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 85,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "7baf7b98c22a2050a6ba598f20925faf": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "fd3a8941a84f7a215d7fed9e37ac9a84": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 70,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "6a73c4535ce8fddf4f69beea7383466a": {
+    "category_id": "3",
+    "category_name": "economic_consequences",
+    "social_tension_index": 40,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "d714be163e2a37f56e0227b22d965823": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "7ab6537aa5b72e338d1d794b2f20f7e0": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "85659861e0074409a69bbb42ef344903": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 20,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "89dfb08154fa295e3f99b3baee161034": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "e88331cda87be4bcdc19216d15e148d8": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "706ca24abf00942ee94dd2576266c3be": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "3d57f60f21070a21f5845b204af16110": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "98d35bd137dbe19ded70eed6013d34dc": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  },
+  "22562efb09ee7811b8a84c1ddb449271": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 30,
+    "spike_index": 40,
+    "confidence": 0.8,
+    "cached": false
+  },
+  "f16290b79a6f32aa88820fac3dae6f7d": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 60,
+    "spike_index": 70,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "dbe2c9894de1397e68f5bb2fd2d7ae32": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 75,
+    "spike_index": 60,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "f3b2566165db2a92628906a9e84d6d96": {
+    "category_id": "4",
+    "category_name": "political_decisions",
+    "social_tension_index": 75,
+    "spike_index": 80,
+    "confidence": 0.9,
+    "cached": false
+  }
+}

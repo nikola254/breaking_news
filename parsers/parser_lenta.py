@@ -1,274 +1,215 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Парсер новостей с сайта Lenta.ru
-
-Этот модуль содержит функции для:
-- Парсинга новостей с главной страницы Lenta.ru
-- Извлечения полного содержимого статей
-- Автоматической категоризации новостей
-- Сохранения данных в ClickHouse
 """
 
-import requests
-from bs4 import BeautifulSoup
-from clickhouse_driver import Client
-from datetime import datetime
-import time
-import random
-from parsers.gen_api_classifier import GenApiNewsClassifier
-from parsers.news_categories import classify_news, create_category_tables
-from parsers.ukraine_relevance_filter import filter_ukraine_relevance
 import sys
 import os
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
 import logging
+from clickhouse_driver import Client
 
-# Добавляем корневую директорию проекта в sys.path для импорта config
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import Config
+# Добавляем путь к парсерам для импорта модулей
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+from gen_api_classifier import GenApiNewsClassifier
+from ukraine_relevance_filter import filter_ukraine_relevance
 
 # Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("lenta_parser.log"),
-        logging.StreamHandler()
-    ]
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def create_ukraine_tables_if_not_exists():
-    """Создание таблицы в ClickHouse для хранения новостей Lenta.ru"""
-    client = Client(
-        host=Config.CLICKHOUSE_HOST,
-        port=Config.CLICKHOUSE_NATIVE_PORT,
-        user=Config.CLICKHOUSE_USER,
-        password=Config.CLICKHOUSE_PASSWORD
-    )
+def get_clickhouse_client():
+    """Создает клиент ClickHouse с retry логикой"""
+    import time
+    max_retries = 3
     
-    # Create database if not exists
-    client.execute('CREATE DATABASE IF NOT EXISTS news')
-    
-    # Create table if not exists
-    client.execute('''
-        CREATE TABLE IF NOT EXISTS news.lenta_headlines (
-            id UUID DEFAULT generateUUIDv4(),
-            title String,
-            link String,
-            content String,
-            rubric String,
-            source String DEFAULT 'lenta.ru',
-            category String DEFAULT 'other',
-            published_date DateTime DEFAULT now()
-        ) ENGINE = MergeTree()
-        ORDER BY (published_date, id)
-    ''')
-    
-    # Создаем таблицы для каждой категории
-    create_category_tables(client)
+    for attempt in range(max_retries):
+        try:
+            # Добавляем корневую директорию проекта в sys.path для импорта config
+            sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from config import Config
+            
+            # Используем NATIVE_PORT для более стабильного подключения
+            client = Client(
+                host=Config.CLICKHOUSE_HOST,
+                port=Config.CLICKHOUSE_NATIVE_PORT or Config.CLICKHOUSE_PORT,
+                user=Config.CLICKHOUSE_USER,
+                password=Config.CLICKHOUSE_PASSWORD
+            )
+            
+            # Тестируем подключение
+            client.execute('SELECT 1')
+            logger.info(f"ClickHouse подключение успешно (попытка {attempt + 1})")
+            return client
+            
+        except Exception as e:
+            logger.warning(f"Попытка подключения к ClickHouse {attempt + 1}/{max_retries} неудачна: {e}")
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # Экспоненциальная задержка: 1s, 2s, 4s
+                logger.info(f"Ожидание {wait_time} секунд перед повторной попыткой...")
+                time.sleep(wait_time)
+            else:
+                logger.error(f"Не удалось подключиться к ClickHouse после {max_retries} попыток")
+                return None
 
 def get_article_content(url, headers):
-    """Извлечение полного содержимого статьи с Lenta.ru"""
+    """Получает содержимое статьи по URL"""
     try:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
         
-        soup = BeautifulSoup(response.content, "html.parser")
+        # Ищем основной контент статьи
+        content_div = soup.find('div', class_='topic-body__content')
+        if not content_div:
+            content_div = soup.find('div', class_='b-text')
         
-        # Поиск основного содержимого статьи
-        article_body = soup.find("div", class_="topic-body__content")
+        if content_div:
+            paragraphs = content_div.find_all('p')
+            content = ' '.join([p.get_text(strip=True) for p in paragraphs])
+            return content.strip()
         
-        if not article_body:
-            # Альтернативные селекторы для разных типов страниц
-            article_body = soup.find("div", class_="b-text")
-            
-        if not article_body:
-            article_body = soup.find("div", class_="js-topic__text")
-            
-        if not article_body:
-            return "Не удалось извлечь содержимое статьи"
+        return "Не удалось извлечь содержимое статьи"
+    except Exception as e:
+        logger.error(f"Ошибка получения контента статьи {url}: {e}")
+        return "Ошибка получения содержимого"
+
+def parse_lenta_news(limit=None):
+    """Парсит новости с Lenta.ru"""
+    try:
+        client = get_clickhouse_client()
+        if not client:
+            logger.error("Не удалось подключиться к ClickHouse")
+            return 0
         
-        # Извлечение параграфов
-        paragraphs = article_body.find_all(["p", "div"], class_=lambda x: x != "topic-header")
-        content = "\n\n".join([p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True)])
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
         
-        return content[:5000]  # Ограничиваем размер контента
+        url = "https://lenta.ru/"
+        logger.info(f"Получение новостей с {url}")
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Ищем ссылки на новости
+        news_links = []
+        for link in soup.find_all('a', href=True):
+            href = link.get('href')
+            if href and '/news/' in href and href not in news_links:
+                if href.startswith('/'):
+                    href = 'https://lenta.ru' + href
+                news_links.append(href)
+        
+        logger.info(f"Найдено {len(news_links)} новостных ссылок")
+        
+        if limit:
+            news_links = news_links[:limit]
+            logger.info(f"Ограничение парсинга: обрабатываем только {len(news_links)} статей")
+        
+        new_count = 0
+        
+        for link in news_links:
+            try:
+                # Получаем заголовок
+                title_elem = soup.find('a', href=link.replace('https://lenta.ru', ''))
+                if not title_elem:
+                    continue
+                
+                title = title_elem.get_text(strip=True)
+                if not title:
+                    continue
+                
+                # Получение полного содержимого статьи
+                content = get_article_content(link, headers)
+                
+                # Проверка контента перед сохранением
+                if not content or len(content.strip()) < 100:
+                    logger.warning(f"Пропуск статьи '{title}' - недостаточно контента (длина: {len(content) if content else 0})")
+                    continue
+                
+                # Проверяем релевантность к украинскому конфликту
+                logger.info("Проверка релевантности к украинскому конфликту...")
+                relevance_result = filter_ukraine_relevance(title, content)
+                
+                if not relevance_result['is_relevant']:
+                    logger.info(f"Статья не релевантна украинскому конфликту (score: {relevance_result['relevance_score']:.2f})")
+                    continue
+                
+                logger.info(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f}, категория: {relevance_result['category']})")
+                logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
+                
+                # Дополнительная классификация через Gen-API для получения индексов напряженности
+                try:
+                    classifier = GenApiNewsClassifier()
+                    ai_result = classifier.classify(title, content)
+                    
+                    # Используем результаты Gen-API классификации
+                    category = ai_result['category_name']
+                    social_tension_index = ai_result['social_tension_index']
+                    spike_index = ai_result['spike_index']
+                    ai_confidence = ai_result['confidence']
+                    ai_category = ai_result['category_name']
+                    
+                    logger.info(f"Gen-API классификация: {category} (напряженность: {social_tension_index}, всплеск: {spike_index})")
+                    
+                except Exception as e:
+                    logger.warning(f"Ошибка Gen-API классификации: {e}")
+                    # Fallback к результатам фильтра релевантности
+                    category = relevance_result.get('category', 'other')
+                    social_tension_index = 0.0
+                    spike_index = 0.0
+                    ai_confidence = 0.0
+                    ai_category = category
+
+                if not category or category is None:
+                    category = 'other'
+                
+                # Пропускаем статьи с категорией 'other' - они не нужны в БД
+                if category == 'other':
+                    logger.info(f"Пропущено (категория 'other'): {title[:50]}...")
+                    continue
+                
+                # Сохранение в основную таблицу с новыми полями
+                client.execute(
+                    'INSERT INTO news.lenta_headlines (title, link, content, source, category, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata, published_date) VALUES',
+                    [(title, link, content, 'lenta.ru', category, social_tension_index, spike_index, ai_category, ai_confidence, 'gen_api_classification', datetime.now())]
+                )
+                
+                logger.info(f"Добавлена статья: {title[:50]}...")
+                new_count += 1
+                
+            except Exception as e:
+                logger.error(f"Ошибка обработки статьи {link}: {e}")
+                continue
+        
+        logger.info(f"Парсинг завершен. Добавлено {new_count} новых статей")
+        return new_count
         
     except Exception as e:
-        logger.error(f"Ошибка при получении содержимого статьи {url}: {e}")
-        return "Ошибка при получении содержимого статьи"
+        logger.error(f"Ошибка парсинга Lenta.ru: {e}")
+        return 0
 
-def parse_lenta_news():
-    """Основная функция парсинга новостей с Lenta.ru"""
-    base_url = "https://lenta.ru"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3",
-        "Accept-Encoding": "gzip, deflate",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1"
-    }
-    
+def main(limit=None):
+    """Основная функция"""
     try:
-        response = requests.get(base_url, headers=headers, timeout=15)
-        response.raise_for_status()
-        logger.info(f"Успешно получена главная страница Lenta.ru")
-    except requests.RequestException as e:
-        logger.error(f"Ошибка при получении данных с Lenta.ru: {e}")
-        return
-
-    soup = BeautifulSoup(response.content, "html.parser")
-
-    # Поиск новостных блоков на главной странице
-    articles = []
-    
-    # Основные новости
-    main_news = soup.find_all("a", class_="card-full-news")
-    articles.extend(main_news)
-    
-    # Дополнительные новости
-    additional_news = soup.find_all("a", class_="card-mini")
-    articles.extend(additional_news)
-    
-    # Новости в ленте
-    feed_news = soup.find_all("a", class_="item")
-    articles.extend(feed_news)
-    
-    if not articles:
-        logger.warning("Не найдено новостных статей на главной странице")
-        return
-
-    logger.info(f"Найдено {len(articles)} новостных ссылок")
-
-    # Подключение к ClickHouse
-    client = Client(
-        host=Config.CLICKHOUSE_HOST,
-        port=Config.CLICKHOUSE_NATIVE_PORT,
-        user=Config.CLICKHOUSE_USER,
-        password=Config.CLICKHOUSE_PASSWORD
-    )
-    
-    # Получение существующих ссылок для избежания дубликатов
-    existing_links = set(row[0] for row in client.execute('SELECT link FROM news.lenta_headlines'))
-    
-    new_articles = 0
-    
-    for article in articles:
-        try:
-            # Извлечение ссылки
-            link = article.get('href')
-            if not link:
-                continue
-                
-            if not link.startswith('http'):
-                link = base_url + link
-            
-            # Проверка на дубликаты
-            if link in existing_links:
-                continue
-            
-            # Извлечение заголовка
-            title_elem = article.find(["h3", "h2", "span"], class_=lambda x: x and ("title" in x or "headline" in x))
-            if not title_elem:
-                title_elem = article.find("span")
-            
-            title = title_elem.get_text(strip=True) if title_elem else "Без заголовка"
-            
-            if len(title) < 10:  # Пропускаем слишком короткие заголовки
-                continue
-            
-            # Определение рубрики
-            rubric = "Общие новости"
-            rubric_elem = article.find_parent().find("span", class_="rubric")
-            if rubric_elem:
-                rubric = rubric_elem.get_text(strip=True)
-            
-            # Получение полного содержимого статьи
-            content = get_article_content(link, headers)
-            
-            # Проверяем релевантность к украинскому конфликту
-            logger.info("Проверка релевантности к украинскому конфликту...")
-            relevance_result = filter_ukraine_relevance(title, content)
-            
-            if not relevance_result['is_relevant']:
-                logger.info(f"Статья не релевантна украинскому конфликту (score: {relevance_result['relevance_score']:.2f})")
-                continue
-            
-            logger.info(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f}, категория: {relevance_result['category']})")
-            logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
-            
-            # Дополнительная классификация через Gen-API для получения индексов напряженности
-            try:
-                classifier = GenApiNewsClassifier()
-                ai_result = classifier.classify(title, content)
-                
-                # Используем результаты Gen-API классификации
-                category = ai_result['category_name']
-                social_tension_index = ai_result['social_tension_index']
-                spike_index = ai_result['spike_index']
-                ai_confidence = ai_result['confidence']
-                ai_category = ai_result['category_name']
-                
-                logger.info(f"Gen-API классификация: {category} (напряженность: {social_tension_index}, всплеск: {spike_index})")
-                
-            except Exception as e:
-                logger.warning(f"Ошибка Gen-API классификации: {e}")
-                # Fallback к результатам фильтра релевантности
-                category = relevance_result.get('category', 'other')
-                social_tension_index = 0.0
-                spike_index = 0.0
-                ai_confidence = 0.0
-                ai_category = category
-
-            if not category or category is None:
-                category = 'other'
-            
-            # Пропускаем статьи с категорией 'other' - они не нужны в БД
-            if category == 'other':
-                logger.info(f"Пропущено (категория 'other'): {title[:50]}...")
-                continue
-            
-            # Сохранение в основную таблицу с новыми полями
-            client.execute(
-                'INSERT INTO news.lenta_headlines (title, link, content, rubric, source, category, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata) VALUES',
-                [(title, link, content, rubric, 'lenta.ru', category, social_tension_index, spike_index, ai_category, ai_confidence, 'gen_api_classification')]
-            )
-            
-            # Сохранение в категорийную таблицу с новыми полями
-            category_table = f'news.lenta_{category}'
-            try:
-                client.execute(
-                    f'INSERT INTO {category_table} (title, link, content, source, category, published_date, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata) VALUES',
-                    [(title, link, content, 'lenta.ru', category, datetime.now(), social_tension_index, spike_index, ai_category, ai_confidence, 'gen_api_classification')]
-                )
-            except Exception as e:
-                logger.warning(f"Не удалось сохранить в категорийную таблицу {category_table}: {e}")
-            
-            new_articles += 1
-            logger.info(f"Добавлена новость: {title[:50]}... (категория: {category})")
-            
-            # Задержка между запросами
-            time.sleep(random.uniform(1, 3))
-            
-        except Exception as e:
-            logger.error(f"Ошибка при обработке статьи: {e}")
-            continue
-    
-    logger.info(f"Парсинг завершен. Добавлено {new_articles} новых статей")
-
-def main():
-    """Главная функция для запуска парсера"""
-    logger.info("Запуск парсера Lenta.ru")
-    
-    # Создание таблиц
-    create_ukraine_tables_if_not_exists()
-    
-    # Парсинг новостей
-    parse_lenta_news()
-    
-    logger.info("Парсер Lenta.ru завершил работу")
+        logger.info("Запуск парсера Lenta.ru")
+        new_count = parse_lenta_news(limit=limit)
+        logger.info(f"Парсер Lenta.ru завершил работу")
+        return new_count
+    except Exception as e:
+        logger.error(f"Критическая ошибка: {e}")
+        return 0
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description='Parser for Lenta.ru news')
+    parser.add_argument('--limit', type=int, default=None, help='Limit articles to parse (for testing)')
+    args = parser.parse_args()
+    
+    result = main(limit=args.limit)
+    sys.exit(0 if result > 0 else 1)

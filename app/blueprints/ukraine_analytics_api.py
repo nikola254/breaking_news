@@ -88,21 +88,15 @@ def build_union_query_for_category(category, days):
     # Список основных таблиц источников
     source_tables = [
         'telegram_headlines',
-        'ria_headlines', 
         'lenta_headlines',
         'rbc_headlines',
-        'cnn_headlines',
-        'reuters_headlines',
-        'aljazeera_headlines',
-        'bbc_headlines',
-        'dw_headlines',
-        'euronews_headlines',
-        'france24_headlines',
         'gazeta_headlines',
         'kommersant_headlines',
+        'ria_headlines',
         'rt_headlines',
         'tsn_headlines',
-        'unian_headlines'
+        'unian_headlines',
+        'israil_headlines',
     ]
     
     union_parts = []
@@ -1000,37 +994,71 @@ def get_latest_news():
         tension_analyzer = get_tension_analyzer()
         
         # Определяем таблицу для запроса
-        if category == 'all':
-            # Используем таблицу с данными, если universal_ukraine пуста
-            table_source = 'news.lenta_headlines'
+        source_table_map = {
+            'lenta': 'news.lenta_headlines',
+            'rbc': 'news.rbc_headlines',
+            'gazeta': 'news.gazeta_headlines',
+            'kommersant': 'news.kommersant_headlines',
+            'ria': 'news.ria_headlines',
+            'rt': 'news.rt_headlines',
+            'tsn': 'news.tsn_headlines',
+            'unian': 'news.unian_headlines',
+            'israil': 'news.israil_headlines',
+            'telegram': 'news.telegram_headlines'
+        }
+        
+        if source and source != 'all' and source in source_table_map:
+            # Используем конкретную таблицу для выбранного источника
+            table_source = source_table_map[source]
         else:
-            # Для всех категорий используем lenta_headlines
-            table_source = 'news.lenta_headlines'
+            # UNION ALL из всех таблиц для 'all' или неизвестного источника
+            table_source = 'UNION_ALL'
         
         # Условие для категории
         category_condition = ""
         if category != 'all':
             category_condition = f"AND category = '{category}'"
         
-        # Условие для источника
-        source_condition = ""
-        if source and source != 'all':
-            source_condition = f"AND source = '{source}'"
         
         # Запрос для получения последних новостей с новыми полями
-        query = f"""
-        SELECT title, content, published_date, category, source,
-               COALESCE(social_tension_index, 0) as tension_index,
-               COALESCE(spike_index, 0) as spike_index,
-               COALESCE(ai_category, category) as ai_category,
-               COALESCE(ai_confidence, 0) as ai_confidence
-        FROM {table_source}
-        WHERE published_date >= today() - {days}
-        {category_condition}
-        {source_condition}
-        ORDER BY published_date DESC
-        LIMIT {limit} OFFSET {offset}
-        """
+        if table_source == 'UNION_ALL':
+            # UNION ALL запрос из всех таблиц
+            union_parts = []
+            for source_name, table_name in source_table_map.items():
+                union_parts.append(f"""
+                    SELECT title, content, published_date, category, source,
+                           COALESCE(social_tension_index, 0) as tension_index,
+                           COALESCE(spike_index, 0) as spike_index,
+                           COALESCE(ai_category, category) as ai_category,
+                           COALESCE(ai_confidence, 0) as ai_confidence
+                    FROM {table_name}
+                    WHERE published_date >= today() - {days}
+                    {category_condition}
+                """)
+            
+            query = f"""
+            SELECT title, content, published_date, category, source,
+                   tension_index, spike_index, ai_category, ai_confidence
+            FROM (
+                {' UNION ALL '.join(union_parts)}
+            )
+            ORDER BY published_date DESC
+            LIMIT {limit} OFFSET {offset}
+            """
+        else:
+            # Запрос к конкретной таблице
+            query = f"""
+            SELECT title, content, published_date, category, source,
+                   COALESCE(social_tension_index, 0) as tension_index,
+                   COALESCE(spike_index, 0) as spike_index,
+                   COALESCE(ai_category, category) as ai_category,
+                   COALESCE(ai_confidence, 0) as ai_confidence
+            FROM {table_source}
+            WHERE published_date >= today() - {days}
+            {category_condition}
+            ORDER BY published_date DESC
+            LIMIT {limit} OFFSET {offset}
+            """
         
         result = client.execute(query)
         
@@ -1059,13 +1087,31 @@ def get_latest_news():
             })
         
         # Получаем общее количество записей для пагинации
-        count_query = f"""
-        SELECT COUNT(*)
-        FROM {table_source}
-        WHERE published_date >= today() - {days}
-        {category_condition}
-        {source_condition}
-        """
+        if table_source == 'UNION_ALL':
+            # UNION ALL запрос для подсчета
+            union_count_parts = []
+            for source_name, table_name in source_table_map.items():
+                union_count_parts.append(f"""
+                    SELECT COUNT(*) as cnt
+                    FROM {table_name}
+                    WHERE published_date >= today() - {days}
+                    {category_condition}
+                """)
+            
+            count_query = f"""
+            SELECT SUM(cnt) as total
+            FROM (
+                {' UNION ALL '.join(union_count_parts)}
+            )
+            """
+        else:
+            # Запрос к конкретной таблице для подсчета
+            count_query = f"""
+            SELECT COUNT(*)
+            FROM {table_source}
+            WHERE published_date >= today() - {days}
+            {category_condition}
+            """
         total_count_result = client.execute(count_query)
         total_count = total_count_result[0][0] if total_count_result else len(latest_news)
         
@@ -1901,8 +1947,6 @@ def get_heatmap_data():
             UNION ALL
             SELECT source, published_date, category FROM news.aljazeera_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
-            SELECT source, published_date, category FROM news.reuters_headlines WHERE published_date >= today() - {days} {category_condition}
-            UNION ALL
             SELECT source, published_date, category FROM news.france24_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
             SELECT source, published_date, category FROM news.dw_headlines WHERE published_date >= today() - {days} {category_condition}
@@ -1954,8 +1998,6 @@ def get_heatmap_data():
             SELECT source, published_date, category FROM news.cnn_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
             SELECT source, published_date, category FROM news.aljazeera_headlines WHERE published_date >= today() - {days} {category_condition}
-            UNION ALL
-            SELECT source, published_date, category FROM news.reuters_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
             SELECT source, published_date, category FROM news.france24_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
@@ -2296,8 +2338,6 @@ def get_territory_data():
             SELECT title, content, published_date, category, source FROM news.cnn_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
             SELECT title, content, published_date, category, source FROM news.aljazeera_headlines WHERE published_date >= today() - {days} {category_condition}
-            UNION ALL
-            SELECT title, content, published_date, category, source FROM news.reuters_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL
             SELECT title, content, published_date, category, source FROM news.france24_headlines WHERE published_date >= today() - {days} {category_condition}
             UNION ALL

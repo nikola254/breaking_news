@@ -19,6 +19,10 @@ from dotenv import load_dotenv
 # Добавляем корневую директорию проекта в sys.path для импорта config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
+
+# Добавляем путь к парсерам для импорта модулей
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+from gen_api_classifier import GenApiNewsClassifier
 from telethon import TelegramClient, events
 from telethon.tl.functions.messages import GetHistoryRequest
 
@@ -121,6 +125,24 @@ def clean_text(text):
     except UnicodeDecodeError:
         text = text.encode('utf-8', errors='replace').decode('utf-8')
     
+    # Проверка на сообщения состоящие только из эмодзи
+    emoji_pattern = r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002600-\U000027BF\U0001F900-\U0001F9FF\U0001F018-\U0001F0F5\U0001F200-\U0001F2FF]+'
+    emoji_only = re.sub(r'[^\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002600-\U000027BF\U0001F900-\U0001F9FF\U0001F018-\U0001F0F5\U0001F200-\U0001F2FF\s]', '', text).strip()
+    
+    # Если сообщение состоит только из эмодзи и пробелов - это спам
+    if emoji_only and len(emoji_only) > 0 and len(text.strip()) < 50:
+        return ""
+    
+    # Проверка на слишком много эмодзи (>30% от текста)
+    emoji_count = len(re.findall(emoji_pattern, text))
+    text_length = len(re.sub(emoji_pattern, '', text).strip())
+    if emoji_count > 0 and text_length > 0 and (emoji_count / (emoji_count + text_length)) > 0.3:
+        return ""
+    
+    # Проверка на слишком короткие сообщения без смысла
+    if len(text.strip()) < 20:
+        return ""
+    
     # Удаляем URL-адреса
     text = re.sub(r'https?://\S+', '', text)
     
@@ -138,6 +160,9 @@ def clean_text(text):
         r'[Ии]сточник:\s*@?\w+',  # Источник: @channel
         r'\|\s*[Пп]одпис',  # | Подпис
         r'🔔\s*[Пп]одпис',  # 🔔 Подпис
+        r'[Пп]одпис[ыь]вайся?\s*[❗️⚡🔥💥]*',  # Подписывайся!
+        r'[Пп]одпиш[иеу]тес?ь?\s*[❗️⚡🔥💥]*',  # Подпишитесь!
+        r'[Сс]ледите?\s+за\s+нами\s*[❗️⚡🔥💥]*',  # Следите за нами!
     ]
     
     for pattern in spam_patterns:
@@ -156,7 +181,7 @@ def clean_text(text):
     for line in lines:
         # Удаляем пустые строки и строки только из символов
         stripped = re.sub(r'[❗️⚡🔥💥🚨⭐️✅❌⛔️🔴🟢🔵⚪️🟡🟣🟤⬛️⬜️▪️▫️➡️🔔|—–-]+', '', line).strip()
-        if stripped:
+        if stripped and len(stripped) > 10:  # Минимальная длина строки
             clean_lines.append(line)
     
     text = '\n'.join(clean_lines)
@@ -167,6 +192,10 @@ def clean_text(text):
     # Удаляем оставшиеся одиночные эмодзи призывов
     text = re.sub(r'^\s*[❗️⚡🔥➡️🔔]\s*', '', text)
     text = re.sub(r'\s*[❗️⚡🔥➡️🔔]\s*$', '', text)
+    
+    # Финальная проверка - если после очистки осталось меньше 20 символов, это спам
+    if len(text.strip()) < 20:
+        return ""
     
     return text
 
@@ -204,7 +233,7 @@ def determine_category(title, content, channel):
         else:
             return 'information_social'
 
-async def parse_telegram_channels():
+async def parse_telegram_channels(limit=None):
     """Основная функция парсинга Telegram каналов.
     
     Подключается к Telegram API, получает сообщения из каналов,
@@ -253,7 +282,8 @@ async def parse_telegram_channels():
                 print(f"\nParsing channel: {channel}")
                 
                 # Get messages from channel
-                messages, entity = await get_telegram_messages(client, channel, limit=100)
+                messages_limit = limit if limit else 100
+                messages, entity = await get_telegram_messages(client, channel, limit=messages_limit)
                 
                 if not messages or not entity:
                     print(f"Could not get messages from {channel}")
@@ -279,9 +309,38 @@ async def parse_telegram_channels():
                     title = clean_text(title_match.group(1)) if title_match else "No title"
                     content = clean_text(message_text)
                     
-                    # Determine category using classifier
-                    category = determine_category(title, content, channel)
+                    # Пропускаем сообщения без контента после очистки
+                    if not content or len(content.strip()) < 20:
+                        print(f"Skipped spam/empty message: {message_text[:50]}...")
+                        continue
                     
+                    # Дополнительная классификация через Gen-API для получения индексов напряженности
+                    try:
+                        classifier = GenApiNewsClassifier()
+                        ai_result = classifier.classify(title, content)
+                        
+                        # Используем результаты Gen-API классификации
+                        category = ai_result['category_name']
+                        social_tension_index = ai_result['social_tension_index']
+                        spike_index = ai_result['spike_index']
+                        ai_confidence = ai_result['confidence']
+                        ai_category = ai_result['category_name']
+                        
+                        print(f"Gen-API классификация: {category} (напряженность: {social_tension_index}, всплеск: {spike_index})")
+                        
+                    except Exception as e:
+                        print(f"Ошибка Gen-API классификации: {e}")
+                        # Fallback к результатам improved_classifier
+                        category_result = determine_category(title, content, channel)
+                        if isinstance(category_result, tuple):
+                            category = category_result[0]  # Берем только название категории
+                        else:
+                            category = category_result
+                        social_tension_index = 0.0
+                        spike_index = 0.0
+                        ai_confidence = 0.0
+                        ai_category = category
+
                     # Skip if category is None (other category)
                     if category is None:
                         skipped_other_count += 1
@@ -312,13 +371,18 @@ async def parse_telegram_channels():
                         'message_link': message_link,
                         'category': category,
                         'source': 'telegram',
+                        'social_tension_index': social_tension_index,
+                        'spike_index': spike_index,
+                        'ai_category': ai_category,
+                        'ai_confidence': ai_confidence,
+                        'ai_classification_metadata': 'gen_api_classification',
                         'published_date': datetime.now()
                     })
                 
                 # Insert data into ClickHouse if we have any
                 if headlines_data:
                     clickhouse_client.execute(
-                        'INSERT INTO news.telegram_headlines (title, content, channel, message_id, message_link, category, source, published_date) VALUES',
+                        'INSERT INTO news.telegram_headlines (title, content, channel, message_id, message_link, category, source, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata, published_date) VALUES',
                         headlines_data
                     )
                     print(f"Added {len(headlines_data)} records to database from channel {channel}")
@@ -338,6 +402,20 @@ async def parse_telegram_channels():
     finally:
         await client.disconnect()
 
+def main(limit=None):
+    """Главная функция для запуска парсера"""
+    try:
+        print("Запуск парсера Telegram")
+        
+        # Парсинг каналов
+        asyncio.run(parse_telegram_channels(limit=limit))
+        
+        print("Парсер Telegram завершил работу")
+        sys.exit(0)
+    except Exception as e:
+        print(f"Критическая ошибка в парсере Telegram: {e}")
+        sys.exit(1)
+
 if __name__ == "__main__":
     # Create .env file if it doesn't exist
     if not os.path.exists('.env'):
@@ -353,4 +431,9 @@ if __name__ == "__main__":
         exit(1)
     
     # Run the parser
-    asyncio.run(parse_telegram_channels())
+    import argparse
+    parser = argparse.ArgumentParser(description='Parser for Telegram channels')
+    parser.add_argument('--limit', type=int, default=None, help='Limit messages to parse (for testing)')
+    args = parser.parse_args()
+    
+    main(limit=args.limit)

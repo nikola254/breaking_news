@@ -16,9 +16,14 @@ from clickhouse_driver import Client
 from datetime import datetime
 import time
 import random
-from parsers.gen_api_classifier import GenApiNewsClassifier
-from parsers.news_categories import classify_news, create_category_tables
-from parsers.ukraine_relevance_filter import filter_ukraine_relevance
+import sys
+import os
+# Добавляем путь к парсерам для импорта модулей
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+
+from gen_api_classifier import GenApiNewsClassifier
+from news_categories import classify_news, create_category_tables
+from ukraine_relevance_filter import filter_ukraine_relevance
 import sys
 import os
 import logging
@@ -99,7 +104,7 @@ def get_article_content(url, headers):
         logger.error(f"Ошибка при получении содержимого статьи {url}: {e}")
         return "Ошибка при получении содержимого статьи"
 
-def parse_tsn_news():
+def parse_tsn_news(limit=None):
     """Основная функция парсинга новостей с TSN.ua"""
     base_url = "https://tsn.ua"
     headers = {
@@ -155,6 +160,11 @@ def parse_tsn_news():
     
     new_articles = 0
     
+    # Применяем лимит если указан
+    if limit:
+        articles = articles[:limit]
+        logger.info(f"Ограничение парсинга: обрабатываем только {len(articles)} статей")
+    
     for article in articles:
         try:
             # Извлечение ссылки
@@ -208,8 +218,28 @@ def parse_tsn_news():
             logger.info(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f}, категория: {relevance_result['category']})")
             logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
             
-            # Используем категорию из фильтра релевантности
-            category = relevance_result.get('category', 'other')
+            # Дополнительная классификация через Gen-API для получения индексов напряженности
+            try:
+                classifier = GenApiNewsClassifier()
+                ai_result = classifier.classify(title, content)
+                
+                # Используем результаты Gen-API классификации
+                category = ai_result['category_name']
+                social_tension_index = ai_result['social_tension_index']
+                spike_index = ai_result['spike_index']
+                ai_confidence = ai_result['confidence']
+                ai_category = ai_result['category_name']
+                
+                logger.info(f"Gen-API классификация: {category} (напряженность: {social_tension_index}, всплеск: {spike_index})")
+                
+            except Exception as e:
+                logger.warning(f"Ошибка Gen-API классификации: {e}")
+                # Fallback к результатам фильтра релевантности
+                category = relevance_result.get('category', 'other')
+                social_tension_index = 0.0
+                spike_index = 0.0
+                ai_confidence = 0.0
+                ai_category = category
 
             if not category or category is None:
                 category = 'other'
@@ -219,18 +249,18 @@ def parse_tsn_news():
                 logger.info(f"Пропущено (категория 'other'): {title[:50]}...")
                 continue
             
-            # Сохранение в основную таблицу
+            # Сохранение в основную таблицу с новыми полями
             client.execute(
-                'INSERT INTO news.tsn_headlines (title, link, content, rubric, source, category) VALUES',
-                [(title, link, content, rubric, 'tsn.ua', category)]
+                'INSERT INTO news.tsn_headlines (title, link, content, rubric, source, category, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata, published_date) VALUES',
+                [(title, link, content, rubric, 'tsn.ua', category, social_tension_index, spike_index, ai_category, ai_confidence, 'gen_api_classification', datetime.now())]
             )
             
-            # Сохранение в категорийную таблицу
+            # Сохранение в категорийную таблицу с новыми полями
             category_table = f'news.tsn_{category}'
             try:
                 client.execute(
-                    f'INSERT INTO {category_table} (title, link, content, source, category, published_date) VALUES',
-                    [(title, link, content, 'tsn.ua', category, datetime.now())]
+                    f'INSERT INTO {category_table} (title, link, content, source, category, published_date, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata) VALUES',
+                    [(title, link, content, 'tsn.ua', category, datetime.now(), social_tension_index, spike_index, ai_category, ai_confidence, 'gen_api_classification')]
                 )
             except Exception as e:
                 logger.warning(f"Не удалось сохранить в категорийную таблицу {category_table}: {e}")
@@ -247,17 +277,27 @@ def parse_tsn_news():
     
     logger.info(f"Парсинг завершен. Добавлено {new_articles} новых статей")
 
-def main():
+def main(limit=None):
     """Главная функция для запуска парсера"""
-    logger.info("Запуск парсера TSN.ua")
-    
-    # Создание таблиц
-    create_ukraine_tables_if_not_exists()
-    
-    # Парсинг новостей
-    parse_tsn_news()
-    
-    logger.info("Парсер TSN.ua завершил работу")
+    try:
+        logger.info("Запуск парсера TSN.ua")
+        
+        # Создание таблиц
+        create_ukraine_tables_if_not_exists()
+        
+        # Парсинг новостей
+        parse_tsn_news(limit=limit)
+        
+        logger.info("Парсер TSN.ua завершил работу")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Критическая ошибка в парсере TSN.ua: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description='Parser for TSN.ua news')
+    parser.add_argument('--limit', type=int, default=None, help='Limit articles to parse (for testing)')
+    args = parser.parse_args()
+    
+    main(limit=args.limit)

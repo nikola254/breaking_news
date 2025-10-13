@@ -1,272 +1,238 @@
+#!/usr/bin/env python3
+"""
+Парсер новостей с сайта RIA.ru
+"""
+
+import sys
+import os
 import requests
 from bs4 import BeautifulSoup
-from clickhouse_driver import Client
 from datetime import datetime
-import time
-import random
-from parsers.gen_api_classifier import GenApiNewsClassifier
-from parsers.news_categories import classify_news, create_category_tables
-from parsers.ukraine_relevance_filter import filter_ukraine_relevance
-import sys
-import os
+import logging
+from clickhouse_driver import Client
 
 # Добавляем путь к парсерам для импорта модулей
-import sys
-import os
 sys.path.append(os.path.join(os.path.dirname(__file__)))
+from gen_api_classifier import GenApiNewsClassifier
+from ukraine_relevance_filter import filter_ukraine_relevance
 
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Добавляем корневую директорию проекта в sys.path для импорта config
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import Config
-
-
-def create_ukraine_tables_if_not_exists():
-    """Создает таблицы для украинских категорий"""
-    client = Client(
-        host=Config.CLICKHOUSE_HOST,
-        port=Config.CLICKHOUSE_NATIVE_PORT,
-        user=Config.CLICKHOUSE_USER,
-        password=Config.CLICKHOUSE_PASSWORD
-    )
-    
-    # Create database if not exists
-    client.execute('CREATE DATABASE IF NOT EXISTS news')
-    
-    # Создаем таблицы для украинских категорий
-    ukraine_categories = [
-        'military_operations',      # Военные операции
-        'humanitarian_crisis',      # Гуманитарный кризис
-        'economic_consequences',    # Экономические последствия
-        'political_decisions',      # Политические решения
-        'information_social',       # Информационно-социальные аспекты
-        'other'                     # Прочее
-    ]
-    
-    for category in ukraine_categories:
-        client.execute(f'''
-            CREATE TABLE IF NOT EXISTS news.ria_{category} (
-                id UUID DEFAULT generateUUIDv4(),
-                title String,
-                link String,
-                content String,
-                source String DEFAULT 'ria.ru',
-                category String DEFAULT '{category}',
-                relevance_score Float32 DEFAULT 0.0,
-                ai_confidence Float32 DEFAULT 0.0,
-                keywords_found Array(String) DEFAULT [],
-                sentiment_score Float32 DEFAULT 0.0,
-                published_date DateTime DEFAULT now()
-            ) ENGINE = MergeTree()
-            ORDER BY (published_date, id)
-        ''')
-
+def get_clickhouse_client():
+    """Создает клиент ClickHouse"""
+    try:
+        # Добавляем корневую директорию проекта в sys.path для импорта config
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from config import Config
+        client = Client(
+            host=Config.CLICKHOUSE_HOST,
+            port=Config.CLICKHOUSE_PORT,
+            user=Config.CLICKHOUSE_USER,
+            password=Config.CLICKHOUSE_PASSWORD
+        )
+        return client
+    except Exception as e:
+        logger.error(f"Ошибка подключения к ClickHouse: {e}")
+        return None
 
 def get_article_content(url, headers):
-    """Extract full content of an article"""
+    """Получает содержимое статьи по URL"""
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Ищем основной контент статьи
+        content_div = soup.find('div', class_='article__text')
+        if not content_div:
+            content_div = soup.find('div', class_='article-text')
+        
+        if content_div:
+            paragraphs = content_div.find_all('p')
+            content = ' '.join([p.get_text(strip=True) for p in paragraphs])
+            return content.strip()
+        
+        return "Не удалось извлечь содержимое статьи"
+    except Exception as e:
+        logger.error(f"Ошибка получения контента статьи {url}: {e}")
+        return "Ошибка получения содержимого"
+
+def parse_ria_news(limit=None):
+    """Парсит новости с RIA.ru"""
+    try:
+        client = get_clickhouse_client()
+        if not client:
+            logger.error("Не удалось подключиться к ClickHouse")
+            return 0
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        url = "https://ria.ru/"
+        logger.info(f"Получение новостей с {url}")
+        
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         
-        soup = BeautifulSoup(response.content, "html.parser")
+        soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Find the article content - adjust selectors based on RIA's HTML structure
-        article_body = soup.find("div", class_="article__body")
+        # Новые селекторы для поиска ссылок на новости
+        news_links = []
         
-        if not article_body:
-            return "Не удалось извлечь содержимое статьи"
+        # Ищем ссылки в различных блоках
+        link_selectors = [
+            'a[href*="/news/"]',
+            'a[href*="/articles/"]', 
+            'a[href*="/doc/"]',
+            'a[href*="/rubric/"]',
+            '.article a',
+            '.news-item a',
+            '.headline a',
+            '.title a',
+            'h1 a', 'h2 a', 'h3 a',
+            '.content a',
+            '.main a',
+            '.list-item a',
+            '.news-list a'
+        ]
         
-        # Extract paragraphs
-        paragraphs = article_body.find_all("div", class_="article__text")
-        content = "\n\n".join([p.get_text(strip=True) for p in paragraphs])
+        for selector in link_selectors:
+            links = soup.select(selector)
+            for link in links:
+                href = link.get('href')
+                if href and href not in news_links:
+                    if href.startswith('/'):
+                        href = 'https://ria.ru' + href
+                    elif href.startswith('http'):
+                        news_links.append(href)
+                    else:
+                        continue
         
-        return content
-    except Exception as e:
-        print(f"Ошибка при получении содержимого статьи {url}: {e}")
-        return "Ошибка при получении содержимого статьи"
-
-
-def parse_politics_headlines():
-    url = "https://ria.ru/world/"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    }
-    
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Проверка успешного запроса
-    except requests.RequestException as e:
-        print("Ошибка при получении данных:", e)
-        return
-
-    soup = BeautifulSoup(response.content, "html.parser")
-
-    # Замените 'YOUR_DIV_CLASS_NAME' на актуальное название класса для контейнера статьи
-    articles = soup.find_all("div", class_="list-item__content")
-    
-    if not articles:
-        print("Не найдено ни одного контейнера с указанным классом")
-        return
-
-    # Connect to ClickHouse
-    client = Client(
-        host=Config.CLICKHOUSE_HOST,
-        port=Config.CLICKHOUSE_NATIVE_PORT,
-        user=Config.CLICKHOUSE_USER,
-        password=Config.CLICKHOUSE_PASSWORD
-    )
-    
-    # Get existing links to avoid duplicates from all ukraine category tables
-    existing_links = set()
-    ukraine_categories = ['military_operations', 'humanitarian_crisis', 'economic_consequences', 
-                         'political_decisions', 'information_social', 'other']
-    
-    for category in ukraine_categories:
-        try:
-            links = client.execute(f'SELECT link FROM news.ria_{category}')
-            existing_links.update(row[0] for row in links)
-        except Exception as e:
-            print(f"Ошибка при получении существующих ссылок из ria_{category}: {e}")
-    
-    # Prepare data for batch insert
-    headlines_data = []
-    skipped_count = 0
-    new_count = 0
-
-    for article in articles:
-        # Ищем тег <a> с нужным классом внутри контейнера
-        link_tag = article.find("a", class_="list-item__title color-font-hover-only")
-        if link_tag:
-            title = link_tag.get_text(strip=True)
-            link = link_tag.get("href")
+        # Дополнительный поиск по тексту ссылок
+        all_links = soup.find_all('a', href=True)
+        for link in all_links:
+            href = link.get('href')
+            text = link.get_text(strip=True)
             
-            # Check if this link already exists in the database
-            if link in existing_links:
-                skipped_count += 1
-                continue
+            # Если ссылка содержит новостные слова и достаточно длинный текст
+            if (href and text and len(text) > 20 and 
+                any(word in text.lower() for word in ['новости', 'события', 'политика', 'экономика', 'мир', 'россия', 'украина']) and
+                href not in news_links):
                 
-            print("Найдена новая статья:")
-            print("Заголовок:", title)
-            print("Ссылка:", link)
-            
-            # Get full article content
-            print("Получение содержимого статьи...")
-            content = get_article_content(link, headers)
-            print(f"Получено {len(content)} символов содержимого")
-            print("-" * 40)
-            
-            # Проверяем релевантность к украинскому конфликту
-            print("Проверка релевантности к украинскому конфликту...")
-            relevance_result = filter_ukraine_relevance(title, content)
-            
-            if not relevance_result['is_relevant']:
-                print(f"Статья не релевантна украинскому конфликту (score: {relevance_result['relevance_score']:.2f})")
-                print("Пропускаем статью...")
-                continue
-            
-            print(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f})")
-            print(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
-            
-            # Классифицируем новость по украинским категориям
+                if href.startswith('/'):
+                    href = 'https://ria.ru' + href
+                elif href.startswith('http'):
+                    news_links.append(href)
+        
+        logger.info(f"Найдено {len(news_links)} новостных ссылок")
+        
+        if limit:
+            news_links = news_links[:limit]
+            logger.info(f"Ограничение парсинга: обрабатываем только {len(news_links)} статей")
+        
+        new_count = 0
+        
+        for link in news_links:
             try:
-                category = GenApiNewsClassifier().classify(title, content)
-            except Exception as e:
-                print(f"AI классификация не удалась: {e}")
-                category = 'other'  # Fallback категория
-            
-            print(f"Категория: {category}")
-            
-            # Пропускаем статьи с категорией 'other' - они не нужны в БД
-            if category == 'other':
-                print(f"Пропущено (категория 'other'): {title[:50]}...")
-                continue
-            
-            # Add to data for insertion with ukraine relevance data
-            headlines_data.append({
-                'title': title,
-                'link': link,
-                'content': content,
-                'source': 'ria.ru',
-                'category': category,
-                'relevance_score': relevance_result['relevance_score'],
-                'ai_confidence': relevance_result.get('ai_confidence', 0.0),
-                'keywords_found': relevance_result['keywords_found'],
-                'sentiment_score': 0.0,  # Будет добавлено позже
-                'published_date': datetime.now(),
-                'published_date': datetime.now()
-            })
-            
-            new_count += 1
-            
-            # Add a small delay between article requests to avoid overloading the server
-            time.sleep(random.uniform(1, 3))
-        else:
-            print("В контейнере не найден тег <a> с классом 'list-item__title color-font-hover-only'.")
-    
-    # Insert data into ClickHouse if we have any
-    if headlines_data:
-        # Группируем данные по украинским категориям
-        categorized_data = {}
-        for item in headlines_data:
-            category = item['category']
-            if category not in categorized_data:
-                categorized_data[category] = []
-            categorized_data[category].append(item)
-        
-        # Вставляем данные в соответствующие таблицы украинских категорий
-        for category, data in categorized_data.items():
-            if data:
-                try:
-                    client.execute(
-                        f'''INSERT INTO news.ria_{category} 
-                        (title, link, content, source, category, relevance_score, ai_confidence, 
-                         keywords_found, sentiment_score, published_date) VALUES''',
-                        data
-                    )
-                    print(f"Добавлено {len(data)} записей в таблицу ria_{category}")
-                except Exception as e:
-                    print(f"Ошибка при вставке в таблицу ria_{category}: {e}")
-        
-        print(f"Всего обработано {len(headlines_data)} релевантных украинских новостей")
-    
-    if skipped_count > 0:
-        print(f"Пропущено {skipped_count} дубликатов")
-        
-    return new_count
-
-
-def continuous_monitoring(interval_minutes=5):
-    """Continuously monitor for new articles"""
-    print(f"Запуск непрерывного мониторинга новостей RIA. Интервал проверки: {interval_minutes} минут")
-    
-    try:
-        # Create ukraine tables if they don't exist
-        create_ukraine_tables_if_not_exists()
-        
-        while True:
-            print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Проверка новых статей...")
-            new_articles = parse_politics_headlines()
-            
-            if new_articles:
-                print(f"Найдено {new_articles} новых статей")
-            else:
-                print("Новых статей не найдено")
+                # Получаем заголовок из ссылки
+                link_elem = soup.find('a', href=link.replace('https://ria.ru', ''))
+                if not link_elem:
+                    # Пробуем найти по полному URL
+                    link_elem = soup.find('a', href=link)
                 
-            # Wait for the next check
-            next_check = datetime.now() + timedelta(minutes=interval_minutes)
-            print(f"Следующая проверка в {next_check.strftime('%H:%M:%S')}")
-            time.sleep(interval_minutes * 60)
-    
-    except KeyboardInterrupt:
-        print("\nМониторинг остановлен пользователем")
-    except Exception as e:
-        print(f"Ошибка в процессе мониторинга: {e}")
-        # Wait a bit and restart monitoring
-        print("Перезапуск мониторинга через 1 минуту...")
-        time.sleep(60)
-        continuous_monitoring(interval_minutes)
+                title = link_elem.get_text(strip=True) if link_elem else "Заголовок не найден"
+                if not title or len(title) < 10:
+                    continue
+                
+                # Получение полного содержимого статьи
+                content = get_article_content(link, headers)
+                
+                # Проверка контента перед сохранением
+                if not content or len(content.strip()) < 100:
+                    logger.warning(f"Пропуск статьи '{title}' - недостаточно контента (длина: {len(content) if content else 0})")
+                    continue
+                
+                # Проверяем релевантность к украинскому конфликту
+                logger.info("Проверка релевантности к украинскому конфликту...")
+                relevance_result = filter_ukraine_relevance(title, content)
+                
+                if not relevance_result['is_relevant']:
+                    logger.info(f"Статья не релевантна украинскому конфликту (score: {relevance_result['relevance_score']:.2f})")
+                    continue
+                
+                logger.info(f"Статья релевантна (score: {relevance_result['relevance_score']:.2f}, категория: {relevance_result['category']})")
+                logger.info(f"Найденные ключевые слова: {relevance_result['keywords_found']}")
+                
+                # Дополнительная классификация через Gen-API для получения индексов напряженности
+                try:
+                    classifier = GenApiNewsClassifier()
+                    ai_result = classifier.classify(title, content)
+                    
+                    # Используем результаты Gen-API классификации
+                    category = ai_result['category_name']
+                    social_tension_index = ai_result['social_tension_index']
+                    spike_index = ai_result['spike_index']
+                    ai_confidence = ai_result['confidence']
+                    ai_category = ai_result['category_name']
+                    
+                    logger.info(f"Gen-API классификация: {category} (напряженность: {social_tension_index}, всплеск: {spike_index})")
+                    
+                except Exception as e:
+                    logger.warning(f"Ошибка Gen-API классификации: {e}")
+                    # Fallback к результатам фильтра релевантности
+                    category = relevance_result.get('category', 'other')
+                    social_tension_index = 0.0
+                    spike_index = 0.0
+                    ai_confidence = 0.0
+                    ai_category = category
 
+                if not category or category is None:
+                    category = 'other'
+                
+                # Пропускаем статьи с категорией 'other' - они не нужны в БД
+                if category == 'other':
+                    logger.info(f"Пропущено (категория 'other'): {title[:50]}...")
+                    continue
+                
+                # Сохранение в основную таблицу с новыми полями
+                client.execute(
+                    'INSERT INTO news.ria_headlines (title, link, content, source, category, social_tension_index, spike_index, ai_category, ai_confidence, ai_classification_metadata, published_date) VALUES',
+                    [(title, link, content, 'ria.ru', category, social_tension_index, spike_index, ai_category, ai_confidence, 'gen_api_classification', datetime.now())]
+                )
+                
+                logger.info(f"Добавлена статья: {title[:50]}...")
+                new_count += 1
+                
+            except Exception as e:
+                logger.error(f"Ошибка обработки статьи {link}: {e}")
+                continue
+        
+        logger.info(f"Парсинг завершен. Добавлено {new_count} новых статей")
+        return new_count
+        
+    except Exception as e:
+        logger.error(f"Ошибка парсинга RIA.ru: {e}")
+        return 0
+
+def main(limit=None):
+    """Основная функция"""
+    try:
+        logger.info("Запуск парсера RIA.ru")
+        new_count = parse_ria_news(limit=limit)
+        logger.info(f"Парсер RIA.ru завершил работу")
+        return new_count
+    except Exception as e:
+        logger.error(f"Критическая ошибка: {e}")
+        return 0
 
 if __name__ == "__main__":
-    from datetime import timedelta
-    continuous_monitoring()
+    import argparse
+    parser = argparse.ArgumentParser(description='Parser for RIA.ru news')
+    parser.add_argument('--limit', type=int, default=None, help='Limit articles to parse (for testing)')
+    args = parser.parse_args()
+    
+    result = main(limit=args.limit)
+    sys.exit(0 if result > 0 else 1)
