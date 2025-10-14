@@ -366,24 +366,106 @@ function displayCharts(data) {
         chartContainer.appendChild(tensionChart);
     }
     
-    // Отображаем график тем
-    if (data.topics_chart_url) {
-        console.log('Creating topics chart with URL:', data.topics_chart_url);
-        const topicsChart = document.createElement('img');
-        topicsChart.src = data.topics_chart_url;
-        topicsChart.alt = 'График прогноза тем';
-        topicsChart.className = 'forecast-chart-img';
-        topicsChart.onload = function() {
-            console.log('Topics chart loaded successfully');
-        };
-        topicsChart.onerror = function() {
-            console.error('Failed to load topics chart:', this.src);
-        };
-        chartContainer.appendChild(topicsChart);
-    }
+    // Убираем отображение графика тем - не нужен
 }
 
-// Функция для генерации прогноза социальной напряженности
+// Функция для автоматического заполнения примеров запросов
+function fillPromptExamples() {
+    const promptTextarea = document.getElementById('ai-prompt');
+    const category = document.getElementById('news-category').value;
+    
+    // Примеры запросов в зависимости от категории
+    const examples = {
+        'military_operations': [
+            "Проанализируй влияние последних военных операций на социальную напряженность. Какие факторы могут привести к эскалации конфликта?",
+            "Оцени риски дальнейшего развития военных действий. Какие сценарии наиболее вероятны в ближайшие дни?",
+            "Проанализируй эффективность военных стратегий и их влияние на общественное мнение."
+        ],
+        'humanitarian_crisis': [
+            "Оцени масштабы гуманитарного кризиса и его влияние на социальную стабильность. Какие меры необходимы для улучшения ситуации?",
+            "Проанализируй доступность гуманитарной помощи и эффективность её распределения.",
+            "Какие долгосрочные последствия гуманитарного кризиса для региона?"
+        ],
+        'economic_consequences': [
+            "Проанализируй экономические последствия конфликта и их влияние на социальную напряженность.",
+            "Оцени риски экономической нестабильности и возможные меры по стабилизации.",
+            "Какие секторы экономики наиболее уязвимы и требуют особого внимания?"
+        ],
+        'political_decisions': [
+            "Проанализируй влияние политических решений на развитие ситуации. Какие шаги могут снизить напряженность?",
+            "Оцени эффективность дипломатических усилий и перспективы мирного урегулирования.",
+            "Какие политические факторы могут привести к эскалации или деэскалации конфликта?"
+        ],
+        'information_social': [
+            "Проанализируй влияние информационной войны на общественное мнение и социальную стабильность.",
+            "Оцени роль социальных сетей в распространении информации и формировании повестки дня.",
+            "Какие меры необходимы для противодействия дезинформации и манипуляциям?"
+        ],
+        'all': [
+            "Проанализируй общую ситуацию и дай комплексный прогноз развития событий на ближайшие дни.",
+            "Оцени все ключевые факторы влияния и их взаимосвязь. Какие сценарии наиболее вероятны?",
+            "Дай рекомендации по снижению социальной напряженности и стабилизации ситуации."
+        ]
+    };
+    
+    // Получаем примеры для текущей категории
+    const categoryExamples = examples[category] || examples['all'];
+    
+    // Выбираем случайный пример
+    const randomExample = categoryExamples[Math.floor(Math.random() * categoryExamples.length)];
+    
+    // Заполняем поле
+    promptTextarea.value = randomExample;
+    
+    // Добавляем визуальный эффект
+    promptTextarea.style.backgroundColor = '#e8f5e8';
+    setTimeout(() => {
+        promptTextarea.style.backgroundColor = 'white';
+    }, 1000);
+    
+    // Показываем уведомление
+    showNotification('✅ Пример запроса заполнен!', 'success');
+}
+
+// Функция для показа уведомлений
+function showNotification(message, type = 'info') {
+    // Создаем элемент уведомления
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#4caf50' : '#2196f3'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    // Анимация появления
+    setTimeout(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Автоматическое скрытие
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
 function generateForecast() {
     const category = document.getElementById('news-category').value;
     const analysisPeriod = parseInt(document.getElementById('analysis-period').value);
@@ -393,7 +475,8 @@ function generateForecast() {
     const responseBox = document.getElementById('ai-response');
     const chartContainer = document.getElementById('forecast-chart');
     
-    responseBox.innerHTML = '<span class="thinking-text">Генерирую прогноз...</span>';
+    // Показываем индикатор загрузки
+    responseBox.innerHTML = '<span class="thinking-text">🤖 Отправляю запрос к AI для генерации прогноза...</span>';
     responseBox.classList.add('loading');
     chartContainer.innerHTML = '';
     
@@ -405,7 +488,7 @@ function generateForecast() {
             category: category,
             analysis_period: analysisPeriod,
             forecast_period: forecastPeriod,
-            prompt: aiPrompt // опциональный параметр для уточнения
+            prompt: aiPrompt
         })
     })
     .then(res => res.json())
@@ -416,8 +499,8 @@ function generateForecast() {
             // Отображение результата прогноза
             displayForecastResult(data);
             
-            // Генерация графиков через /api/chart/generate_charts
-            if (data.forecast_data) {
+            // Генерация графиков только если есть данные
+            if (data.forecast_data && data.forecast_data.tension_forecast) {
                 generateCharts(data.forecast_data, category);
             }
         } else {
@@ -436,7 +519,41 @@ function displayForecastResult(data) {
     // Форматирование и отображение результата прогноза
     let resultHtml = '';
     
-    if (data.forecast_data) {
+    // Приоритет: AI прогноз, затем стандартный формат
+    if (data.forecast_data && data.forecast_data.ai_forecast) {
+        // Отображаем детальный AI прогноз
+        resultHtml += `<div class="forecast-section ai-forecast">
+            <div class="ai-response">${data.forecast_data.ai_forecast.replace(/\n/g, '<br>')}</div>
+        </div>`;
+        
+        // Добавляем метаданные AI
+        if (data.metadata) {
+            resultHtml += `<div class="forecast-section">
+                <h4>🔧 Техническая информация</h4>
+                <div class="forecast-stats">`;
+            
+            if (data.metadata.ai_api_used) {
+                resultHtml += `<div class="stat-item">
+                    <strong>🤖 AI модель:</strong> ${data.metadata.ai_api_used}
+                </div>`;
+            }
+            
+            if (data.metadata.ai_tokens_used) {
+                resultHtml += `<div class="stat-item">
+                    <strong>📊 Использовано токенов:</strong> ${data.metadata.ai_tokens_used}
+                </div>`;
+            }
+            
+            if (data.metadata.news_analyzed) {
+                resultHtml += `<div class="stat-item">
+                    <strong>📰 Проанализировано новостей:</strong> ${data.metadata.news_analyzed}
+                </div>`;
+            }
+            
+            resultHtml += `</div></div>`;
+        }
+    } else if (data.forecast_data) {
+        // Fallback на старый формат если нет AI прогноза
         const forecast = data.forecast_data;
         
         // Отображаем анализ
@@ -511,7 +628,7 @@ function displayForecastResult(data) {
         }
     }
     
-    // Если есть AI ответ, добавляем его
+    // Если есть дополнительный AI ответ, добавляем его
     if (data.ai_response) {
         resultHtml += `<div class="forecast-section">
             <h4>🤖 Дополнительный анализ AI</h4>
@@ -519,7 +636,12 @@ function displayForecastResult(data) {
         </div>`;
     }
     
-    responseBox.innerHTML = resultHtml || '<p>Прогноз успешно сгенерирован. Графики загружаются...</p>';
+    // Если нет данных для отображения, показываем сообщение
+    if (!resultHtml) {
+        resultHtml = '<p style="color: #ff7043;">⚠️ Не удалось получить данные для прогноза. Проверьте настройки API.</p>';
+    }
+    
+    responseBox.innerHTML = resultHtml;
 }
 
 function generateCharts(forecastData, category) {

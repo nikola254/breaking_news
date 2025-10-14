@@ -125,7 +125,7 @@ class GenApiNewsClassifier:
         
         return prompt
     
-    def _make_api_request(self, prompt: str) -> Dict:
+    def _make_api_request(self, prompt: str, max_tokens: int = 1000) -> Dict:
         """
         Отправляет запрос к gen-api.ru и получает результат через Long-Polling
         
@@ -148,7 +148,7 @@ class GenApiNewsClassifier:
                     }
                 ],
                 "is_sync": False,      # Асинхронный режим для Long-Polling
-                "max_tokens": 1000,
+                "max_tokens": max_tokens,
                 "temperature": 0.3,
                 "top_p": 0.95
             }
@@ -380,6 +380,46 @@ class GenApiNewsClassifier:
             result = self._fallback_classification(title, content)
             result['cached'] = False
             return result
+    
+    def generate_forecast(self, prompt: str, max_tokens: int = 2000) -> Dict:
+        """
+        Генерирует текстовый прогноз на основе промпта
+        
+        Args:
+            prompt: Промпт для генерации прогноза
+            max_tokens: Максимальное количество токенов в ответе
+            
+        Returns:
+            Dict: {'forecast': 'текст прогноза', 'tokens_used': число}
+        """
+        if not self.api_key:
+            raise Exception("API ключ gen-api.ru не настроен")
+        
+        try:
+            # Отправляем запрос к API
+            response = self._make_api_request(prompt, max_tokens=max_tokens)
+            
+            # Извлекаем текст прогноза из ответа
+            # Структура ответа: {'result': ['текст ответа']}
+            result = response.get('result', [])
+            if result and len(result) > 0:
+                forecast_text = result[0]
+            else:
+                # Fallback для старого формата
+                output = response.get('output', '')
+                forecast_text = str(output)
+            
+            # Подсчитываем токены (примерная оценка)
+            tokens_used = len(forecast_text.split()) * 1.3  # Примерная оценка
+            
+            return {
+                'forecast': forecast_text,
+                'tokens_used': int(tokens_used)
+            }
+            
+        except Exception as e:
+            logger.error(f"Ошибка генерации прогноза: {e}")
+            raise
     
     def get_stats(self) -> Dict:
         """Возвращает статистику использования"""

@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import uuid
+import requests
 from clickhouse_driver import Client
 from config import Config
 from textblob import TextBlob
@@ -191,10 +192,10 @@ def perform_real_analysis(category, analysis_period, forecast_period):
             WHERE database = 'news' 
             AND name LIKE 'custom_%_headlines'
         """
-        custom_tables = client.query(custom_tables_query)
+        custom_tables = client.execute(custom_tables_query)
         custom_unions = []
         
-        for table in custom_tables.result_rows:
+        for table in custom_tables:
             table_name = table[0]
             custom_unions.append(f"SELECT title, content, published_date, category FROM news.{table_name}")
         
@@ -240,14 +241,14 @@ def perform_real_analysis(category, analysis_period, forecast_period):
         LIMIT 1000
         """
         
-        news_data = client.query(query)
+        news_data = client.execute(query)
         
-        if not news_data.result_rows:
+        if not news_data:
             return None
         
         # РџСЂРµРѕР±СЂР°Р·СѓРµРј РІ СЃРїРёСЃРѕРє СЃР»РѕРІР°СЂРµР№
         articles = []
-        for row in news_data.result_rows:
+        for row in news_data:
             articles.append({
                 'title': row[0],
                 'content': row[1],
@@ -308,6 +309,108 @@ def perform_real_analysis(category, analysis_period, forecast_period):
         
     except Exception as e:
         print(f"РћС€РёР±РєР° Р°РЅР°Р»РёР·Р°: {e}")
+        return None
+
+def generate_ai_forecast(analysis_data, category, analysis_period, forecast_period):
+    """Генерация детального прогноза с использованием AI модели
+    
+    Args:
+        analysis_data (dict): Данные анализа из ClickHouse
+        category (str): Категория новостей
+        analysis_period (int): Период анализа в часах
+        forecast_period (int): Период прогноза в часах
+    
+    Returns:
+        dict: Детальный прогноз от AI или None при ошибке
+    """
+    try:
+        # Импортируем GenApiNewsClassifier
+        from parsers.gen_api_classifier import GenApiNewsClassifier
+        
+        # Получаем API ключ из конфигурации
+        api_key = current_app.config.get('GEN_API_KEY')
+        
+        if not api_key:
+            current_app.logger.warning("GEN_API_KEY не найден, используем fallback прогноз")
+            return None
+        
+        # Формируем детальный промпт для AI
+        news_count = analysis_data.get('news_count', 0)
+        tension_index = analysis_data.get('tension_index', 0.5)
+        topics = analysis_data.get('topics_forecast', {}).get('topics', [])
+        
+        # Определяем уровень напряженности
+        if tension_index >= 0.8:
+            tension_level = "критический"
+        elif tension_index >= 0.6:
+            tension_level = "высокий"
+        elif tension_index >= 0.4:
+            tension_level = "средний"
+        else:
+            tension_level = "низкий"
+        
+        # Формируем список основных тем
+        topics_text = ""
+        if topics:
+            topics_text = ", ".join([f"{topic.get('topic', 'неизвестная тема')} ({topic.get('weight', 0):.1%})" for topic in topics[:5]])
+        
+        prompt = f"""Ты эксперт по анализу социальной напряженности и прогнозированию конфликтов. 
+
+АНАЛИЗИРУЕМЫЕ ДАННЫЕ:
+- Категория: {get_category_name(category)}
+- Период анализа: {analysis_period} часов
+- Период прогноза: {forecast_period} часов
+- Количество проанализированных новостей: {news_count}
+- Текущий индекс напряженности: {tension_index:.1%} ({tension_level})
+- Основные темы: {topics_text}
+
+ЗАДАЧА: Создай детальный прогноз развития ситуации в следующем формате:
+
+📊 АНАЛИЗ ТЕКУЩЕЙ СИТУАЦИИ
+- Количество проанализированных новостей: {news_count}
+- Текущий индекс напряженности: {tension_index:.1%} (категория: {tension_level})
+- Динамика за период: [растущая/стабильная/снижающаяся]
+- Основные темы: {topics_text}
+
+🔮 ПРОГНОЗ РАЗВИТИЯ НА {forecast_period} ЧАСОВ
+[Детальный прогноз с разбивкой по дням и конкретными цифрами напряженности]
+
+⚡ КЛЮЧЕВЫЕ ФАКТОРЫ ВЛИЯНИЯ
+1. [Фактор 1]: влияние [X]%
+2. [Фактор 2]: влияние [X]%
+3. [Фактор 3]: влияние [X]%
+
+🎯 СЦЕНАРИИ РАЗВИТИЯ СОБЫТИЙ
+🟢 Оптимистичный (вероятность [X]%):
+   [Детальное описание сценария с обоснованием]
+   
+🟡 Реалистичный (вероятность [X]%):
+   [Детальное описание сценария с обоснованием]
+   
+🔴 Пессимистичный (вероятность [X]%):
+   [Детальное описание сценария с обоснованием]
+
+💡 РЕКОМЕНДАЦИИ
+- [Рекомендация 1]
+- [Рекомендация 2]
+- [Рекомендация 3]
+
+Отвечай только в указанном формате, используй конкретные цифры и обоснования."""
+
+        # Создаем классификатор и отправляем запрос
+        classifier = GenApiNewsClassifier(api_key=api_key)
+        
+        # Используем новый метод generate_forecast вместо classify
+        result = classifier.generate_forecast(prompt, max_tokens=2000)
+        
+        return {
+            'ai_forecast': result['forecast'],
+            'api_used': 'gen-api.ru',
+            'tokens_used': result['tokens_used']
+        }
+            
+    except Exception as e:
+        current_app.logger.error(f"Ошибка AI прогнозирования: {e}")
         return None
 
 def generate_fallback_topics(category):
@@ -374,6 +477,18 @@ def generate_forecast():
         
         # Используем реальный анализ данных из ClickHouse
         analysis_result = perform_real_analysis(category, analysis_period, forecast_period)
+        
+        # Генерируем AI прогноз если есть данные анализа
+        ai_forecast_data = None
+        if analysis_result:
+            ai_forecast_data = generate_ai_forecast(analysis_result, category, analysis_period, forecast_period)
+        
+        # Если нет AI прогноза, возвращаем ошибку вместо пустого скелета
+        if not ai_forecast_data:
+            return jsonify({
+                'status': 'error', 
+                'message': 'AI прогноз недоступен. Проверьте настройки GEN_API_KEY или попробуйте позже.'
+            }), 500
         
         # Если предоставлен prompt, можно использовать AI для уточнения прогноза
         ai_response = None
@@ -453,7 +568,7 @@ def generate_forecast():
             ]
         }
         
-        # Добавляем военный прогноз в ответ если он есть
+        # Формируем ответ только с AI прогнозом
         response_data = {
             'status': 'success',
             'forecast_data': {
@@ -464,32 +579,16 @@ def generate_forecast():
                 'topics_forecast': {
                     'topics': topics_data
                 },
-                'statistics': {
-                    'historical_points': len(tension_values),
-                    'forecast_points': forecast_days,
-                    'average_tension': f"{round(sum(item['value'] for item in tension_values) / len(tension_values) * 100, 1)}%" if tension_values else "0%",
-                    'trend': analysis_result.get('tension_forecast', {}).get('trend', 'стабильный') if analysis_result else 'неопределенный'
-                },
-                'analysis': f"Анализ новостей категории '{get_category_name(category)}' за последние {analysis_period} часов",
-                'forecast': f"Прогноз развития ситуации на следующие {forecast_period} часов",
-                'key_factors': [
-                    "Динамика новостного потока",
-                    "Изменение тональности сообщений",
-                    "Активность ключевых источников",
-                    "Международная реакция"
-                ],
-                'scenarios': [
-                    "Оптимистичный: снижение напряженности",
-                    "Реалистичный: стабильное состояние",
-                    "Пессимистичный: рост напряженности"
-                ]
+                'ai_forecast': ai_forecast_data['ai_forecast']
             },
             'metadata': {
                 'category': category,
                 'analysis_period': f'{analysis_period} часов',
                 'forecast_period': f'{forecast_period} часов',
                 'news_analyzed': analysis_result.get('news_count', 0) if analysis_result else 0,
-                'tension_index': round(analysis_result.get('tension_index', 0.5) if analysis_result else 0.5, 3)
+                'tension_index': round(analysis_result.get('tension_index', 0.5) if analysis_result else 0.5, 3),
+                'ai_api_used': ai_forecast_data.get('api_used', 'unknown'),
+                'ai_tokens_used': ai_forecast_data.get('tokens_used', 0)
             }
         }
         

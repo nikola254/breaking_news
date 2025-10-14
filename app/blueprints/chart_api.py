@@ -117,17 +117,11 @@ def generate_charts():
                 category
             )
         
-        # Создаем график тем, если есть данные
-        if 'topics_forecast' in forecast_data and 'topics' in forecast_data['topics_forecast']:
-            topics_chart_url = generate_topics_chart_from_data(
-                forecast_data['topics_forecast']['topics'], 
-                category
-            )
+        # Убираем генерацию графика тем - не нужен
         
         response = {
             'status': 'success',
-            'tension_chart_url': tension_chart_url,
-            'topics_chart_url': topics_chart_url
+            'tension_chart_url': tension_chart_url
         }
         
         return jsonify(response)
@@ -153,7 +147,8 @@ def generate_tension_chart_from_data(tension_values, category):
         
         # Логируем данные для отладки
         current_app.logger.info(f"Generating tension chart for category: {category}")
-        current_app.logger.info(f"Tension values: {tension_values}")
+        current_app.logger.info(f"Tension values count: {len(tension_values) if tension_values else 0}")
+        current_app.logger.info(f"Tension values sample: {tension_values[:2] if tension_values else 'None'}")
         
         plt.figure(figsize=(12, 7))
         sns.set_style("whitegrid")
@@ -235,7 +230,8 @@ def generate_topics_chart_from_data(topics, category):
         
         # Логируем данные для отладки
         current_app.logger.info(f"Generating topics chart for category: {category}")
-        current_app.logger.info(f"Topics data: {topics}")
+        current_app.logger.info(f"Topics count: {len(topics) if topics else 0}")
+        current_app.logger.info(f"Topics sample: {topics[:2] if topics else 'None'}")
         
         plt.figure(figsize=(12, 8))
         sns.set_style("whitegrid")

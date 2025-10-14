@@ -1694,5 +1694,29 @@
     "spike_index": 80,
     "confidence": 0.9,
     "cached": false
+  },
+  "4c7b63f1a0a7b1e4308ec3cb0956d326": {
+    "category_id": "5",
+    "category_name": "information_social",
+    "social_tension_index": 30,
+    "spike_index": 50,
+    "confidence": 0.7,
+    "cached": false
+  },
+  "08eda470d97fd70052f7030f641d87cf": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 70,
+    "spike_index": 80,
+    "confidence": 0.85,
+    "cached": false
+  },
+  "4c7cc5e205f39c539d855f3ffd35ae39": {
+    "category_id": "1",
+    "category_name": "military_operations",
+    "social_tension_index": 25,
+    "spike_index": 30,
+    "confidence": 0.85,
+    "cached": false
   }
 }

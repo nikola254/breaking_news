@@ -20,13 +20,11 @@
             <div class="category-selector">
                 <select id="news-category" class="select-control">
                     <option value="all">Все категории</option>
-                    <option value="ukraine">Украина</option>
-                    <option value="middle_east">Ближний восток</option>
-                    <option value="fake_news">Фейки</option>
-                    <option value="info_war">Инфовойна</option>
-                    <option value="europe">Европа</option>
-                    <option value="usa">США</option>
-                    <option value="other">Другое</option>
+                    <option value="military_operations">Военные операции</option>
+                    <option value="humanitarian_crisis">Гуманитарный кризис</option>
+                    <option value="economic_consequences">Экономические последствия</option>
+                    <option value="political_decisions">Политические решения</option>
+                    <option value="information_social">Информационно-социальные аспекты</option>
                 </select>
             </div>
         </div>
@@ -58,7 +56,12 @@
     
     <div class="input-area">
         <h4 class="output-title">Введите запрос для уточнения прогноза (опционально):</h4>
-        <textarea class="prompt-input" id="ai-prompt" placeholder="Например: Проанализируй влияние последних событий на социальную напряженность и дай прогноз..."></textarea>
+        <div style="position: relative;">
+            <textarea class="prompt-input" id="ai-prompt" placeholder="Например: Проанализируй влияние последних событий на социальную напряженность и дай прогноз..."></textarea>
+            <button type="button" id="auto-fill-btn" class="auto-fill-btn" onclick="fillPromptExamples()" title="Заполнить примером">
+                <span>📝</span>
+            </button>
+        </div>
         
         <div class="tokens-control">
             <label for="max_tokens">Количество токенов: <span id="tokens-value">1000</span></label>
