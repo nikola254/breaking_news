@@ -513,17 +513,73 @@ function generateForecast() {
     });
 }
 
+function parseMarkdown(text) {
+    if (!text) return '';
+    
+    // Сначала экранируем HTML
+    let result = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
+    // Затем применяем markdown форматирование
+    result = result
+        // Заголовки (должны быть в начале строки) - обрабатываем от большего к меньшему
+        .replace(/^##### (.+)$/gim, '<h5>$1</h5>')
+        .replace(/^#### (.+)$/gim, '<h4>$1</h4>')
+        .replace(/^### (.+)$/gim, '<h3>$1</h3>')
+        .replace(/^## (.+)$/gim, '<h2>$1</h2>')
+        .replace(/^# (.+)$/gim, '<h1>$1</h1>')
+        // Жирный текст
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        // Курсив (только одиночные звездочки, не в жирном тексте)
+        .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+        // Списки - сначала собираем все элементы списка
+        .replace(/^[\-\*] (.+)$/gim, '<li>$1</li>')
+        // Оборачиваем последовательные <li> в <ul>
+        .replace(/(<li>[\s\S]+?<\/li>)(?!\s*<li>)/g, function(match) {
+            // Проверяем, не обернут ли уже в ul
+            if (!match.startsWith('<ul>')) {
+                return '<ul>' + match + '</ul>';
+            }
+            return match;
+        })
+        // Переносы строк (но не внутри тегов)
+        .replace(/\n(?![<])/g, '<br>');
+    
+    return result;
+}
+
 function displayForecastResult(data) {
     const responseBox = document.getElementById('ai-response');
+    
+    // Функция для очистки текста от лишних пробелов и пустых строк
+    function cleanText(text) {
+        if (!text) return '';
+        
+        return text
+            // Убираем множественные пустые строки (2+ подряд заменяем на 1)
+            .replace(/\n{2,}/g, '\n')
+            // Убираем trailing whitespace в конце каждой строки
+            .replace(/[ \t]+$/gm, '')
+            // Убираем строки состоящие только из пробелов
+            .replace(/^\s*$/gm, '')
+            // Убираем множественные пустые строки после предыдущих операций
+            .replace(/\n{2,}/g, '\n')
+            // Убираем trailing whitespace в конце всего текста
+            .trim();
+    }
     
     // Форматирование и отображение результата прогноза
     let resultHtml = '';
     
     // Приоритет: AI прогноз, затем стандартный формат
     if (data.forecast_data && data.forecast_data.ai_forecast) {
-        // Отображаем детальный AI прогноз
+        // Очищаем и отображаем детальный AI прогноз
+        const cleanedForecast = cleanText(data.forecast_data.ai_forecast);
+        const formattedForecast = parseMarkdown(cleanedForecast);
         resultHtml += `<div class="forecast-section ai-forecast">
-            <div class="ai-response">${data.forecast_data.ai_forecast.replace(/\n/g, '<br>')}</div>
+            <div class="ai-response">${formattedForecast}</div>
         </div>`;
         
         // Добавляем метаданные AI
@@ -628,11 +684,13 @@ function displayForecastResult(data) {
         }
     }
     
-    // Если есть дополнительный AI ответ, добавляем его
+    // Если есть дополнительный AI ответ на пользовательский запрос, добавляем его в конец
     if (data.ai_response) {
-        resultHtml += `<div class="forecast-section">
-            <h4>🤖 Дополнительный анализ AI</h4>
-            <div class="ai-response">${data.ai_response.replace(/\n/g, '<br>')}</div>
+        const cleanedResponse = cleanText(data.ai_response);
+        const formattedResponse = parseMarkdown(cleanedResponse);
+        resultHtml += `<div class="forecast-section user-query-response">
+            <h4>📝 Ответ на ваш запрос</h4>
+            <div class="ai-response">${formattedResponse}</div>
         </div>`;
     }
     

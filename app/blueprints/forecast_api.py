@@ -18,6 +18,7 @@ import seaborn as sns
 import numpy as np
 import uuid
 import requests
+from .chart_api import cleanup_old_charts
 from clickhouse_driver import Client
 from config import Config
 from textblob import TextBlob
@@ -111,6 +112,54 @@ def calculate_tension_index(news_data, military_keywords):
     
     return min(1.0, tension_score / total_weight if total_weight > 0 else 0.5)
 
+def calculate_weighted_tension_from_articles(articles):
+    """Расчет взвешенного среднего индекса напряженности из статей
+    
+    Args:
+        articles: список статей с полями social_tension_index и published_date
+    
+    Returns:
+        float: взвешенное среднее значение напряженности (0.0-1.0)
+    """
+    if not articles:
+        return 0.5
+    
+    import math
+    from datetime import datetime
+    
+    total_weighted_tension = 0
+    total_weight = 0
+    now = datetime.now()
+    
+    for article in articles:
+        tension_value = article.get('social_tension_index', 0)
+        
+        # Пропускаем статьи без значения напряженности
+        if tension_value <= 0:
+            continue
+        
+        # Рассчитываем вес на основе давности публикации
+        pub_date = article.get('published_date')
+        if pub_date:
+            days_ago = (now - pub_date).total_seconds() / 86400  # в днях
+            # Экспоненциальное затухание: более свежие статьи важнее
+            weight = math.exp(-days_ago * 0.1)
+        else:
+            weight = 1.0
+        
+        # Нормализуем tension_value если он в процентах (>1)
+        if tension_value > 1:
+            tension_value = tension_value / 100.0
+        
+        total_weighted_tension += tension_value * weight
+        total_weight += weight
+    
+    # Если нет статей с напряженностью, возвращаем дефолтное значение
+    if total_weight == 0:
+        return 0.5
+    
+    return min(1.0, max(0.0, total_weighted_tension / total_weight))
+
 def extract_key_topics(news_data, limit=10):
     """РР·РІР»РµС‡РµРЅРёРµ РєР»СЋС‡РµРІС‹С… С‚РµРј"""
     if not news_data:
@@ -197,7 +246,7 @@ def perform_real_analysis(category, analysis_period, forecast_period):
         
         for table in custom_tables:
             table_name = table[0]
-            custom_unions.append(f"SELECT title, content, published_date, category FROM news.{table_name}")
+            custom_unions.append(f"SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.{table_name}")
         
         # Р¤РѕСЂРјРёСЂСѓРµРј Р·Р°РїСЂРѕСЃ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РєР°С‚РµРіРѕСЂРёРё
         if category == 'all':
@@ -208,30 +257,31 @@ def perform_real_analysis(category, analysis_period, forecast_period):
         # РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ Р·Р° РїРµСЂРёРѕРґ Р°РЅР°Р»РёР·Р° РёР· РІСЃРµС… С‚Р°Р±Р»РёС†
         # Р¤РѕСЂРјРёСЂСѓРµРј СЃРїРёСЃРѕРє РІСЃРµС… С‚Р°Р±Р»РёС† (СЃС‚Р°РЅРґР°СЂС‚РЅС‹Рµ + РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ)
         all_unions = [
-            "SELECT title, content, published_date, category FROM news.ria_headlines",
-            "SELECT title, content, published_date, category FROM news.bbc_headlines",
-            "SELECT title, content, published_date, category FROM news.cnn_headlines",
-            "SELECT title, content, published_date, category FROM news.reuters_headlines",
-            "SELECT title, content, published_date, category FROM news.france24_headlines",
-            "SELECT title, content, published_date, category FROM news.aljazeera_headlines",
-            "SELECT title, content, published_date, category FROM news.euronews_headlines",
-            "SELECT title, content, published_date, category FROM news.dw_headlines",
-            "SELECT title, content, published_date, category FROM news.rt_headlines",
-            "SELECT title, content, published_date, category FROM news.gazeta_headlines",
-            "SELECT title, content, published_date, category FROM news.lenta_headlines",
-            "SELECT title, content, published_date, category FROM news.kommersant_headlines",
-            "SELECT title, content, published_date, category FROM news.rbc_headlines",
-            "SELECT title, content, published_date, category FROM news.tsn_headlines",
-            "SELECT title, content, published_date, category FROM news.unian_headlines",
-            "SELECT title, content, published_date, category FROM news.israil_headlines",
-            "SELECT title, content, published_date, category FROM news.telegram_headlines"
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.ria_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.bbc_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.cnn_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.reuters_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.france24_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.aljazeera_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.euronews_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.dw_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.rt_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.gazeta_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.lenta_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.kommersant_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.rbc_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.tsn_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.unian_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.israil_headlines",
+            "SELECT title, content, published_date, category, COALESCE(social_tension_index, 0) as social_tension_index FROM news.telegram_headlines"
         ]
         
         # Р”РѕР±Р°РІР»СЏРµРј РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёРµ С‚Р°Р±Р»РёС†С‹
         all_unions.extend(custom_unions)
         
         query = f"""
-        SELECT title, content, published_date as published_date, category
+        SELECT title, content, published_date as published_date, category,
+               COALESCE(social_tension_index, 0) as social_tension_index
         FROM (
             {' UNION ALL '.join(all_unions)}
         ) as all_news
@@ -253,12 +303,20 @@ def perform_real_analysis(category, analysis_period, forecast_period):
                 'title': row[0],
                 'content': row[1],
                 'published_date': row[2],
-                'category': row[3]
+                'category': row[3],
+                'social_tension_index': row[4] if len(row) > 4 else 0
             })
         
         # РђРЅР°Р»РёР·РёСЂСѓРµРј РґР°РЅРЅС‹Рµ
         military_keywords = get_military_keywords()
-        tension_index = calculate_tension_index(articles, military_keywords)
+        
+        # Сначала пытаемся использовать значения из статей
+        tension_index = calculate_weighted_tension_from_articles(articles)
+        
+        # Если нет данных из статей, используем fallback расчет
+        if tension_index == 0.5 and articles:
+            tension_index = calculate_tension_index(articles, military_keywords)
+        
         topics = extract_key_topics(articles)
         
         # Р“РµРЅРµСЂРёСЂСѓРµРј РїСЂРѕРіРЅРѕР· РЅР°РїСЂСЏР¶РµРЅРЅРѕСЃС‚Рё
@@ -490,16 +548,76 @@ def generate_forecast():
                 'message': 'AI прогноз недоступен. Проверьте настройки GEN_API_KEY или попробуйте позже.'
             }), 500
         
-        # Если предоставлен prompt, можно использовать AI для уточнения прогноза
+        # Если предоставлен prompt, используем AI для генерации ответа на пользовательский запрос
         ai_response = None
         if prompt:
-            # Интеграция с AI для улучшения прогноза
             try:
-                # Здесь можно добавить вызов AI API для обработки prompt
-                # Пока что просто сохраняем prompt как дополнительную информацию
-                ai_response = f"Пользовательский запрос: {prompt}"
+                # Импортируем GenApiNewsClassifier
+                from parsers.gen_api_classifier import GenApiNewsClassifier
+                
+                # Получаем API ключ из конфигурации
+                api_key = current_app.config.get('GEN_API_KEY')
+                
+                if api_key:
+                    # Формируем контекст для AI ответа
+                    news_count = analysis_result.get('news_count', 0) if analysis_result else 0
+                    tension_index = analysis_result.get('tension_index', 0.5) if analysis_result else 0.5
+                    topics = analysis_result.get('topics_forecast', {}).get('topics', []) if analysis_result else []
+                    
+                    # Определяем уровень напряженности
+                    if tension_index >= 0.8:
+                        tension_level = "критический"
+                    elif tension_index >= 0.6:
+                        tension_level = "высокий"
+                    elif tension_index >= 0.4:
+                        tension_level = "средний"
+                    else:
+                        tension_level = "низкий"
+                    
+                    # Формируем контекст
+                    context = f"""
+Контекст анализа:
+- Проанализировано новостей: {news_count}
+- Текущий индекс напряженности: {tension_index:.1%} (уровень: {tension_level})
+- Категория анализа: {category}
+- Период анализа: {analysis_period} часов
+- Период прогноза: {forecast_period} часов
+"""
+                    
+                    if topics:
+                        topics_text = "\n".join([f"- {topic.get('name', 'Неизвестная тема')}: {topic.get('weight', 0):.1%}" for topic in topics[:5]])
+                        context += f"\nОсновные темы:\n{topics_text}"
+                    
+                    # Формируем промпт для AI
+                    ai_prompt = f"""Ты эксперт по анализу социальной напряженности и прогнозированию конфликтов.
+
+{context}
+
+Пользователь задал следующий вопрос: "{prompt}"
+
+Дай детальный и обоснованный ответ на этот вопрос, используя предоставленный контекст анализа. 
+Ответ должен быть:
+- Конкретным и информативным
+- Основанным на данных анализа
+- Практически полезным
+- Структурированным и понятным
+
+Отвечай на русском языке."""
+                    
+                    # Создаем классификатор и отправляем запрос
+                    classifier = GenApiNewsClassifier(api_key=api_key)
+                    result = classifier.generate_forecast(ai_prompt, max_tokens=1500)
+                    
+                    ai_response = result['forecast']
+                    current_app.logger.info(f"AI response generated successfully, tokens used: {result.get('tokens_used', 0)}")
+                    
+                else:
+                    current_app.logger.warning("GEN_API_KEY не найден, пропускаем AI ответ на пользовательский запрос")
+                    ai_response = f"⚠️ AI ответ недоступен. Ваш запрос: {prompt}"
+                    
             except Exception as e:
-                current_app.logger.warning(f"AI integration failed: {e}")
+                current_app.logger.error(f"Ошибка генерации AI ответа на пользовательский запрос: {e}")
+                ai_response = f"⚠️ Ошибка генерации ответа: {str(e)}"
         
         if analysis_result:
             tension_values = analysis_result['tension_forecast']['values']
@@ -638,16 +756,20 @@ def generate_tension_chart(tension_values, category):
     plt.savefig(filepath, dpi=100, bbox_inches='tight')
     plt.close()
     
+    # Очищаем старые графики прогноза
+    cleanup_old_charts('tension_forecast', keep_count=5, static_folder=static_folder)
+    
     return f'/static/images/{filename}'
 
 # Р¤СѓРЅРєС†РёСЏ РґР»СЏ РіРµРЅРµСЂР°С†РёРё РіСЂР°С„РёРєР° СЂР°СЃРїСЂРµРґРµР»РµРЅРёСЏ С‚РµРј
-def generate_topics_chart(topics, category):
-    plt.figure(figsize=(10, 6))
-    sns.set_style("whitegrid")
+# Функция удалена - график распределения тем больше не нужен
+# def generate_topics_chart(topics, category):
+#     plt.figure(figsize=(10, 6))
+#     sns.set_style("whitegrid")
     
-    names = [item['name'] for item in topics]
-    values = [item['value'] for item in topics]
-    changes = [item['change'] for item in topics]
+#     names = [item['name'] for item in topics]
+#     values = [item['value'] for item in topics]
+#     changes = [item['change'] for item in topics]
     
     # Р¦РІРµС‚Р° РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РёР·РјРµРЅРµРЅРёСЏ (РєСЂР°СЃРЅС‹Р№ - РЅРµРіР°С‚РёРІРЅРѕРµ, Р·РµР»РµРЅС‹Р№ - РїРѕР·РёС‚РёРІРЅРѕРµ)
     colors = ['#4CAF50' if change >= 0 else '#F44336' for change in changes]

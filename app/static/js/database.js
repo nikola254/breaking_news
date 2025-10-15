@@ -4,6 +4,7 @@ let currentFilter = null;
 let currentFilterValue = null;
 let currentDays = 7;
 let currentSearchQuery = '';
+let totalArticlesCount = 0;
 
 // Переменные для управления парсингом
 let activeParsers = [];
@@ -195,23 +196,45 @@ function loadData() {
                 
                 // Обрабатываем разные форматы ответов от разных API
                 let newsData;
+                let totalCount = 0;
                 
                 if (data.latest_news) {
                     // API аналитики возвращает latest_news
                     newsData = data.latest_news;
-                    console.log('API аналитики - загружено новостей:', newsData.length);
+                    totalCount = data.total_count || newsData.length;
+                    
+                    // Группируем по источникам для статистики
+                    const sourcesStats = {};
+                    newsData.forEach(article => {
+                        const source = article.source || 'Неизвестно';
+                        sourcesStats[source] = (sourcesStats[source] || 0) + 1;
+                    });
+                    
+                    console.log(`API аналитики - загружено новостей: ${newsData.length}, всего: ${totalCount}`);
+                    console.log('Статистика по источникам:', sourcesStats);
                 } else if (data.data) {
                     // Обычный API возвращает data
                     newsData = data.data;
-                    console.log('Обычный API - загружено новостей:', newsData.length);
+                    totalCount = data.total_count || newsData.length;
+                    
+                    // Группируем по источникам для статистики
+                    const sourcesStats = {};
+                    newsData.forEach(article => {
+                        const source = article.source || 'Неизвестно';
+                        sourcesStats[source] = (sourcesStats[source] || 0) + 1;
+                    });
+                    
+                    console.log(`Обычный API - загружено новостей: ${newsData.length}, всего: ${totalCount}`);
+                    console.log('Статистика по источникам:', sourcesStats);
                 } else {
                     newsData = [];
+                    totalCount = 0;
                 }
                 
-                console.log('Загружено новостей:', newsData.length);
+                console.log(`Загружено новостей: ${newsData.length}`);
                 
                 // Обновляем данные на странице
-                updateTable(newsData);
+                updateTable(newsData, totalCount);
                 updateFilters(data);
             } else {
                 showError(data.message || 'Ошибка при загрузке данных');
@@ -226,7 +249,10 @@ function loadData() {
 }
 
 // Функция обновления таблицы с данными (теперь создает карточки)
-function updateTable(data) {
+function updateTable(data, totalCount = 0) {
+    // Сохраняем общее количество статей
+    totalArticlesCount = totalCount;
+    
     // Получаем контейнер для новостей
     const newsContainer = document.getElementById('newsContainer') || createNewsContainer();
     
@@ -253,6 +279,10 @@ function updateTable(data) {
     // Выделяем поисковый текст после отображения данных
     setTimeout(() => {
         highlightAllArticles();
+        // Фильтруем результаты если есть поисковый запрос
+        if (currentSearchQuery && currentSearchQuery.trim()) {
+            filterSearchResults();
+        }
     }, 50);
 }
 
@@ -555,18 +585,150 @@ function highlightAllArticles() {
     }
 }
 
-// Модифицированная функция поиска с автоматическим выделением
+// Функция фильтрации результатов поиска - показывает только статьи с найденными ключевыми словами
+function filterSearchResults() {
+    const searchQuery = currentSearchQuery.trim();
+    
+    if (!searchQuery) {
+        // Если нет поискового запроса, показываем все статьи
+        document.querySelectorAll('.news-card').forEach(card => {
+            card.style.display = 'block';
+        });
+        return;
+    }
+    
+    const cards = document.querySelectorAll('.news-card');
+    const cardData = [];
+    
+    cards.forEach(card => {
+        const titleElement = card.querySelector('.news-title');
+        const contentElement = card.querySelector('.news-content');
+        
+        let relevanceScore = 0;
+        let hasMatch = false;
+        
+        // Проверяем заголовок
+        if (titleElement) {
+            const titleText = titleElement.textContent.toLowerCase();
+            const matches = (titleText.match(new RegExp(searchQuery.toLowerCase(), 'g')) || []).length;
+            if (matches > 0) {
+                hasMatch = true;
+                relevanceScore += matches * 3; // Заголовок имеет больший вес
+            }
+        }
+        
+        // Проверяем содержимое
+        if (contentElement) {
+            const contentText = contentElement.textContent.toLowerCase();
+            const matches = (contentText.match(new RegExp(searchQuery.toLowerCase(), 'g')) || []).length;
+            if (matches > 0) {
+                hasMatch = true;
+                relevanceScore += matches; // Содержимое имеет меньший вес
+            }
+        }
+        
+        if (hasMatch) {
+            cardData.push({
+                card: card,
+                relevanceScore: relevanceScore
+            });
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // Сортируем по релевантности (по убыванию)
+    cardData.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    
+    // Переставляем карточки в DOM в порядке релевантности
+    const newsContainer = document.getElementById('newsContainer');
+    if (newsContainer) {
+        // Удаляем все карточки из контейнера
+        cards.forEach(card => {
+            if (card.parentNode === newsContainer) {
+                newsContainer.removeChild(card);
+            }
+        });
+        
+        // Добавляем карточки в порядке релевантности
+        cardData.forEach(({ card }) => {
+            card.style.display = 'block';
+            newsContainer.appendChild(card);
+        });
+    }
+    
+    // Обновляем сообщение о количестве найденных результатов
+    updateSearchResultsMessage(cardData.length, totalArticlesCount > 0 ? totalArticlesCount : cards.length);
+}
+
+// Функция обновления сообщения о результатах поиска
+function updateSearchResultsMessage(visibleCount, totalCount) {
+    const searchQuery = currentSearchQuery.trim();
+    
+    if (!searchQuery) {
+        // Убираем сообщение если нет поискового запроса
+        const existingMessage = document.querySelector('.search-results-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+        return;
+    }
+    
+    // Удаляем предыдущее сообщение
+    const existingMessage = document.querySelector('.search-results-message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    // Создаем новое сообщение
+    const message = document.createElement('div');
+    message.className = 'search-results-message';
+    message.style.cssText = `
+        background: #e3f2fd;
+        border: 1px solid #2196f3;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 10px 0;
+        color: #1976d2;
+        font-size: 14px;
+        text-align: center;
+    `;
+    
+    if (visibleCount === 0) {
+        message.innerHTML = `
+            <i class="fas fa-search" style="margin-right: 8px;"></i>
+            По запросу "<strong>${searchQuery}</strong>" ничего не найдено
+        `;
+    } else {
+        message.innerHTML = `
+            <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
+            Найдено <strong>${visibleCount}</strong> из <strong>${totalCount}</strong> статей по запросу "<strong>${searchQuery}</strong>" (отсортированы по релевантности)
+        `;
+    }
+    
+    // Вставляем сообщение в контейнер новостей
+    const newsContainer = document.getElementById('newsContainer');
+    if (newsContainer && newsContainer.firstChild) {
+        newsContainer.insertBefore(message, newsContainer.firstChild);
+    }
+}
+
+// Модифицированная функция поиска с автоматическим выделением и фильтрацией
 function performSearch() {
     currentSearchQuery = searchInput.value.trim();
     
-    // Загружаем данные
+    // Загружаем данные с поисковым запросом
     loadData();
     
     // Выделяем текст после загрузки данных
     setTimeout(() => {
         highlightAllArticles();
+        // Фильтруем результаты - показываем только статьи с найденными ключевыми словами
+        filterSearchResults();
     }, 200);
 }
+
+
 
 
 

@@ -11,6 +11,7 @@
 from flask import Blueprint, request, jsonify, current_app
 import datetime
 import os
+import glob
 import matplotlib
 matplotlib.use('Agg')  # Используем не-интерактивный бэкенд
 import matplotlib.pyplot as plt
@@ -20,6 +21,43 @@ import uuid
 
 # Создаем Blueprint для API графиков
 chart_api_bp = Blueprint('chart_api', __name__, url_prefix='/api/chart')
+
+def cleanup_old_charts(chart_prefix, keep_count=5, static_folder=None):
+    """Удаляет старые графики, оставляя только последние keep_count файлов.
+    
+    Args:
+        chart_prefix (str): Префикс имени файла графика (например, 'ai_tension_forecast')
+        keep_count (int): Количество последних файлов для сохранения (по умолчанию 5)
+        static_folder (str): Путь к папке static/images
+    
+    Returns:
+        int: Количество удаленных файлов
+    """
+    if static_folder is None:
+        static_folder = os.path.join(current_app.root_path, 'static', 'images')
+    
+    # Ищем все файлы по паттерну
+    pattern = os.path.join(static_folder, f'{chart_prefix}_*.png')
+    files = glob.glob(pattern)
+    
+    if len(files) <= keep_count:
+        return 0  # Нечего удалять
+    
+    # Сортируем по времени модификации (от новых к старым)
+    files_with_time = [(f, os.path.getmtime(f)) for f in files]
+    files_with_time.sort(key=lambda x: x[1], reverse=True)
+    
+    # Удаляем старые файлы
+    deleted_count = 0
+    for file_path, _ in files_with_time[keep_count:]:
+        try:
+            os.remove(file_path)
+            deleted_count += 1
+            current_app.logger.info(f"Удален старый график: {os.path.basename(file_path)}")
+        except Exception as e:
+            current_app.logger.error(f"Ошибка при удалении {file_path}: {str(e)}")
+    
+    return deleted_count
 
 def get_category_name(category):
     """Получение читаемого названия категории.
@@ -206,6 +244,9 @@ def generate_tension_chart_from_data(tension_values, category):
         plt.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='white')
         plt.close()
         
+        # Очищаем старые графики напряженности
+        cleanup_old_charts('ai_tension_forecast', keep_count=5, static_folder=static_folder)
+        
         return f'/static/images/{filename}'
     
     except Exception as e:
@@ -213,113 +254,114 @@ def generate_tension_chart_from_data(tension_values, category):
         plt.close()
         return create_empty_chart_simple("tension", category)
 
-def generate_topics_chart_from_data(topics, category):
-    """Создание графика распределения тем на основе данных от AI.
-    
-    Args:
-        topics (list): Список тем с их значениями и изменениями
-        category (str): Категория новостей
-    
-    Returns:
-        str: Путь к созданному графику
-    """
-    try:
-        # Проверка на пустые данные
-        if not topics or len(topics) == 0:
-            return create_empty_chart_simple("topics", category)
-        
-        # Логируем данные для отладки
-        current_app.logger.info(f"Generating topics chart for category: {category}")
-        current_app.logger.info(f"Topics count: {len(topics) if topics else 0}")
-        current_app.logger.info(f"Topics sample: {topics[:2] if topics else 'None'}")
-        
-        plt.figure(figsize=(12, 8))
-        sns.set_style("whitegrid")
-        
-        # Проверяем формат данных
-        if isinstance(topics[0], dict):
-            names = [item.get('name', f'Topic {i+1}') for i, item in enumerate(topics)]
-            values = [item.get('value', item.get('weight', 0)) for item in topics]
-            changes = [item.get('change', item.get('trend', 0)) for item in topics]
-        else:
-            # Если данные приходят в другом формате
-            names = [str(topic) for topic in topics]
-            values = [0.1] * len(topics)  # Значения по умолчанию
-            changes = [0] * len(topics)
-        
-        # Цвета в зависимости от изменения (зеленый - рост, красный - падение, серый - стабильно)
-        colors = []
-        for change in changes:
-            if change > 0.01:
-                colors.append('#4CAF50')  # Зеленый для роста
-            elif change < -0.01:
-                colors.append('#F44336')  # Красный для падения
-            else:
-                colors.append('#9E9E9E')  # Серый для стабильности
-        
-        bars = plt.bar(names, values, color=colors, alpha=0.8, edgecolor='black', linewidth=1)
-        
-        # Добавляем аннотации с процентами и изменениями
-        for i, bar in enumerate(bars):
-            height = bar.get_height()
-            change = changes[i]
-            
-            # Определяем символ изменения
-            if change > 0.01:
-                change_symbol = '↗'
-                change_color = '#4CAF50'
-            elif change < -0.01:
-                change_symbol = '↘'
-                change_color = '#F44336'
-            else:
-                change_symbol = '→'
-                change_color = '#9E9E9E'
-            
-            # Основная аннотация с процентом
-            plt.text(bar.get_x() + bar.get_width()/2., height + max(values) * 0.02,
-                    f'{values[i]:.1%}',
-                    ha='center', va='bottom', fontsize=11, fontweight='bold')
-            
-            # Аннотация с изменением
-            plt.text(bar.get_x() + bar.get_width()/2., height + max(values) * 0.06,
-                    f'{change_symbol} {abs(change):.1%}',
-                    ha='center', va='bottom', fontsize=9, color=change_color, fontweight='bold')
-        
-        plt.title(f'Распределение тем по напряженности\n{get_category_name(category)}', 
-                  fontsize=16, fontweight='bold', pad=20)
-        plt.xlabel('Темы', fontsize=12)
-        plt.ylabel('Доля в общей напряженности', fontsize=12)
-        plt.ylim(0, max(values) * 1.4)  # Оставляем место для аннотаций
-        
-        # Улучшаем отображение названий тем
-        plt.xticks(rotation=45, ha='right')
-        plt.grid(True, alpha=0.3, axis='y')
-        plt.tight_layout()
-        
-        # Добавляем легенду
-        from matplotlib.patches import Patch
-        legend_elements = [
-            Patch(facecolor='#4CAF50', label='Рост напряженности'),
-            Patch(facecolor='#F44336', label='Снижение напряженности'),
-            Patch(facecolor='#9E9E9E', label='Стабильная ситуация')
-        ]
-        plt.legend(handles=legend_elements, loc='upper right')
-        
-        # Сохраняем график
-        unique_id = uuid.uuid4().hex[:8]
-        today_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'ai_topics_forecast_{category}_{today_str}_{unique_id}.png'
-        
-        static_folder = os.path.join(current_app.root_path, 'static', 'images')
-        os.makedirs(static_folder, exist_ok=True)
-        
-        filepath = os.path.join(static_folder, filename)
-        plt.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='white')
-        plt.close()
-        
-        return f'/static/images/{filename}'
-        
-    except Exception as e:
-        current_app.logger.error(f"Error generating topics chart: {str(e)}")
-        plt.close()
-        return create_empty_chart_simple("topics", category)
+# Функция удалена - график распределения тем больше не нужен
+# def generate_topics_chart_from_data(topics, category):
+#     """Создание графика распределения тем на основе данных от AI.
+#     
+#     Args:
+#         topics (list): Список тем с их значениями и изменениями
+#         category (str): Категория новостей
+#     
+#     Returns:
+#         str: Путь к созданному графику
+#     """
+#     try:
+#         # Проверка на пустые данные
+#         if not topics or len(topics) == 0:
+#             return create_empty_chart_simple("topics", category)
+#         
+#         # Логируем данные для отладки
+#         current_app.logger.info(f"Generating topics chart for category: {category}")
+#         current_app.logger.info(f"Topics count: {len(topics) if topics else 0}")
+#         current_app.logger.info(f"Topics sample: {topics[:2] if topics else 'None'}")
+#         
+#         plt.figure(figsize=(12, 8))
+#         sns.set_style("whitegrid")
+#         
+#         # Проверяем формат данных
+#         if isinstance(topics[0], dict):
+#             names = [item.get('name', f'Topic {i+1}') for i, item in enumerate(topics)]
+#             values = [item.get('value', item.get('weight', 0)) for item in topics]
+#             changes = [item.get('change', item.get('trend', 0)) for item in topics]
+#         else:
+#             # Если данные приходят в другом формате
+#             names = [str(topic) for topic in topics]
+#             values = [0.1] * len(topics)  # Значения по умолчанию
+#             changes = [0] * len(topics)
+#         
+#         # Цвета в зависимости от изменения (зеленый - рост, красный - падение, серый - стабильно)
+#         colors = []
+#         for change in changes:
+#             if change > 0.01:
+#                 colors.append('#4CAF50')  # Зеленый для роста
+#             elif change < -0.01:
+#                 colors.append('#F44336')  # Красный для падения
+#             else:
+#                 colors.append('#9E9E9E')  # Серый для стабильности
+#         
+#         bars = plt.bar(names, values, color=colors, alpha=0.8, edgecolor='black', linewidth=1)
+#         
+#         # Добавляем аннотации с процентами и изменениями
+#         for i, bar in enumerate(bars):
+#             height = bar.get_height()
+#             change = changes[i]
+#             
+#             # Определяем символ изменения
+#             if change > 0.01:
+#                 change_symbol = '↗'
+#                 change_color = '#4CAF50'
+#             elif change < -0.01:
+#                 change_symbol = '↘'
+#                 change_color = '#F44336'
+#             else:
+#                 change_symbol = '→'
+#                 change_color = '#9E9E9E'
+#             
+#             # Основная аннотация с процентом
+#             plt.text(bar.get_x() + bar.get_width()/2., height + max(values) * 0.02,
+#                     f'{values[i]:.1%}',
+#                     ha='center', va='bottom', fontsize=11, fontweight='bold')
+#             
+#             # Аннотация с изменением
+#             plt.text(bar.get_x() + bar.get_width()/2., height + max(values) * 0.06,
+#                     f'{change_symbol} {abs(change):.1%}',
+#                     ha='center', va='bottom', fontsize=9, color=change_color, fontweight='bold')
+#         
+#         plt.title(f'Распределение тем по напряженности\n{get_category_name(category)}', 
+#                   fontsize=16, fontweight='bold', pad=20)
+#         plt.xlabel('Темы', fontsize=12)
+#         plt.ylabel('Доля в общей напряженности', fontsize=12)
+#         plt.ylim(0, max(values) * 1.4)  # Оставляем место для аннотаций
+#         
+#         # Улучшаем отображение названий тем
+#         plt.xticks(rotation=45, ha='right')
+#         plt.grid(True, alpha=0.3, axis='y')
+#         plt.tight_layout()
+#         
+#         # Добавляем легенду
+#         from matplotlib.patches import Patch
+#         legend_elements = [
+#             Patch(facecolor='#4CAF50', label='Рост напряженности'),
+#             Patch(facecolor='#F44336', label='Снижение напряженности'),
+#             Patch(facecolor='#9E9E9E', label='Стабильная ситуация')
+#         ]
+#         plt.legend(handles=legend_elements, loc='upper right')
+#         
+#         # Сохраняем график
+#         unique_id = uuid.uuid4().hex[:8]
+#         today_str = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+#         filename = f'ai_topics_forecast_{category}_{today_str}_{unique_id}.png'
+#         
+#         static_folder = os.path.join(current_app.root_path, 'static', 'images')
+#         os.makedirs(static_folder, exist_ok=True)
+#         
+#         filepath = os.path.join(static_folder, filename)
+#         plt.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='white')
+#         plt.close()
+#         
+#         return f'/static/images/{filename}'
+#         
+#     except Exception as e:
+#         current_app.logger.error(f"Error generating topics chart: {str(e)}")
+#         plt.close()
+#         return create_empty_chart_simple("topics", category)

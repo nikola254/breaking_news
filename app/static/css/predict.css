@@ -1,5 +1,5 @@
 .predict-container {
-    max-width: 1200px;
+    width: 100%;
     margin: 0 auto;
     padding: 20px;
     background-color: #f0f8ff;
@@ -345,4 +345,132 @@
 
 .auto-fill-btn span {
     font-size: 12px;
+}
+
+/* Стили для блока ответа на пользовательский запрос */
+.user-query-response {
+    margin-top: 30px;
+    padding: 25px;
+    background: linear-gradient(135deg, #fff3e0 0%, #fce4ec 100%);
+    border: 2px solid #ff9800;
+    border-radius: 16px;
+    box-shadow: 0 8px 25px rgba(255, 152, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.user-query-response::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+}
+
+.user-query-response h4 {
+    color: #e65100;
+    margin-bottom: 15px;
+    font-weight: 700;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-query-response h4::before {
+    content: '💬';
+    font-size: 1.1em;
+}
+
+.user-query-response .ai-response {
+    color: #2c3e50;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 152, 0, 0.2);
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .predict-container {
+        padding: 15px;
+        margin: 10px;
+        border-radius: 8px;
+    }
+    
+    .user-query-response {
+        margin-top: 20px;
+        padding: 20px;
+    }
+    
+    .user-query-response h4 {
+        font-size: 1.1rem;
+    }
+    
+    .user-query-response .ai-response {
+        padding: 15px;
+        font-size: 0.9rem;
+    }
+}
+
+/* Стили для markdown форматирования в AI ответах */
+.ai-response h1, .ai-response h2, .ai-response h3, .ai-response h4, .ai-response h5 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.ai-response h1 {
+    font-size: 24px;
+    font-weight: 700;
+    border-bottom: 2px solid #4a90e2;
+    padding-bottom: 8px;
+}
+
+.ai-response h2 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.ai-response h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.ai-response h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1976d2;
+}
+
+.ai-response h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #5a6c7d;
+}
+
+.ai-response ul {
+    margin: 10px 0;
+    padding-left: 30px;
+    list-style-type: disc;
+}
+
+.ai-response li {
+    margin: 5px 0;
+    line-height: 1.6;
+}
+
+.ai-response strong {
+    font-weight: 700;
+    color: #1976d2;
+}
+
+.ai-response em {
+    font-style: italic;
+    color: #5a6c7d;
 }

@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import uuid
+from .chart_api import cleanup_old_charts
 from collections import defaultdict
 from clickhouse_driver import Client
 from config import Config
@@ -633,6 +634,9 @@ def save_chart(chart_type, category):
     plt.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close()
     
+    # Очищаем старые графики аналитики
+    cleanup_old_charts(f'ukraine_{chart_type}', keep_count=5, static_folder=static_folder)
+    
     return f'/static/images/{filename}'
 
 def get_category_name(category):
@@ -988,6 +992,7 @@ def get_latest_news():
         source = request.args.get('source', None)
         limit = request.args.get('limit', 20, type=int)
         offset = request.args.get('offset', 0, type=int)
+        search = request.args.get('search', '')
         
         # Инициализируем клиент ClickHouse и анализатор напряженности
         client = get_clickhouse_client()
@@ -1019,6 +1024,11 @@ def get_latest_news():
         if category != 'all':
             category_condition = f"AND category = '{category}'"
         
+        # Условие для поиска
+        search_condition = ""
+        if search:
+            search_condition = f"AND (title ILIKE '%{search}%' OR content ILIKE '%{search}%')"
+        
         
         # Запрос для получения последних новостей с новыми полями
         if table_source == 'UNION_ALL':
@@ -1034,6 +1044,7 @@ def get_latest_news():
                     FROM {table_name}
                     WHERE published_date >= today() - {days}
                     {category_condition}
+                    {search_condition}
                 """)
             
             query = f"""
@@ -1056,6 +1067,7 @@ def get_latest_news():
             FROM {table_source}
             WHERE published_date >= today() - {days}
             {category_condition}
+            {search_condition}
             ORDER BY published_date DESC
             LIMIT {limit} OFFSET {offset}
             """
@@ -1096,6 +1108,7 @@ def get_latest_news():
                     FROM {table_name}
                     WHERE published_date >= today() - {days}
                     {category_condition}
+                    {search_condition}
                 """)
             
             count_query = f"""
@@ -1111,6 +1124,7 @@ def get_latest_news():
             FROM {table_source}
             WHERE published_date >= today() - {days}
             {category_condition}
+            {search_condition}
             """
         total_count_result = client.execute(count_query)
         total_count = total_count_result[0][0] if total_count_result else len(latest_news)
